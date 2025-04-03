@@ -1,0 +1,26 @@
+{
+  "dependencies": {
+    "commander": "^13.1.0",
+    "discord.js": "^14.18.0",
+    "fs": "^0.0.1-security",
+    "fs-extra": "^11.3.0"
+  },
+  "name": "cordlang",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/index.js",
+  "bin": {
+    "cordlang": "./src/index.js",
+    "cord": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "init": "node src/index.js init",
+    "run": "node src/index.js run",
+    "build": "npm link && npm i && npm run init"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

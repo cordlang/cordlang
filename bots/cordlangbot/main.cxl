@@ -1,0 +1,20 @@
+imports {
+  token
+  prefix
+}
+
+commands [
+  command {
+    name: "hello"
+    reply: "hello {user}"
+    slash_command: true
+    options_slash {
+      name: "hello"
+      description: "Saludo al usuario"
+    }
+  }
+]
+
+bot {
+  ready("Bot de prueba está en línea!", "Error al iniciar el bot")
+}

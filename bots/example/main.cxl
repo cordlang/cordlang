@@ -1,0 +1,8 @@
+bot {
+  ready("Bot listo!", "Error al iniciar")
+}
+
+command {
+  name: "ping"
+  reply: "Pong!"
+}

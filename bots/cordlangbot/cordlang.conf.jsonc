@@ -1,0 +1,13 @@
+{
+  "name": "cordlangbot",
+  "version": "1.0.0",
+  "description": "Un bot hecho con CordLang",
+  "prefix": "!",
+  "slash_commands": true,
+  "main_file": "main.cxl",
+  "commands_folder": "commands",
+  "token_file": "token.bot.cxl",
+  "module": true,
+  "debug": false,
+  "log_channel": null
+}
