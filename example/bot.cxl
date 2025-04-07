@@ -1,0 +1,9 @@
+bot token = ""
+
+on message "ping" reply "pong"
+on message "hola" reply "¡Hola, tu ID es {autorID} y la hora actual es {timestamp}!"
+
+// Instrucciones extendidas para construir un embed:
+addField[Title;Este es el campo del embed;yes]
+addField[Descripción;Este es un embed generado con CordLang;no]
+addButton[no;btn_1;Click Me!;primary;no;🙂]
