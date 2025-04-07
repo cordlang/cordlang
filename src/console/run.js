@@ -1,22 +1,23 @@
 const fs = require("fs");
 const path = require("path");
-const { startBot } = require("../bot");
+const logger = require("../utils/logger");
+const botModule = require("../bot");
 
 function run(args) {
-    const botName = args[0];
-    if (!botName) {
-        console.log("❌ Debes especificar el nombre del bot. Ejemplo: cord run miBot");
-        return;
-    }
+  const botName = args[0];
+  if (!botName) {
+    logger.error("❌ Debes especificar el nombre del bot. Ejemplo: cord run miBot");
+    return;
+  }
 
-    const botPath = path.join(__dirname, "../../bots", botName);
+  const botPath = path.join("bots", botName);
 
-    if (!fs.existsSync(botPath)) {
-        console.log(`❌ El bot "${botName}" no existe. Asegúrate de haberlo creado con 'cord init'.`);
-        return;
-    }
+  if (!fs.existsSync(botPath)) {
+    logger.error(`❌ El bot "${botName}" no existe. Asegúrate de haberlo creado con 'cord init'.`);
+    return;
+  }
 
-    startBot(botPath);
+  botModule.startBot(botPath);
 }
 
 module.exports = { run };
