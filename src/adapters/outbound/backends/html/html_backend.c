@@ -523,6 +523,17 @@ static void collect_classes(char *classes, size_t classes_sz, Node *node, const 
     strncat(classes, base_class, classes_sz - 1);
   }
 
+  int has_between = 0;
+  for (size_t i = 0; i < node->children_len; i++) {
+    Node *child = node->children[i];
+    if (child->type == NODE_BOOL_ATTR && child->value &&
+        strcmp(child->value, "between") == 0)
+      has_between = 1;
+    if (child->type == NODE_ATTR && child->value &&
+        strcmp(child->value, "between") == 0)
+      has_between = 1;
+  }
+
   for (size_t i = 0; i < node->children_len; i++) {
     Node *child = node->children[i];
     if (child->type == NODE_STYLE_MAP && child->value && strcmp(child->value, "style") == 0) {
@@ -545,11 +556,18 @@ static void collect_classes(char *classes, size_t classes_sz, Node *node, const 
     char vbuf[96];
     if (child->type == NODE_BOOL_ATTR && child->value) {
       if (strcmp(child->value, "between") == 0) strncat(classes, " flex justify-between", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->value, "center") == 0) strncat(classes, " flex items-center justify-center", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->value, "center") == 0)
+        strncat(classes,
+                has_between ? " flex items-center"
+                            : " flex items-center justify-center",
+                classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "around") == 0) strncat(classes, " justify-around", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "evenly") == 0) strncat(classes, " justify-evenly", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "bold") == 0) strncat(classes, " font-bold", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "muted") == 0) strncat(classes, " text-muted", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->value, "font-mono") == 0) strncat(classes, " font-mono", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->value, "flex-1") == 0) strncat(classes, " flex-1", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->value, "border") == 0) strncat(classes, " border border-gray-200", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "sticky") == 0) strncat(classes, " sticky top-0", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "primary") == 0) strncat(classes, " btn-primary", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "outline") == 0) strncat(classes, " btn-outline", classes_sz - strlen(classes) - 1);
@@ -587,6 +605,33 @@ static void collect_classes(char *classes, size_t classes_sz, Node *node, const 
       } else if (strcmp(child->value, "p") == 0) {
         snprintf(vbuf, sizeof(vbuf), " p-%s", child->value2);
         strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+      } else if (strcmp(child->value, "px") == 0) {
+        snprintf(vbuf, sizeof(vbuf), " px-%s", child->value2);
+        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+      } else if (strcmp(child->value, "py") == 0) {
+        snprintf(vbuf, sizeof(vbuf), " py-%s", child->value2);
+        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+      } else if (strcmp(child->value, "m") == 0) {
+        snprintf(vbuf, sizeof(vbuf), " m-%s", child->value2);
+        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+      } else if (strcmp(child->value, "mx") == 0) {
+        snprintf(vbuf, sizeof(vbuf), " mx-%s", child->value2);
+        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+      } else if (strcmp(child->value, "my") == 0) {
+        snprintf(vbuf, sizeof(vbuf), " my-%s", child->value2);
+        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+      } else if (strcmp(child->value, "w") == 0) {
+        snprintf(vbuf, sizeof(vbuf), " w-%s", child->value2);
+        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+      } else if (strcmp(child->value, "h") == 0) {
+        snprintf(vbuf, sizeof(vbuf), " h-%s", child->value2);
+        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+      } else if (strcmp(child->value, "min-h") == 0) {
+        snprintf(vbuf, sizeof(vbuf), " min-h-%s", child->value2);
+        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+      } else if (strcmp(child->value, "border") == 0) {
+        snprintf(vbuf, sizeof(vbuf), " border border-%s", child->value2);
+        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
       } else if (strcmp(child->value, "bg") == 0) {
         snprintf(vbuf, sizeof(vbuf), " bg-%s", child->value2);
         strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
@@ -608,6 +653,14 @@ static int is_style_attr(const char *name) {
   return strcmp(name, "variant") == 0 || strcmp(name, "size") == 0 ||
          strcmp(name, "color") == 0 || strcmp(name, "gap") == 0 ||
          strcmp(name, "cols") == 0 || strcmp(name, "p") == 0 ||
+         strcmp(name, "px") == 0 || strcmp(name, "py") == 0 ||
+         strcmp(name, "m") == 0 || strcmp(name, "mx") == 0 ||
+         strcmp(name, "my") == 0 || strcmp(name, "w") == 0 ||
+         strcmp(name, "h") == 0 || strcmp(name, "min-h") == 0 ||
+         strcmp(name, "border") == 0 || strcmp(name, "flex-1") == 0 ||
+         strcmp(name, "font-mono") == 0 || strcmp(name, "center") == 0 ||
+         strcmp(name, "between") == 0 || strcmp(name, "bold") == 0 ||
+         strcmp(name, "muted") == 0 || strcmp(name, "sticky") == 0 ||
          strcmp(name, "bg") == 0 || strcmp(name, "shadow") == 0 ||
          strcmp(name, "rounded") == 0 || strcmp(name, "max-w") == 0 ||
          strcmp(name, "overflow") == 0 || strcmp(name, "fit") == 0 ||
@@ -993,6 +1046,14 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
     strncat(classes, base_class, classes_sz - 1);
   }
 
+  int has_between = 0;
+  for (size_t i = 0; i < node->n_kids; i++) {
+    IrNode *child = node->kids[i];
+    if (child && child->kind == IR_ATTR && child->name &&
+        strcmp(child->name, "between") == 0)
+      has_between = 1;
+  }
+
   for (size_t i = 0; i < node->n_kids; i++) {
     IrNode *child = node->kids[i];
     if (child && child->kind == IR_ATTR && child->name &&
@@ -1021,7 +1082,9 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
       if (strcmp(child->name, "between") == 0)
         strncat(classes, " flex justify-between", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->name, "center") == 0)
-        strncat(classes, " flex items-center justify-center",
+        strncat(classes,
+                has_between ? " flex items-center"
+                            : " flex items-center justify-center",
                 classes_sz - strlen(classes) - 1);
       else if (strcmp(child->name, "around") == 0)
         strncat(classes, " justify-around", classes_sz - strlen(classes) - 1);
@@ -1031,6 +1094,13 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
         strncat(classes, " font-bold", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->name, "muted") == 0)
         strncat(classes, " text-muted", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "font-mono") == 0)
+        strncat(classes, " font-mono", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "flex-1") == 0)
+        strncat(classes, " flex-1", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "border") == 0)
+        strncat(classes, " border border-gray-200",
+                classes_sz - strlen(classes) - 1);
       else if (strcmp(child->name, "sticky") == 0)
         strncat(classes, " sticky top-0", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->name, "primary") == 0)
@@ -1081,6 +1151,33 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
       strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
     } else if (strcmp(child->name, "p") == 0) {
       snprintf(vbuf, sizeof(vbuf), " p-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "px") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " px-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "py") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " py-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "m") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " m-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "mx") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " mx-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "my") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " my-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "w") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " w-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "h") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " h-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "min-h") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " min-h-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "border") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " border border-%s", child->value);
       strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
     } else if (strcmp(child->name, "bg") == 0) {
       snprintf(vbuf, sizeof(vbuf), " bg-%s", child->value);

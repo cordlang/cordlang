@@ -17,7 +17,7 @@
   import Card from './Card.svelte';
 </script>
 
-<Card title={Hola}>
+<Card title="Hola">
   <p>
     cuerpo
   </p>

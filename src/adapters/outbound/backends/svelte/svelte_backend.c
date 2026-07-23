@@ -80,6 +80,35 @@ static int looks_like_js_expr(const char *s) {
   return !after_dot;
 }
 
+/* Mirror React emit_jsx_value: PascalCase / Title Case strings stay quoted. */
+static void emit_svelte_prop_value(StrBuf *sb, const char *val) {
+  if (!val) {
+    sb_append(sb, "{undefined}");
+    return;
+  }
+  if (irw_looks_number(val) || irw_looks_bool(val)) {
+    sb_appendf(sb, "{%s}", val);
+    return;
+  }
+  if ((isalpha((unsigned char)val[0]) || val[0] == '_') &&
+      strchr(val, ' ') == NULL && strchr(val, '"') == NULL) {
+    int has_dot = strchr(val, '.') != NULL;
+    int all_ident = 1;
+    for (const char *p = val; *p; p++) {
+      if (!(isalnum((unsigned char)*p) || *p == '_' || *p == '.' || *p == '$')) {
+        all_ident = 0;
+        break;
+      }
+    }
+    if (all_ident &&
+        (has_dot || islower((unsigned char)val[0]) || val[0] == '_')) {
+      sb_appendf(sb, "{%s}", val);
+      return;
+    }
+  }
+  sb_appendf(sb, "\"%s\"", val);
+}
+
 static int is_style_attr(const char *name) {
   return irw_is_style_attr(name);
 }
@@ -210,6 +239,13 @@ static void collect_classes_ir(char *classes, size_t sz, const IrNode *node,
   if (base) strncat(classes, base, sz - 1);
   if (!node) return;
 
+  int has_between = 0;
+  for (size_t i = 0; i < node->n_kids; i++) {
+    IrNode *c = node->kids[i];
+    if (!c || c->kind != IR_ATTR || !c->name) continue;
+    if (strcmp(c->name, "between") == 0) has_between = 1;
+  }
+
   for (size_t i = 0; i < node->n_kids; i++) {
     IrNode *c = node->kids[i];
     if (!c || c->kind != IR_ATTR || !c->name) continue;
@@ -223,12 +259,20 @@ static void collect_classes_ir(char *classes, size_t sz, const IrNode *node,
       if (strcmp(k, "between") == 0)
         strncat(classes, " flex justify-between", sz - strlen(classes) - 1);
       else if (strcmp(k, "center") == 0)
-        strncat(classes, " flex items-center justify-center",
+        strncat(classes,
+                has_between ? " flex items-center"
+                            : " flex items-center justify-center",
                 sz - strlen(classes) - 1);
       else if (strcmp(k, "bold") == 0)
         strncat(classes, " font-bold", sz - strlen(classes) - 1);
       else if (strcmp(k, "muted") == 0)
         strncat(classes, " text-muted", sz - strlen(classes) - 1);
+      else if (strcmp(k, "font-mono") == 0)
+        strncat(classes, " font-mono", sz - strlen(classes) - 1);
+      else if (strcmp(k, "flex-1") == 0)
+        strncat(classes, " flex-1", sz - strlen(classes) - 1);
+      else if (strcmp(k, "border") == 0)
+        strncat(classes, " border border-gray-200", sz - strlen(classes) - 1);
       else if (strcmp(k, "sticky") == 0)
         strncat(classes, " sticky top-0", sz - strlen(classes) - 1);
       else if (strcmp(k, "primary") == 0)
@@ -250,7 +294,10 @@ static void collect_classes_ir(char *classes, size_t sz, const IrNode *node,
         if (strcmp(k, "variant") && strcmp(k, "size") && strcmp(k, "color") &&
             strcmp(k, "gap") && strcmp(k, "cols") && strcmp(k, "p") &&
             strcmp(k, "bg") && strcmp(k, "shadow") && strcmp(k, "rounded") &&
-            strcmp(k, "max-w"))
+            strcmp(k, "max-w") && strcmp(k, "w") && strcmp(k, "h") &&
+            strcmp(k, "min-h") && strcmp(k, "mx") && strcmp(k, "my") &&
+            strcmp(k, "px") && strcmp(k, "py") && strcmp(k, "m") &&
+            strcmp(k, "border"))
           continue;
       }
     }
@@ -281,6 +328,33 @@ static void collect_classes_ir(char *classes, size_t sz, const IrNode *node,
       strncat(classes, vbuf, sz - strlen(classes) - 1);
     } else if (strcmp(k, "p") == 0) {
       snprintf(vbuf, sizeof(vbuf), " p-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "px") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " px-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "py") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " py-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "m") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " m-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "mx") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " mx-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "my") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " my-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "w") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " w-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "h") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " h-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "min-h") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " min-h-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "border") == 0 && !attr_is_true(c)) {
+      snprintf(vbuf, sizeof(vbuf), " border border-%s", v);
       strncat(classes, vbuf, sz - strlen(classes) - 1);
     } else if (strcmp(k, "bg") == 0) {
       if (theme_is_color_token(v)) {
@@ -709,11 +783,8 @@ static void gen_element_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
       IrNode *c = node->kids[i];
       if (c->kind == IR_ATTR && c->name && !is_style_attr(c->name) &&
           !(c->name[0] == '_' && c->name[1] == '_')) {
-        if (c->value && (irw_looks_number(c->value) || irw_looks_bool(c->value) ||
-                         looks_like_js_expr(c->value)))
-          sb_appendf(sb, " %s={%s}", c->name, c->value);
-        else
-          sb_appendf(sb, " %s=\"%s\"", c->name, c->value ? c->value : "");
+        sb_appendf(sb, " %s=", c->name);
+        emit_svelte_prop_value(sb, c->value);
       } else if (c->kind == IR_EVENT && c->name && c->value) {
         int needs_arrow = strchr(c->value, '(') || strchr(c->value, '+') ||
                           strchr(c->value, '-') || strchr(c->value, ' ');
@@ -780,6 +851,8 @@ static void gen_element_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
          strcmp(c->name, "bold") == 0 || strcmp(c->name, "muted") == 0 ||
          strcmp(c->name, "sticky") == 0 || strcmp(c->name, "primary") == 0 ||
          strcmp(c->name, "outline") == 0 || strcmp(c->name, "ghost") == 0 ||
+         strcmp(c->name, "font-mono") == 0 || strcmp(c->name, "flex-1") == 0 ||
+         strcmp(c->name, "border") == 0 ||
          strcmp(c->name, "xl") == 0 || strcmp(c->name, "2xl") == 0 ||
          strcmp(c->name, "4xl") == 0 || strcmp(c->name, "lg") == 0 ||
          strcmp(c->name, "sm") == 0 || strcmp(c->name, "3xl") == 0 ||

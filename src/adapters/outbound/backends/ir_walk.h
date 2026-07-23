@@ -141,6 +141,11 @@ static inline void irw_collect_classes(char *out, size_t outsz, const IrNode *el
       snprintf(piece, sizeof(piece), " max-w-%s", v);
     else if (strcmp(k, "rounded") == 0)
       snprintf(piece, sizeof(piece), " rounded-%s", v);
+    else if (strcmp(k, "mx") == 0) snprintf(piece, sizeof(piece), " mx-%s", v);
+    else if (strcmp(k, "my") == 0) snprintf(piece, sizeof(piece), " my-%s", v);
+    else if (strcmp(k, "px") == 0) snprintf(piece, sizeof(piece), " px-%s", v);
+    else if (strcmp(k, "py") == 0) snprintf(piece, sizeof(piece), " py-%s", v);
+    else if (strcmp(k, "m") == 0) snprintf(piece, sizeof(piece), " m-%s", v);
     if (piece[0] && n + strlen(piece) + 1 < outsz) {
       memcpy(out + n, piece, strlen(piece) + 1);
       n += strlen(piece);
