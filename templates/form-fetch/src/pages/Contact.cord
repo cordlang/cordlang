@@ -1,0 +1,21 @@
+state email=""
+state note=""
+
+fetch products = "/api/products.json"
+
+col gap=24 p=32 max-w=lg mx
+  h1 "Contact" size=2xl bold
+  form
+    col gap=12
+      input text bind=email name=email placeholder="Email"
+      textarea bind=note name=note placeholder="Message"
+      btn "Send" variant=primary
+  col gap=8
+    h2 "Catalog preview" size=lg bold
+    if products
+      for p in products key=p.id
+        row between p=8 border rounded
+          span "#{p.name}"
+          span "#{p.price}" muted
+    else
+      p "Loading…" muted

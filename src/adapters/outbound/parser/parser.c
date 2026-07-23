@@ -496,6 +496,23 @@ static char *parse_default_value(Parser *p) {
   return NULL;
 }
 
+/* props name [: type] [= default] — type stored as ATTR type=<name> */
+static Node *parse_prop_node(Parser *p) {
+  Token prop = advance(p);
+  Node *prop_node =
+      node_create(NODE_TEXT, token_str(prop), prop.line, prop.col);
+  if (match(p, TOKEN_COLON)) {
+    if (peek(p).type == TOKEN_IDENTIFIER) {
+      Token ty = advance(p);
+      Node *ta = node_create(NODE_ATTR, "type", ty.line, ty.col);
+      ta->value2 = token_str(ty);
+      node_add_child(prop_node, ta);
+    }
+  }
+  if (match(p, TOKEN_EQUALS)) prop_node->value2 = parse_default_value(p);
+  return prop_node;
+}
+
 static Node *parse_def(Parser *p) {
   (void)advance(p); /* def */
 
@@ -609,10 +626,7 @@ static Node *parse_def(Parser *p) {
           advance(p);
           continue;
         }
-        Token prop = advance(p);
-        Node *prop_node = node_create(NODE_TEXT, token_str(prop), prop.line, prop.col);
-        if (match(p, TOKEN_EQUALS)) prop_node->value2 = parse_default_value(p);
-        node_add_child(props, prop_node);
+        node_add_child(props, parse_prop_node(p));
       }
       node_add_child(def, props);
       free(kw);
@@ -2432,10 +2446,7 @@ static Node *parse_stmt(Parser *p) {
         advance(p);
         continue;
       }
-      Token prop = advance(p);
-      Node *prop_node = node_create(NODE_TEXT, token_str(prop), prop.line, prop.col);
-      if (match(p, TOKEN_EQUALS)) prop_node->value2 = parse_default_value(p);
-      node_add_child(props, prop_node);
+      node_add_child(props, parse_prop_node(p));
     }
     while (peek(p).type == TOKEN_NEWLINE) advance(p);
     return props;

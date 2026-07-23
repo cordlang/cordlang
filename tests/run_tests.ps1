@@ -212,6 +212,75 @@ if (Test-Path -LiteralPath $unknown) {
   $failed = $failed + 1
 }
 
+$iaCn = Join-Path $FixturesDir "ia_fail_classname.cord"
+if (Test-Path -LiteralPath $iaCn) {
+  & $Cordlang check $iaCn 2>&1 | Out-Null
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "PASS: check ia_fail_classname (non-zero)" -ForegroundColor Green
+    $passed = $passed + 1
+  } else {
+    Write-Host "FAIL: check ia_fail_classname expected non-zero" -ForegroundColor Red
+    $failed = $failed + 1
+  }
+} else {
+  Write-Host "FAIL: missing ia_fail_classname.cord" -ForegroundColor Red
+  $failed = $failed + 1
+}
+
+$iaTy = Join-Path $FixturesDir "ia_fail_bad_prop_type.cord"
+if (Test-Path -LiteralPath $iaTy) {
+  & $Cordlang check $iaTy 2>&1 | Out-Null
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "PASS: check ia_fail_bad_prop_type (non-zero)" -ForegroundColor Green
+    $passed = $passed + 1
+  } else {
+    Write-Host "FAIL: check ia_fail_bad_prop_type expected non-zero" -ForegroundColor Red
+    $failed = $failed + 1
+  }
+} else {
+  Write-Host "FAIL: missing ia_fail_bad_prop_type.cord" -ForegroundColor Red
+  $failed = $failed + 1
+}
+
+$typedOk = Join-Path $FixturesDir "typed_props_ok.cord"
+if (Test-Path -LiteralPath $typedOk) {
+  & $Cordlang check $typedOk 2>&1 | Out-Null
+  if ($LASTEXITCODE -eq 0) {
+    Write-Host "PASS: check typed_props_ok (zero)" -ForegroundColor Green
+    $passed = $passed + 1
+  } else {
+    Write-Host "FAIL: check typed_props_ok expected zero" -ForegroundColor Red
+    $failed = $failed + 1
+  }
+} else {
+  Write-Host "FAIL: missing typed_props_ok.cord" -ForegroundColor Red
+  $failed = $failed + 1
+}
+
+$iaUa = Join-Path $FixturesDir "ia_fail_unknown_attr.cord"
+if (Test-Path -LiteralPath $iaUa) {
+  $out = & $Cordlang check $iaUa 2>&1 | Out-String
+  if ($out -match "unknown attribute") {
+    Write-Host "PASS: check ia_fail_unknown_attr (warn)" -ForegroundColor Green
+    $passed = $passed + 1
+  } else {
+    Write-Host "FAIL: check ia_fail_unknown_attr expected warning" -ForegroundColor Red
+    $failed = $failed + 1
+  }
+} else {
+  Write-Host "FAIL: missing ia_fail_unknown_attr.cord" -ForegroundColor Red
+  $failed = $failed + 1
+}
+
+& $Cordlang analyze $typedOk 2>&1 | Out-Null
+if ($LASTEXITCODE -eq 0) {
+  Write-Host "PASS: analyze typed_props_ok" -ForegroundColor Green
+  $passed = $passed + 1
+} else {
+  Write-Host "FAIL: analyze typed_props_ok" -ForegroundColor Red
+  $failed = $failed + 1
+}
+
 # valid my-app → zero
 $myApp = Join-Path $Root "my-app"
 if (Test-Path -LiteralPath (Join-Path $myApp "cordlang.json")) {

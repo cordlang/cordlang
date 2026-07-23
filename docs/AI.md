@@ -1,6 +1,6 @@
 # Cordlang for AI models
 
-Cordlang is optimized so **language models write less UI code** with fewer tokens, then a **real compiler** expands it to React or Svelte.
+Cordlang is an **intermediate UI language for vibecode**: models write dense `.cord`, a **deterministic compiler** expands it to React or Svelte. There is **no LLM in `compile`**.
 
 This page is the contract for **any** model (Grok, Claude, GPT, Copilot, Cursor, …).
 
@@ -8,6 +8,9 @@ Also see:
 
 - Root agent brief: [`AGENTS.md`](../AGENTS.md)
 - **Skill:** [`skills/write-cord/SKILL.md`](../skills/write-cord/SKILL.md)
+- **Attrs schema (machine-readable):** [`schema/attrs.json`](./schema/attrs.json)
+- Prop types + check: this doc + `cordlang check`
+- Workflow: [`AI_WORKFLOW.md`](./AI_WORKFLOW.md) · CLI `cordlang ai`
 - Human guide: [GUIDE.md](./GUIDE.md) · [CHEATSHEET.md](./CHEATSHEET.md)
 
 ---
@@ -20,6 +23,28 @@ When the user wants UI:
 2. Keep sources **dense and valid** for the Cordlang compiler.
 3. Split multi-page apps into `app.cord` + `pages/` + `components/` + `layouts/`.
 4. Compile mentally to both React and Svelte when possible (same `.cord`).
+5. After edits: `cordlang check` (and optionally `cordlang analyze`). Never invent keywords outside the schema/docs.
+
+---
+
+## Machine-readable contract
+
+| Artifact | Use |
+|----------|-----|
+| [`schema/attrs.json`](./schema/attrs.json) | Official tags, style attrs, DOM attrs, forbidden JSX names |
+| `cordlang check` | Errors/warnings: unknown comps, routes, typed props, unknown attrs, JSX traps |
+| `cordlang symbols` / `goto` | Navigation for LSP / agents |
+| `cordlang analyze` | Deterministic score (unused comps, `link` sin `to`, layout sin `slot`, …) — **no LLM** |
+
+Allowed prop types (when declared): `string`, `number`, `boolean`, `any`.
+
+```cord
+props title: string = ""
+props count: number = 0
+props open: boolean = false
+```
+
+Types are validated by `check`; codegen still emits JS (types are contracts for humans/IA, not a TS host).
 
 ---
 
@@ -29,7 +54,9 @@ When the user wants UI:
 |----|----------------|
 | Use indentation for hierarchy | children under `col` / `row` |
 | Use `state` / `props` / `computed` | not `useState` in source |
+| Prefer typed props when known | `props label: string = "Hi"` |
 | Use `#{expr}` for text | `p "Hi #{name}"` or `p "#{name}"` |
+| Escape literal `#{` as `\#{` | only when you need the characters |
 | Use `@event=handler` | `@click=setCount(count + 1)` |
 | Use `setX` for state updates | matches emitted helpers |
 | Use `if` / `for … key=` | not JSX `&&` / `.map` in `.cord` |
@@ -39,6 +66,7 @@ When the user wants UI:
 | Use `fetch x = "/api/…"` for JSON | with Loading/Error UI |
 | Use `theme` for design tokens | CSS vars backend |
 | Use `context` / `provide` / `ctx` | shared theme etc. |
+| Stick to attrs in `schema/attrs.json` | unknown attrs → `check` warning |
 | Run `cordlang check` after edits | when CLI available |
 | Point users to `cordlang run react\|svelte` | for real apps |
 
@@ -49,15 +77,16 @@ When the user wants UI:
 | Don't | Why |
 |-------|-----|
 | Emit large JSX/TSX as the primary source | Defeats Cordlang |
-| Invent keywords not in the docs | Parse/check will fail |
+| Invent keywords not in the docs/schema | Parse/check will fail |
 | Use curly braces `{count}` as Cord syntax | Use `#{count}` |
-| Use `className=` / `onClick=` in `.cord` | Use classes via attrs / `@click` |
+| Use `className=` / `onClick=` in `.cord` | Use style attrs / `@click` |
 | Put `use:action` as form `action=` | Forms: `action=formAction`; elements: `use=name` |
 | Assume SvelteKit file routing or Next RSC | SPA backends only (today) |
-| Write TypeScript types inside `.cord` | Not a TS host |
+| Write full TypeScript/JSX types as host language | Only Cord prop types above |
 | Nest 500 lines in `app.cord` | Split files |
 | Hand-edit `dist/**` as source of truth | Regenerated |
-| Claim features that are roadmap-only as done | Kit/Next, full LSP, etc. |
+| Put `@ai` / LLM calls in compile path | Workflow only (`cordlang ai`, skills) |
+| Claim features that are roadmap-only as done | Kit/Next, full LSP, Flutter, etc. |
 
 ---
 
@@ -68,7 +97,7 @@ When the user wants UI:
 ```cord
 def Counter
   state count=0
-  props label="Counter"
+  props label: string = "Counter"
   col gap=16 p=24 center
     h1 "#{label}" size=2xl bold
     span "#{count}" size=4xl bold
@@ -129,7 +158,9 @@ If unsure a keyword exists → prefer core subset (state, if, for, route, bind, 
 - [ ] No JSX tags like `<div>`
 - [ ] State updates via `setName(...)`
 - [ ] Routes/pages split for multi-page
-- [ ] No invented attrs that look like React-only DOM props without Cord mapping
+- [ ] Attrs exist in `schema/attrs.json` (no `className` / `onClick`)
+- [ ] Typed props use `string` \| `number` \| `boolean` \| `any` when declared
+- [ ] `cordlang check` green (and `analyze` if touching structure/a11y)
 - [ ] Mention how to run: `cordlang run` / `run react` / `check`
 
 ---

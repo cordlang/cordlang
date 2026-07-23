@@ -1,0 +1,5 @@
+def Typed
+  props title: string = "Hi"
+  props bad: TypeScript = 1
+  col
+    p "#{title}"

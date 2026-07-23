@@ -189,10 +189,16 @@ static IrNode *convert_node(const Node *node, const char *file) {
       for (size_t i = 0; i < node->children_len; i++) {
         Node *ch = node->children[i];
         if (!ch) continue;
-        /* prop name in value, default in value2 (stored as TEXT nodes) */
+        /* prop name in value, default in value2; optional type ATTR child */
         IrNode *pr = ir_tag(ir_node_create(IR_PROP, ch->value, ch->value2, NULL,
                                            ch->line, ch->col, file),
                             ch);
+        for (size_t j = 0; j < ch->children_len; j++) {
+          Node *a = ch->children[j];
+          if (!a || a->type != NODE_ATTR || !a->value || !a->value2) continue;
+          ir_add_kid(pr, ir_node_create(IR_ATTR, a->value, a->value2, NULL,
+                                        a->line, a->col, file));
+        }
         ir_add_kid(bag, pr);
       }
       return ir_tag(bag, (Node *)node);

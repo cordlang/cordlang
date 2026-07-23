@@ -1,6 +1,7 @@
 #include "application/init_service.h"
 #include "application/compile_service.h"
 #include "application/check_service.h"
+#include "application/analyze_service.h"
 #include "application/fmt_service.h"
 #include "application/run_service.h"
 #include "application/preview_service.h"
@@ -27,6 +28,9 @@ static void print_usage(void) {
   printf("  cordlang run <backend> --watch Watch src/**/*.cord and rebuild on change\n");
   printf("  cordlang build <backend>       Compile entry to dist only\n");
   printf("  cordlang check [path]          Semantic checks (diagnostics)\n");
+  printf("  cordlang analyze [path]        Deterministic score / heuristics (no LLM)\n");
+  printf("  cordlang ai                    AI workflow help (propose → check)\n");
+  printf("  cordlang ai check [path]       Same as: cordlang check [path]\n");
   printf("  cordlang compile <file.cord>   Compile a single file to stdout\n");
   printf("  cordlang fmt [path]            Format .cord file(s) in place\n");
   printf("  cordlang fmt --check [path]    Exit 1 if formatting would change files\n");
@@ -57,6 +61,8 @@ static void print_usage(void) {
   printf("  cd my-app && cordlang run svelte --watch --check\n");
   printf("  cordlang check                    # check project entry\n");
   printf("  cordlang check src/app.cord\n");
+  printf("  cordlang analyze\n");
+  printf("  cordlang ai check\n");
   printf("  cd my-app && cordlang symbols\n");
   printf("  cd my-app && cordlang goto Counter\n");
   printf("  cordlang compile src/app.cord --backend svelte\n");
@@ -402,6 +408,36 @@ static int cmd_fmt(int argc, char **argv) {
   return fmt_service_run(path, check ? 0 : 1, check);
 }
 
+static int cmd_analyze(int argc, char **argv) {
+  const char *path = argc > 0 ? argv[0] : ".";
+  char *entry = resolve_check_entry(path);
+  if (!entry) return 1;
+
+  DiagList diags;
+  diag_list_init(&diags);
+  int rc = analyze_service_run(entry, &diags);
+  diag_print_all(&diags);
+  diag_list_free(&diags);
+  free(entry);
+  return rc;
+}
+
+static int cmd_ai(int argc, char **argv) {
+  if (argc > 0 && strcmp(argv[0], "check") == 0)
+    return cmd_check(argc - 1, argv + 1);
+
+  printf("Cordlang AI workflow (LLM outside the compiler)\n\n");
+  printf("1. Edit .cord with skills/write-cord (or any model + docs/AI.md)\n");
+  printf("2. Validate:  cordlang check [path]\n");
+  printf("3. Optional:  cordlang analyze [path]   # score, no LLM\n");
+  printf("4. Preview:   cordlang run react --watch\n");
+  printf("              cordlang run svelte --check\n\n");
+  printf("Docs: docs/AI.md · docs/AI_WORKFLOW.md · docs/schema/attrs.json\n");
+  printf("Skill: skills/write-cord/\n\n");
+  printf("Shortcut: cordlang ai check [path]\n");
+  return 0;
+}
+
 static int cmd_build(int argc, char **argv) {
   const char *backend = argc > 0 ? argv[0] : "react";
   const char *dir = ".";
@@ -466,6 +502,14 @@ int cli_run(int argc, char **argv) {
 
   if (strcmp(cmd, "check") == 0) {
     return cmd_check(argc - 2, argv + 2);
+  }
+
+  if (strcmp(cmd, "analyze") == 0) {
+    return cmd_analyze(argc - 2, argv + 2);
+  }
+
+  if (strcmp(cmd, "ai") == 0) {
+    return cmd_ai(argc - 2, argv + 2);
   }
 
   if (strcmp(cmd, "compile") == 0) {

@@ -23,5 +23,6 @@ void diag_emit(DiagList *d, DiagLevel level, const char *file, int line, int col
                const char *fmt, ...);
 void diag_print_all(const DiagList *d); /* file:line:col: error: msg */
 int diag_error_count(const DiagList *d);
+int diag_count_level(const DiagList *d, DiagLevel level);
 
 #endif

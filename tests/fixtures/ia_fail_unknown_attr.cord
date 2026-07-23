@@ -1,0 +1,3 @@
+def Bad
+  col foobarbaz=1
+    p "unknown attr"

@@ -14,6 +14,7 @@ SRC = \
   src/application/init_service.c \
   src/application/compile_service.c \
   src/application/check_service.c \
+  src/application/analyze_service.c \
   src/application/symbols_service.c \
   src/application/fmt_service.c \
   src/application/run_service.c \

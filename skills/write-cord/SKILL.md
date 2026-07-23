@@ -25,15 +25,17 @@ You are authoring **Cordlang** — a dense UI DSL compiled to React, Svelte 5, o
 
 1. Deliver **`.cord` source** as the primary artifact.  
 2. For apps: structure like `my-app/` (`app.cord` + `pages/` + `components/` + `layouts/`).  
-3. Mention how to run: `cordlang run`, `cordlang run react`, `cordlang run svelte`, `cordlang check`.  
-4. Only show generated React/Svelte if the user asks for emitted code.
+3. Mention how to run: `cordlang run`, `cordlang run react`, `cordlang run svelte`, `cordlang check`, `cordlang analyze`.  
+4. Prefer typed props: `props title: string = ""` (`string` \| `number` \| `boolean` \| `any`).  
+5. Only show generated React/Svelte if the user asks for emitted code.  
+6. After edits: `cordlang check` (or `cordlang ai check`). See `docs/AI_WORKFLOW.md`.
 
 ## Syntax rules (non-negotiable)
 
 ```cord
 def Widget
   state open=false
-  props title=""
+  props title: string = ""
   col gap=16 p=24
     h1 "#{title}" size=2xl bold
     if open
@@ -42,14 +44,16 @@ def Widget
 ```
 
 | Rule | Correct | Wrong |
-|------|---------|--------|
+|------|---------|-------|
 | Interpolation | `#{count}` | `{count}` |
-| Events | `@click=setCount(count+1)` | `onClick={...}` |
+| Events | `@click=setCount(count+1)` | `onClick={...}` / `className=` |
 | State | `state n=0` + `setN(...)` | `useState` in .cord |
+| Props | `props t: string = ""` | TypeScript interfaces in .cord |
 | Lists | `for x in xs key=x.id` | `.map` in .cord |
 | Links | `link "Home" to=/` | `<Link to>` |
 | Forms | `form action=formAction` + `bind=` | random HTML forms |
 | Svelte actions | `use=tooltip` on elements | `action=` on non-forms (form submit only) |
+| Attrs | only those in `docs/schema/attrs.json` | invented DOM/React names |
 
 ## Multi-file app template
 
@@ -85,11 +89,17 @@ route /about => pages/AboutPage
 - [ ] No `<jsx>` tags in `.cord`  
 - [ ] Indentation defines tree  
 - [ ] Multi-page → multi-file  
+- [ ] No `className` / `onClick`  
+- [ ] Attrs ⊆ `docs/schema/attrs.json`  
+- [ ] `cordlang check` green  
 - [ ] No edits to `dist/` as source of truth  
 - [ ] User can compile with existing CLI commands  
 
 ## References
 
+- `docs/AI.md` · `docs/AI_WORKFLOW.md` · `docs/schema/attrs.json`  
 - `docs/EXAMPLES.md` — file catalog  
+- `templates/` — Cord-native seeds  
 - `examples/counter.cord`, `examples/fetch_form.cord`, `my-app/`  
 - `docs/REACT.md` / `docs/SVELTE.md` — backend maps  
+- `editor/vscode/` — snippets + check problem matcher  

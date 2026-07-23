@@ -1,0 +1,13 @@
+col
+  section p=48 center gap=16 max-w=3xl mx
+    h1 "Ship UI with Cord" size=4xl bold
+    p "Dense .cord source → React or Svelte. Built for vibecode." muted size=lg
+    row gap=12 center
+      btn "Get started" variant=primary
+      btn "Docs" variant=outline
+  section id=product p=48 gap=16 max-w=3xl mx
+    h2 "Why Cord" size=2xl bold
+    p "One intermediate language. Real backends. Deterministic check — no LLM in compile."
+  section id=cta p=48 center gap=12 bg
+    h2 "Ready?" size=2xl bold
+    btn "Clone template" variant=primary

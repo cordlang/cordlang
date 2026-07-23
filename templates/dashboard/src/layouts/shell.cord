@@ -1,0 +1,11 @@
+layout shell
+  row min-h
+    aside w p=16 gap=8 bg border
+      span "Dashboard" bold
+      link "Overview" to=/
+      link "Settings" to=/settings
+    col flex-1
+      header p=16 border
+        span "Console" muted
+      main p=24
+        slot

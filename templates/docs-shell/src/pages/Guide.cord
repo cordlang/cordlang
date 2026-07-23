@@ -1,0 +1,4 @@
+col gap=16
+  h1 "Guide" size=2xl bold
+  p "Prefer cordlang check after every edit." muted
+  code "cordlang run react --watch"

@@ -1,13 +1,13 @@
 # Cordlang
 
-**Universal UI intermediate language** — write UI once in compact `.cord` files, compile to **React**, **Svelte 5**, or a **native HTML preview** inside the CLI.
+**La forma más rápida de construir UI con IA** — escribe `.cord`, el compilador baja a un **IR canónico** y emite **React**, **Svelte 5** o un **preview HTML** nativo.
 
-Cordlang is not another JS framework. It is a small **compiler** (C, hexagonal architecture) that turns an indented UI DSL into idiomatic target code.
+Cordlang **no** es otro framework JS (sin Vite/Next/router propios). Es un **lenguaje intermedio** denso para humanos y modelos: vibecode → `check` → backends reales.
 
 ```cord
 def Counter
   state count=0
-  props label="Counter"
+  props label: string = "Counter"
 
   col gap=16 p=24 center
     h1 "#{label}" size=2xl bold
@@ -22,6 +22,8 @@ def Counter
 cordlang run              # native HTML preview (no Node)
 cordlang run react        # Vite + React + Tailwind → dist/react
 cordlang run svelte       # Vite + Svelte 5 runes → dist/svelte
+cordlang check            # diagnostics anti-alucinación
+cordlang analyze          # score heurístico (sin LLM)
 ```
 
 Same multi-file `src/**/*.cord` for every backend.
@@ -33,9 +35,11 @@ Same multi-file `src/**/*.cord` for every backend.
 | Goal | How Cordlang helps |
 |------|---------------------|
 | Less boilerplate for UI | Indent + attrs + `#{expr}` instead of JSX/Svelte ceremony |
-| AI-friendly surface | Fewer tokens to describe the same UI (~3–5× denser) |
-| One source, many targets | IR → React / Svelte / HTML (more backends planned) |
+| AI-friendly surface | Fewer tokens; schema + `check` atrapan traps comunes |
+| One source, many targets | IR → React / Svelte / HTML (more backends when IR is boring) |
 | Real apps | Routes, layouts, state, forms, lazy, context, fetch… |
+
+**No somos “JSX más corto”.** Somos el IR + DX alrededor para que la IA escriba UI válida.
 
 ---
 
@@ -56,8 +60,11 @@ Same multi-file `src/**/*.cord` for every backend.
 | [docs/CHEATSHEET.md](./docs/CHEATSHEET.md) | One-screen syntax |
 | [docs/EXAMPLES.md](./docs/EXAMPLES.md) | Catalog of examples |
 | [docs/AI.md](./docs/AI.md) | **For AI models** — what to write / avoid |
+| [docs/schema/attrs.json](./docs/schema/attrs.json) | Machine-readable attrs (LSP / IA) |
+| [docs/TEMPLATES.md](./docs/TEMPLATES.md) | Cord-native project templates |
+| [docs/LSP.md](./docs/LSP.md) | Editor / LSP mínimo |
 | [AGENTS.md](./AGENTS.md) | Coding-agent brief |
-| [docs/ROADMAP.md](./docs/ROADMAP.md) | Roadmap |
+| [docs/ROADMAP.md](./docs/ROADMAP.md) | Horizonte A/B + histórico |
 | [docs/REACT.md](./docs/REACT.md) · [SVELTE.md](./docs/SVELTE.md) · [IR.md](./docs/IR.md) | Maps & IR |
 
 ### AI / agents

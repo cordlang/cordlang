@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Cordlang official surface",
+  "version": "0.1.0",
+  "description": "Machine-readable tags/attrs for LSP, check, and AI skills. Keep in sync with src/domain/known_attrs.h",
+  "propTypes": ["string", "number", "boolean", "any"],
+  "layoutTags": ["col", "row", "stack", "page", "card", "grid", "group", "fragment"],
+  "controlTags": ["btn", "button", "link", "input", "textarea", "select", "checkbox", "radio", "form", "label", "img", "icon", "span", "p", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "nav", "header", "footer", "main", "aside", "section", "article", "div", "a", "table", "thead", "tbody", "tr", "td", "th", "code", "pre", "hr", "br", "slot"],
+  "specialTags": ["provide", "portal", "suspense", "loading", "errorBoundary", "empty", "if", "else", "for", "await", "snippet", "render"],
+  "styleAttrs": [
+    "variant", "size", "color", "gap", "cols", "p", "m", "px", "py", "mx", "my",
+    "bg", "shadow", "rounded", "max-w", "min-h", "overflow", "w", "h",
+    "center", "between", "bold", "muted", "sticky", "primary", "outline", "ghost",
+    "border", "flex-1", "font-mono"
+  ],
+  "domAttrs": [
+    "id", "name", "type", "value", "placeholder", "href", "to", "src", "alt",
+    "target", "rel", "role", "title", "for", "action", "method", "disabled",
+    "checked", "readonly", "required", "multiple", "maxlength", "min", "max",
+    "step", "pattern", "autocomplete", "tabindex", "class", "style",
+    "bind", "key", "use", "transition", "layout", "lazy", "fallback",
+    "context", "init", "pending", "deps", "cleanup", "getSnapshot",
+    "getServerSnapshot", "then", "catch", "as", "when", "of",
+    "text", "email", "password", "search", "tel", "url", "date", "time",
+    "datetime-local", "file", "submit", "reset", "button", "number", "range",
+    "color", "hidden"
+  ],
+  "eventPrefix": "@",
+  "forbiddenJsxAttrs": [
+    "className", "onClick", "onChange", "onSubmit", "onInput", "htmlFor",
+    "defaultValue", "dangerouslySetInnerHTML"
+  ],
+  "notes": [
+    "PascalCase tags are components; arbitrary props allowed.",
+    "Events are @name=expr (NODE_EVENT), not attrs.",
+    "Interpolation is #{expr}; escape literal with \\#{."
+  ]
+}

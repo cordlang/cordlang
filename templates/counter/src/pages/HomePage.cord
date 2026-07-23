@@ -1,0 +1,6 @@
+use ../components/Counter
+
+col gap=24 p=32 center max-w=md mx
+  h1 "Counter" size=2xl bold
+  p "Minimal Cord template" muted
+  Counter label="Clicks"

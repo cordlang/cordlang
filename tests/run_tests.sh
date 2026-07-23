@@ -139,6 +139,74 @@ else
   failed=$((failed + 1))
 fi
 
+ia_cn="$ROOT/tests/fixtures/ia_fail_classname.cord"
+if [[ -f "$ia_cn" ]]; then
+  if ! "$CORDLANG" check "$ia_cn" >/dev/null 2>&1; then
+    echo "PASS: check ia_fail_classname (non-zero)"
+    passed=$((passed + 1))
+  else
+    echo "FAIL: check ia_fail_classname expected non-zero"
+    failed=$((failed + 1))
+  fi
+else
+  echo "FAIL: missing ia_fail_classname.cord"
+  failed=$((failed + 1))
+fi
+
+ia_ty="$ROOT/tests/fixtures/ia_fail_bad_prop_type.cord"
+if [[ -f "$ia_ty" ]]; then
+  if ! "$CORDLANG" check "$ia_ty" >/dev/null 2>&1; then
+    echo "PASS: check ia_fail_bad_prop_type (non-zero)"
+    passed=$((passed + 1))
+  else
+    echo "FAIL: check ia_fail_bad_prop_type expected non-zero"
+    failed=$((failed + 1))
+  fi
+else
+  echo "FAIL: missing ia_fail_bad_prop_type.cord"
+  failed=$((failed + 1))
+fi
+
+typed_ok="$ROOT/tests/fixtures/typed_props_ok.cord"
+if [[ -f "$typed_ok" ]]; then
+  if "$CORDLANG" check "$typed_ok" >/dev/null 2>&1; then
+    echo "PASS: check typed_props_ok (zero)"
+    passed=$((passed + 1))
+  else
+    echo "FAIL: check typed_props_ok expected zero"
+    failed=$((failed + 1))
+  fi
+else
+  echo "FAIL: missing typed_props_ok.cord"
+  failed=$((failed + 1))
+fi
+
+ia_ua="$ROOT/tests/fixtures/ia_fail_unknown_attr.cord"
+if [[ -f "$ia_ua" ]]; then
+  # unknown attr is warning-only → exit 0 but should print warning
+  out=$("$CORDLANG" check "$ia_ua" 2>&1 || true)
+  if echo "$out" | grep -q "unknown attribute"; then
+    echo "PASS: check ia_fail_unknown_attr (warn)"
+    passed=$((passed + 1))
+  else
+    echo "FAIL: check ia_fail_unknown_attr expected warning"
+    echo "$out"
+    failed=$((failed + 1))
+  fi
+else
+  echo "FAIL: missing ia_fail_unknown_attr.cord"
+  failed=$((failed + 1))
+fi
+
+# analyze smoke
+if "$CORDLANG" analyze "$typed_ok" >/dev/null 2>&1; then
+  echo "PASS: analyze typed_props_ok"
+  passed=$((passed + 1))
+else
+  echo "FAIL: analyze typed_props_ok"
+  failed=$((failed + 1))
+fi
+
 if [[ -f "$ROOT/my-app/cordlang.json" ]]; then
   if (cd "$ROOT/my-app" && "$CORDLANG" check >/dev/null 2>&1); then
     echo "PASS: check my-app (zero)"

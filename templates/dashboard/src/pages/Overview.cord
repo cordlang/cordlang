@@ -1,0 +1,10 @@
+col gap=16
+  h1 "Overview" size=2xl bold
+  row gap=16
+    card p=16
+      p "Active" muted
+      span "12" size=3xl bold
+    card p=16
+      p "Errors" muted
+      span "0" size=3xl bold
+  p "Minimal dashboard shell in Cord." muted

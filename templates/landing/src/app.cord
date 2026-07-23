@@ -1,0 +1,9 @@
+theme brand
+  primary: "#0f766e"
+  bg: "#fafaf9"
+  text: "#1c1917"
+  muted: "#78716c"
+  radius: 16
+
+use layouts/default
+route / => pages/HomePage

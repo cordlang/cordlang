@@ -1,0 +1,4 @@
+{
+  "name": "cord-dashboard",
+  "entry": "src/app.cord"
+}

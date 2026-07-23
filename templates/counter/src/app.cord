@@ -1,0 +1,8 @@
+theme app
+  primary: "#0d9488"
+  bg: "#fafaf9"
+  text: "#1c1917"
+  muted: "#78716c"
+  radius: 12
+
+route / => pages/HomePage

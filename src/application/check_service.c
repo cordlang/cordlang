@@ -2,6 +2,7 @@
 
 #include "application/ports/compiler_port.h"
 #include "domain/ast.h"
+#include "domain/known_attrs.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -151,6 +152,29 @@ static void collect_contexts_and_routes(Node *n, CheckCtx *ctx) {
     collect_contexts_and_routes(n->children[i], ctx);
 }
 
+static void check_prop_types(Node *n, DiagList *out, const char *file) {
+  if (!n) return;
+  if (n->type == NODE_PROPS_DECL) {
+    for (size_t i = 0; i < n->children_len; i++) {
+      Node *ch = n->children[i];
+      if (!ch) continue;
+      for (size_t j = 0; j < ch->children_len; j++) {
+        Node *a = ch->children[j];
+        if (!a || a->type != NODE_ATTR || !a->value) continue;
+        if (strcmp(a->value, "type") != 0) continue;
+        if (!a->value2 || !cord_is_prop_type(a->value2)) {
+          diag_emit(out, DIAG_ERROR, file, a->line, a->col,
+                    "unknown prop type '%s' on '%s' (use string|number|boolean|any)",
+                    a->value2 ? a->value2 : "?",
+                    ch->value ? ch->value : "?");
+        }
+      }
+    }
+  }
+  for (size_t i = 0; i < n->children_len; i++)
+    check_prop_types(n->children[i], out, file);
+}
+
 /* Find enclosing COMPONENT_DEF name while walking (stack-based via param). */
 static void walk_checks(Node *n, const NameSet *defs, CheckCtx *ctx,
                         const char *enclosing_comp, DiagList *out,
@@ -173,6 +197,35 @@ static void walk_checks(Node *n, const NameSet *defs, CheckCtx *ctx,
     if (!name_set_has(defs, n->value)) {
       diag_emit(out, DIAG_ERROR, file, n->line, n->col,
                 "unknown component '%s'", n->value);
+    }
+  }
+
+  /* Attr traps + unknown attrs on built-in tags */
+  if (n->type == NODE_ELEMENT && n->value) {
+    int builtin = cord_is_builtin_tag(n->value);
+    for (size_t i = 0; i < n->children_len; i++) {
+      Node *ch = n->children[i];
+      if (!ch) continue;
+      if (ch->type == NODE_ATTR && ch->value) {
+        if (cord_is_forbidden_jsx_attr(ch->value)) {
+          diag_emit(out, DIAG_ERROR, file, ch->line, ch->col,
+                    "JSX attribute '%s' is not Cordlang — use @events / style "
+                    "attrs (see docs/schema/attrs.json)",
+                    ch->value);
+        } else if (builtin && !cord_is_known_attr(ch->value)) {
+          diag_emit(out, DIAG_WARN, file, ch->line, ch->col,
+                    "unknown attribute '%s' on tag '%s'", ch->value, n->value);
+        }
+      }
+      if (ch->type == NODE_BOOL_ATTR && ch->value) {
+        if (cord_is_forbidden_jsx_attr(ch->value)) {
+          diag_emit(out, DIAG_ERROR, file, ch->line, ch->col,
+                    "JSX attribute '%s' is not Cordlang", ch->value);
+        } else if (builtin && !cord_is_known_attr(ch->value)) {
+          diag_emit(out, DIAG_WARN, file, ch->line, ch->col,
+                    "unknown attribute '%s' on tag '%s'", ch->value, n->value);
+        }
+      }
     }
   }
 
@@ -284,6 +337,7 @@ int check_service_run(const char *entry_path, DiagList *out) {
   collect_defs(result.ast->root, &defs, &dups, out, entry_path);
   collect_contexts_and_routes(result.ast->root, &ctx);
   check_routes(&ctx, &defs, out, entry_path);
+  check_prop_types(result.ast->root, out, entry_path);
   walk_checks(result.ast->root, &defs, &ctx, NULL, out, entry_path);
 
   compiler_result_free(&result);

@@ -1,0 +1,10 @@
+theme dash
+  primary: "#0369a1"
+  bg: "#f8fafc"
+  text: "#0f172a"
+  muted: "#64748b"
+  radius: 8
+
+use layouts/shell
+route / => pages/Overview
+route /settings => pages/Settings

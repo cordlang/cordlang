@@ -36,7 +36,9 @@ Syntax guide: [docs/GUIDE.md](./docs/GUIDE.md) · cheatsheet: [docs/CHEATSHEET.m
 - Split apps: `app.cord` + `pages/` + `components/` + `layouts/`.
 - Use multi-file `use` / `route / => pages/X`.
 - Use `setCount(...)` style updaters for state.
-- After edits, prefer `cordlang check` / compile if the CLI is built.
+- After edits, prefer `cordlang check` / `cordlang analyze` / compile if the CLI is built.
+- Attrs: [`docs/schema/attrs.json`](./docs/schema/attrs.json). Prop types: `string` \| `number` \| `boolean` \| `any`.
+- AI loop: [`docs/AI_WORKFLOW.md`](./docs/AI_WORKFLOW.md) · `cordlang ai`.
 
 ### Don't
 

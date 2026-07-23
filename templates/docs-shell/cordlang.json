@@ -1,0 +1,4 @@
+{
+  "name": "cord-docs-shell",
+  "entry": "src/app.cord"
+}

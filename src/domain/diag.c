@@ -76,10 +76,14 @@ void diag_print_all(const DiagList *d) {
 }
 
 int diag_error_count(const DiagList *d) {
+  return diag_count_level(d, DIAG_ERROR);
+}
+
+int diag_count_level(const DiagList *d, DiagLevel level) {
   if (!d) return 0;
   int n = 0;
   for (size_t i = 0; i < d->len; i++) {
-    if (d->items[i].level == DIAG_ERROR) n++;
+    if (d->items[i].level == level) n++;
   }
   return n;
 }
