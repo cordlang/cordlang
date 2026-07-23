@@ -177,13 +177,18 @@ cordlang/
 # Windows
 build.bat
 powershell -ExecutionPolicy Bypass -File tests\run_tests.ps1
+# Demo app: scaffold + vite build (react + svelte)
+powershell -ExecutionPolicy Bypass -File tests\run_myapp_check.ps1
 
 # Update goldens after intentional codegen changes:
 powershell -ExecutionPolicy Bypass -File tests\run_tests.ps1 -UpdateGoldens
 
 # Unix
 make && ./tests/run_tests.sh
+./tests/run_myapp_check.sh   # needs Node.js / npm
 ```
+
+CI (`.github/workflows/ci.yml`) runs goldens **and** `my-app` `--check` on Windows and Ubuntu, with npm/`node_modules` cache.
 
 ---
 

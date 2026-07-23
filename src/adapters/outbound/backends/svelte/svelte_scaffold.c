@@ -344,13 +344,9 @@ int svelte_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
 
   scaffold_public_assets(project_dir, out);
 
-  /* theme.css: still AST-based when origin available; not used for body codegen */
+  /* theme.css from IR hooks only (no AST origin) */
   {
-    Node *theme_root = ir_project_origin(ir);
-    if (!theme_root && ir->root) theme_root = ir->root->origin;
-    char *theme_css =
-        theme_root ? theme_css_generate(theme_root)
-                   : strdup("/* No theme declared. */\n:root {}\n");
+    char *theme_css = theme_css_generate_from_ir(ir);
     if (theme_css) {
       rc |= write_path(out, "src/theme.css", theme_css);
       free(theme_css);

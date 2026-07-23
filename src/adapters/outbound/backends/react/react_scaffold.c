@@ -377,13 +377,9 @@ int react_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
 
   scaffold_public_assets(project_dir, out);
 
-  /* theme.css: prefer origin AST only for theme tokens; else empty theme */
+  /* theme.css from IR hooks only (no AST origin) */
   {
-    Node *origin = ir_project_origin(ir);
-    if (!origin && ir->root) origin = ir->root->origin;
-    char *theme_css = origin ? theme_css_generate(origin) : NULL;
-    if (!theme_css)
-      theme_css = strdup("/* No theme declared. */\n:root {}\n");
+    char *theme_css = theme_css_generate_from_ir(ir);
     if (theme_css) {
       rc |= write_path(out, "src/theme.css", theme_css);
       free(theme_css);

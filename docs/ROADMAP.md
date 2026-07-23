@@ -260,7 +260,7 @@ Mapa completo: [`docs/SVELTE.md`](./SVELTE.md) (basado en [svelte.dev/docs/svelt
 | F3 | Package registry de componentes `.cord` | |
 | F4 | AI prompts / skill “write cord not jsx” | |
 | F5 | Playground web (WASM compile) | |
-| F6 | CI multi-backend | 🟡 workflow base en `.github/workflows/ci.yml` |
+| F6 | CI multi-backend | ✅ goldens Win/Linux; demo `--check` = G4 |
 | F7 | Versionado del lenguaje (0.x → 1.0 freeze) | |
 
 ---
@@ -284,11 +284,11 @@ Objetivo: dejar el hilo **claro** y el repo **listo para GitHub**, luego cerrar 
 
 | # | Item | Prioridad | Descripción | DoD |
 |---|------|-----------|-------------|-----|
-| **G0** | Repo público | **P0** | README, docs, `.gitignore`, CI skeleton, sin basura (`templates/` vacío, `idea.md` → docs) | ✅ (prep local) |
-| **G1** | Theme desde IR | **P0** | `theme.css` en scaffold sin `ir_project_origin` / AST | `scaffold_from_ir` no llama AST para theme |
-| **G2** | HTML preview IR-puro | **P0** | `html_generate_from_ir` camina solo `IrNode` | preview state + markup vía IR |
-| **G3** | CI estable | **P0** | GitHub Action: build + goldens (Win/Linux) | badge verde en main |
-| **G4** | Demo `my-app` en CI | **P1** | `cordlang run react --check` y `svelte --check` en CI (cache npm) | ambos vite build OK |
+| **G0** | Repo público | **P0** | README, docs, `.gitignore`, CI skeleton, sin basura (`templates/` vacío, `idea.md` → docs) | ✅ |
+| **G1** | Theme desde IR | **P0** | `theme.css` en scaffold sin `ir_project_origin` / AST | ✅ `theme_css_generate_from_ir` |
+| **G2** | HTML preview IR-puro | **P0** | `html_generate_from_ir` camina solo `IrNode` | ✅ walk `ir->root` only |
+| **G3** | CI estable | **P0** | GitHub Action: build + goldens (Win/Linux) | ✅ Win + Ubuntu verdes |
+| **G4** | Demo `my-app` en CI | **P1** | `cordlang run react --check` y `svelte --check` en CI (cache npm) | ✅ `tests/run_myapp_check.*` + workflow |
 | **G5** | Docs 1.0-ish | **P1** | README + LANGUAGE + mapas alineados al codegen | un solo “quick start” confiable |
 | **G6** | License | **P1** | Elegir y commitear LICENSE (p. ej. MIT) | ✅ MIT + AUTHORS.md |
 | **G7** | Source maps reales | **P2** | mappings no stub `.cord` → out | stack traces útiles |
@@ -305,7 +305,8 @@ IR residuales cerrados (G1–G2), CI verde (G3), demo documentada y versionable 
 | **DX editor** | G7 source maps, G8 LSP | Si el dolor es escribir `.cord` |
 | **Ecosistema** | Vue/Solid (F1–F2), playground WASM (F5) | Cuando IR + CI estén aburridos de tan estables |
 
-**Recomendación de orden:** G1 → G2 → G3 → G4 → (Kit **o** LSP).
+**Hecho en G:** G0–G4, G6.  
+**Siguiente:** **G5** polish docs (opcional) → Kit **o** LSP (G7/G8 / E6).
 
 ---
 
@@ -338,11 +339,12 @@ IR residuales cerrados (G1–G2), CI verde (G3), demo documentada y versionable 
 - [x] IR canónico usado por backends React/Svelte (emit body)  
 - [x] Diagnostics útiles (`cordlang check`, spans)  
 - [x] Preview nativo con state básico  
-- [ ] Un solo proyecto demo pasa React + Svelte build en **CI** (G3–G4)  
+- [x] CI build + goldens Win/Linux (G3)  
+- [x] Un solo proyecto demo pasa React + Svelte build en **CI** (G4)  
 - [ ] Paridad documentada ≥ 90% de la matriz P0/P1  
 - [ ] `docs/REACT.md` + `docs/SVELTE.md` 100% al día con codegen  
 - [ ] Syntax freeze del subset 1.0 (`docs/LANGUAGE.md`)  
-- [ ] Theme + HTML sin residual AST (G1–G2)  
+- [x] Theme + HTML sin residual AST en path IR (G1–G2)  
 - [x] LICENSE publicada (MIT)  
 
 ---
@@ -367,7 +369,7 @@ IR residuales cerrados (G1–G2), CI verde (G3), demo documentada y versionable 
 | **M3 — Deep React** | D* selecto | 🟡 MVP |
 | **M4 — Deep Svelte** | E* selecto | 🟡 MVP (sin Kit) |
 | **M5 — IR platform** | IR-1 + IR-2 | ✅ |
-| **M6 — Public + polish** | Fase G (G0–G6) | **AHORA** |
+| **M6 — Public + polish** | Fase G (G0–G4,G6 ✅ · G5 residual) | casi done |
 | **M7 — Meta / ecosystem** | Kit/Next, F* | después |
 
 Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `ir`, `dx`, `ci`, `docs`.

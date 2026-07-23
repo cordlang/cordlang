@@ -62,6 +62,15 @@ else
 	@bash tests/run_tests.sh
 endif
 
+# G4: my-app react+svelte vite build (requires Node.js/npm)
+.PHONY: test-myapp
+test-myapp: $(TARGET)
+ifeq ($(OS),Windows_NT)
+	powershell -NoProfile -ExecutionPolicy Bypass -File tests/run_myapp_check.ps1
+else
+	@bash tests/run_myapp_check.sh
+endif
+
 goldens: $(TARGET)
 ifeq ($(OS),Windows_NT)
 	powershell -NoProfile -ExecutionPolicy Bypass -File tests/run_tests.ps1 -UpdateGoldens

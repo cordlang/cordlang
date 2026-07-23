@@ -876,12 +876,550 @@ static char *html_generate_impl(Node *root) {
   return doc.buf;
 }
 
+/* ── Pure IR walk (G2) — no origin/AST for body or state ─────────── */
+
+static void gen_ir_node(StrBuf *sb, IrNode *node, int depth);
+static void gen_ir_children(StrBuf *sb, IrNode *node, int depth);
+
+static int ir_attr_is_true(const char *v) {
+  return v && strcmp(v, "true") == 0;
+}
+
+static void collect_state_from_ir(IrNode *node) {
+  if (!node) return;
+  if (node->kind == IR_STATE) {
+    if (node->name && strcmp(node->name, "__states__") == 0) {
+      for (size_t i = 0; i < node->n_kids; i++) {
+        IrNode *st = node->kids[i];
+        if (st && st->kind == IR_STATE && st->name)
+          state_add(st->name, st->value);
+      }
+    } else if (node->name) {
+      state_add(node->name, node->value);
+    }
+  }
+  for (size_t i = 0; i < node->n_kids; i++)
+    collect_state_from_ir(node->kids[i]);
+}
+
+/* Declarative IR nodes skipped when rendering UI siblings. */
+static int is_ir_decl_only(const IrNode *n) {
+  if (!n) return 1;
+  switch (n->kind) {
+    case IR_STATE:
+    case IR_PROP:
+    case IR_COMPUTED:
+    case IR_EFFECT:
+    case IR_FETCH:
+    case IR_MODULE_USE:
+    case IR_STORE:
+    case IR_SNIPPET:
+    case IR_RENDER:
+    case IR_AWAIT:
+    case IR_ROUTE:
+    case IR_ATTR:
+    case IR_EVENT:
+      return 1;
+    case IR_HOOK:
+      /* Structural hooks render; pure declarations skip */
+      if (!n->name) return 1;
+      if (strcmp(n->name, "portal") == 0 || strcmp(n->name, "empty") == 0 ||
+          strcmp(n->name, "suspense") == 0 || strcmp(n->name, "loading") == 0 ||
+          strcmp(n->name, "errorBoundary") == 0)
+        return 0;
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+static void gen_style_classes_ir(StrBuf *sb, IrNode *style_map) {
+  if (!style_map) return;
+  for (size_t i = 0; i < style_map->n_kids; i++) {
+    IrNode *entry = style_map->kids[i];
+    if (!entry || entry->kind != IR_ATTR) continue;
+
+    const char *key = entry->name ? entry->name : "";
+    const char *val = entry->value ? entry->value : "";
+
+    int mapped = 0;
+    for (int s = 0; style_mappings[s].style_key; s++) {
+      if (strcmp(key, style_mappings[s].style_key) == 0) {
+        sb_append(sb, " ");
+        sb_append(sb, style_mappings[s].tw_prefix);
+        if (style_mappings[s].is_value_appended) sb_append(sb, val);
+        mapped = 1;
+        break;
+      }
+    }
+
+    if (!mapped) {
+      if (strcmp(key, "between") == 0)
+        sb_append(sb, " justify-between");
+      else if (strcmp(key, "center") == 0)
+        sb_append(sb, " items-center justify-center");
+      else if (strcmp(key, "around") == 0)
+        sb_append(sb, " justify-around");
+      else if (strcmp(key, "evenly") == 0)
+        sb_append(sb, " justify-evenly");
+      else if (strcmp(key, "sticky") == 0)
+        sb_append(sb, " sticky top-0");
+      else if (strcmp(key, "bold") == 0)
+        sb_append(sb, " font-bold");
+      else if (strcmp(key, "muted") == 0)
+        sb_append(sb, " text-gray-500");
+      else if (strcmp(key, "overflow") == 0) {
+        sb_append(sb, " overflow-");
+        sb_append(sb, val);
+      }
+    }
+  }
+}
+
+static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
+                               const char *base_class) {
+  classes[0] = '\0';
+  if (base_class) {
+    strncat(classes, base_class, classes_sz - 1);
+  }
+
+  for (size_t i = 0; i < node->n_kids; i++) {
+    IrNode *child = node->kids[i];
+    if (child && child->kind == IR_ATTR && child->name &&
+        strcmp(child->name, "style") == 0) {
+      StrBuf style_sb = {0};
+      style_sb.buf = malloc(1024);
+      style_sb.cap = 1024;
+      style_sb.len = 0;
+      style_sb.buf[0] = '\0';
+      gen_style_classes_ir(&style_sb, child);
+      if (style_sb.len > 0) {
+        size_t room = classes_sz - strlen(classes) - 1;
+        strncat(classes, style_sb.buf, room);
+      }
+      free(style_sb.buf);
+    }
+  }
+
+  for (size_t i = 0; i < node->n_kids; i++) {
+    IrNode *child = node->kids[i];
+    char vbuf[96];
+    if (!child || child->kind != IR_ATTR || !child->name) continue;
+
+    /* Bool-like attrs: IR_ATTR name with value "true" */
+    if (ir_attr_is_true(child->value)) {
+      if (strcmp(child->name, "between") == 0)
+        strncat(classes, " justify-between", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "center") == 0)
+        strncat(classes, " items-center justify-center",
+                classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "around") == 0)
+        strncat(classes, " justify-around", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "evenly") == 0)
+        strncat(classes, " justify-evenly", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "bold") == 0)
+        strncat(classes, " font-bold", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "muted") == 0)
+        strncat(classes, " text-gray-500", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "sticky") == 0)
+        strncat(classes, " sticky top-0", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "primary") == 0)
+        strncat(classes, " btn-primary", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "outline") == 0)
+        strncat(classes, " btn-outline", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "ghost") == 0)
+        strncat(classes, " btn-ghost", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "secondary") == 0)
+        strncat(classes, " btn-secondary", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "xs") == 0)
+        strncat(classes, " text-xs", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "sm") == 0)
+        strncat(classes, " text-sm", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "lg") == 0)
+        strncat(classes, " text-lg", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "xl") == 0)
+        strncat(classes, " text-xl", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "2xl") == 0)
+        strncat(classes, " text-2xl", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "3xl") == 0)
+        strncat(classes, " text-3xl", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "4xl") == 0)
+        strncat(classes, " text-4xl", classes_sz - strlen(classes) - 1);
+      continue;
+    }
+
+    if (!child->value) continue;
+
+    if (strcmp(child->name, "variant") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " btn-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "size") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " text-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "color") == 0) {
+      if (strcmp(child->value, "primary") == 0)
+        strncat(classes, " text-primary", classes_sz - strlen(classes) - 1);
+      else {
+        snprintf(vbuf, sizeof(vbuf), " text-%s", child->value);
+        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+      }
+    } else if (strcmp(child->name, "gap") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " gap-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "cols") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " grid-cols-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "p") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " p-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "bg") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " bg-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "shadow") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " shadow-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "rounded") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " rounded-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "max-w") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " max-w-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    }
+  }
+}
+
+static void gen_ir_element(StrBuf *sb, IrNode *node, int depth) {
+  const char *tag = node->name ? node->name : "div";
+  const char *html_tag = html_tag_for(tag);
+  const char *base_class = tag_to_div_plus_class(tag);
+
+  if (!html_tag) {
+    gen_ir_children(sb, node, depth);
+    return;
+  }
+
+  sb_indent(sb, depth);
+
+  int self_closing =
+      (strcmp(html_tag, "img") == 0 || strcmp(html_tag, "input") == 0);
+
+  sb_appendf(sb, "<%s", html_tag);
+
+  char classes[2048];
+  collect_classes_ir(classes, sizeof(classes), node, base_class);
+  {
+    char *cls = classes;
+    while (*cls == ' ') cls++;
+    if (*cls) {
+      sb_append(sb, " class=\"");
+      html_escape_append(sb, cls);
+      sb_append(sb, "\"");
+    }
+  }
+
+  /* Regular HTML attributes */
+  for (size_t i = 0; i < node->n_kids; i++) {
+    IrNode *child = node->kids[i];
+    if (child && child->kind == IR_ATTR && child->name &&
+        !is_style_attr(child->name) && !ir_attr_is_true(child->value) &&
+        strcmp(child->name, "style") != 0 &&
+        strcmp(child->name, "__file__") != 0) {
+      const char *attr_name = child->name;
+      if (strcmp(attr_name, "to") == 0) attr_name = "href";
+      if (strcmp(attr_name, "src") == 0 || strcmp(attr_name, "alt") == 0 ||
+          strcmp(attr_name, "href") == 0 ||
+          strcmp(attr_name, "placeholder") == 0 ||
+          strcmp(attr_name, "type") == 0 || strcmp(attr_name, "rows") == 0 ||
+          strcmp(attr_name, "name") == 0 || strcmp(attr_name, "value") == 0 ||
+          strcmp(attr_name, "id") == 0) {
+        sb_appendf(sb, " %s=\"", attr_name);
+        html_escape_append(sb, child->value ? child->value : "");
+        sb_append(sb, "\"");
+      }
+    }
+  }
+
+  if (strcmp(tag, "checkbox") == 0) sb_append(sb, " type=\"checkbox\"");
+  if (strcmp(tag, "radio") == 0) sb_append(sb, " type=\"radio\"");
+  if (strcmp(tag, "input") == 0) {
+    int has_type = 0;
+    for (size_t i = 0; i < node->n_kids; i++) {
+      IrNode *c = node->kids[i];
+      if (c && c->kind == IR_ATTR && c->name && strcmp(c->name, "type") == 0)
+        has_type = 1;
+      if (c && c->kind == IR_ATTR && c->name && ir_attr_is_true(c->value)) {
+        if (strcmp(c->name, "text") == 0 || strcmp(c->name, "email") == 0 ||
+            strcmp(c->name, "password") == 0 ||
+            strcmp(c->name, "search") == 0 || strcmp(c->name, "number") == 0) {
+          if (!has_type) {
+            sb_appendf(sb, " type=\"%s\"", c->name);
+            has_type = 1;
+          }
+        }
+      }
+    }
+  }
+
+  for (size_t i = 0; i < node->n_kids; i++) {
+    IrNode *child = node->kids[i];
+    if (child && child->kind == IR_ATTR && child->name &&
+        ir_attr_is_true(child->value)) {
+      if (strcmp(child->name, "required") == 0 ||
+          strcmp(child->name, "disabled") == 0 ||
+          strcmp(child->name, "readonly") == 0 ||
+          strcmp(child->name, "checked") == 0) {
+        sb_appendf(sb, " %s", child->name);
+      }
+    }
+  }
+
+  /* Events → clPreviewHandler (setCount etc.) */
+  for (size_t i = 0; i < node->n_kids; i++) {
+    IrNode *child = node->kids[i];
+    if (child && child->kind == IR_EVENT && child->name && child->value) {
+      const char *event = child->name;
+      const char *handler = child->value;
+      sb_appendf(sb, " on%s=\"clPreviewHandler('", event);
+      for (const char *p = handler; *p; p++) {
+        if (*p == '\'' || *p == '\\') sb_append(sb, "\\");
+        char c[2] = {*p, 0};
+        if (*p != '\n' && *p != '\r') sb_append(sb, c);
+      }
+      sb_append(sb, "', event)\"");
+    }
+  }
+
+  if (self_closing) {
+    sb_append(sb, " />\n");
+    return;
+  }
+
+  sb_append(sb, ">\n");
+  gen_ir_children(sb, node, depth + 1);
+  sb_indent(sb, depth);
+  sb_appendf(sb, "</%s>\n", html_tag);
+}
+
+static void gen_ir_children(StrBuf *sb, IrNode *node, int depth) {
+  if (!node) return;
+  for (size_t i = 0; i < node->n_kids; i++) {
+    IrNode *child = node->kids[i];
+    if (!child) continue;
+
+    if (child->kind == IR_FOR) {
+      const char *var = child->name ? child->name : "item";
+      const char *list = child->value ? child->value : "items";
+      sb_indent(sb, depth);
+      sb_append(sb, "<div class=\"cl-loop\">\n");
+      sb_indent(sb, depth + 1);
+      sb_appendf(sb,
+                 "<div class=\"cl-loop-label\">for %s in %s — preview (2 "
+                 "samples)</div>\n",
+                 var, list);
+      for (int sample = 0; sample < 2; sample++) {
+        for (size_t j = 0; j < child->n_kids; j++)
+          gen_ir_node(sb, child->kids[j], depth + 1);
+      }
+      sb_indent(sb, depth);
+      sb_append(sb, "</div>\n");
+    } else if (child->kind == IR_IF) {
+      const char *cond = child->value ? child->value : "true";
+      sb_indent(sb, depth);
+      sb_appendf(sb, "<!-- if %s (preview shows true branch) -->\n", cond);
+      for (size_t j = 0; j < child->n_kids; j++) {
+        IrNode *kc = child->kids[j];
+        if (kc && kc->kind == IR_TEXT && kc->value &&
+            strcmp(kc->value, "__else__") == 0)
+          break; /* stop at else marker — true branch only */
+        gen_ir_node(sb, kc, depth);
+      }
+      /* skip paired else marker sibling if present under parent */
+      if (i + 1 < node->n_kids) {
+        IrNode *next = node->kids[i + 1];
+        if (next && next->kind == IR_TEXT && next->value &&
+            strcmp(next->value, "__else__") == 0) {
+          i++; /* skip marker; leave else body unrendered */
+        }
+      }
+    } else if (child->kind == IR_INTERP) {
+      sb_indent(sb, depth);
+      if (child->value && child->n_kids == 0) {
+        emit_bound_interp(sb, child->value);
+        sb_append(sb, "\n");
+      } else if (child->n_kids > 0) {
+        for (size_t j = 0; j < child->n_kids; j++) {
+          IrNode *c = child->kids[j];
+          if (!c) continue;
+          if (c->kind == IR_TEXT && c->value) {
+            html_escape_append(sb, c->value);
+          } else if (c->kind == IR_INTERP && c->value) {
+            emit_bound_interp(sb, c->value);
+          }
+        }
+        sb_append(sb, "\n");
+      } else {
+        emit_bound_interp(sb, child->value);
+        sb_append(sb, "\n");
+      }
+    } else if (child->kind == IR_TEXT) {
+      if (child->value && strcmp(child->value, "__else__") == 0) continue;
+      sb_indent(sb, depth);
+      if (child->value && interp_has(child->value)) {
+        emit_text_with_live_interp(sb, child->value);
+      } else {
+        html_escape_append(sb, child->value ? child->value : "");
+      }
+      sb_append(sb, "\n");
+    } else if (child->kind == IR_SLOT) {
+      sb_indent(sb, depth);
+      sb_append(sb, "<!-- slot");
+      if (child->name) sb_appendf(sb, " %s", child->name);
+      sb_append(sb, " -->\n");
+      gen_ir_children(sb, child, depth);
+    } else if (!is_ir_decl_only(child)) {
+      gen_ir_node(sb, child, depth);
+    }
+  }
+}
+
+static void gen_ir_node(StrBuf *sb, IrNode *node, int depth) {
+  if (!node) return;
+  if (is_ir_decl_only(node) && node->kind != IR_HOOK) return;
+
+  switch (node->kind) {
+    case IR_PROJECT:
+    case IR_COMPONENT:
+    case IR_LAYOUT:
+      gen_ir_children(sb, node, depth);
+      break;
+    case IR_ELEMENT:
+      gen_ir_element(sb, node, depth);
+      break;
+    case IR_INTERP:
+      sb_indent(sb, depth);
+      if (node->value && node->n_kids == 0) {
+        emit_bound_interp(sb, node->value);
+        sb_append(sb, "\n");
+      } else {
+        gen_ir_children(sb, node, depth);
+      }
+      break;
+    case IR_TEXT:
+      if (node->value && strcmp(node->value, "__else__") != 0) {
+        sb_indent(sb, depth);
+        if (interp_has(node->value)) {
+          emit_text_with_live_interp(sb, node->value);
+        } else {
+          html_escape_append(sb, node->value);
+        }
+        sb_append(sb, "\n");
+      }
+      break;
+    case IR_SLOT:
+      sb_indent(sb, depth);
+      sb_append(sb, "<!-- slot");
+      if (node->name) sb_appendf(sb, " %s", node->name);
+      sb_append(sb, " -->\n");
+      gen_ir_children(sb, node, depth);
+      break;
+    case IR_IF:
+    case IR_FOR: {
+      /* Top-level: wrap via gen_ir_children sibling logic */
+      IrNode fake;
+      memset(&fake, 0, sizeof(fake));
+      IrNode *kids[1] = {node};
+      fake.kids = kids;
+      fake.n_kids = 1;
+      gen_ir_children(sb, &fake, depth);
+      break;
+    }
+    case IR_HOOK:
+      if (node->name &&
+          (strcmp(node->name, "portal") == 0 ||
+           strcmp(node->name, "empty") == 0 ||
+           strcmp(node->name, "suspense") == 0 ||
+           strcmp(node->name, "loading") == 0 ||
+           strcmp(node->name, "errorBoundary") == 0)) {
+        sb_indent(sb, depth);
+        if (strcmp(node->name, "portal") == 0) {
+          sb_appendf(sb, "<!-- portal %s -->\n",
+                     node->value ? node->value : "document.body");
+        } else if (strcmp(node->name, "empty") == 0) {
+          sb_appendf(sb, "<!-- empty when %s -->\n",
+                     node->value ? node->value : "?");
+        } else {
+          sb_appendf(sb, "<!-- %s -->\n", node->name);
+        }
+        for (size_t i = 0; i < node->n_kids; i++) {
+          IrNode *c = node->kids[i];
+          if (!c || c->kind == IR_ATTR) continue;
+          if (c->kind == IR_ELEMENT && c->name &&
+              strcmp(c->name, "__fallback__") == 0)
+            continue;
+          gen_ir_node(sb, c, depth);
+        }
+      }
+      break;
+    default:
+      gen_ir_children(sb, node, depth);
+      break;
+  }
+}
+
+/* Build full HTML document walking ir->root only (no origin/AST). */
+static char *html_generate_from_ir_root(IrNode *root) {
+  state_reset();
+  collect_state_from_ir(root);
+
+  StrBuf body;
+  sb_init(&body);
+  gen_ir_node(&body, root, 2);
+
+  StrBuf doc;
+  sb_init(&doc);
+  sb_append(&doc,
+            "<!DOCTYPE html>\n"
+            "<html lang=\"en\">\n"
+            "<head>\n"
+            "  <meta charset=\"UTF-8\" />\n"
+            "  <meta name=\"viewport\" content=\"width=device-width, "
+            "initial-scale=1.0\" />\n"
+            "  <title>Cordlang Runtime Preview</title>\n"
+            "  <style>\n");
+  sb_append(&doc, RUNTIME_CSS);
+  sb_append(&doc,
+            "  </style>\n"
+            "</head>\n"
+            "<body>\n"
+            "  <div class=\"cl-runtime-bar\">\n"
+            "    <div><strong>Cordlang</strong> <span>native runtime "
+            "preview</span></div>\n"
+            "    <div class=\"cl-runtime-badge\"><span "
+            "class=\"cl-runtime-dot\"></span> live · no React/Node</div>\n"
+            "  </div>\n"
+            "  <div id=\"app\">\n");
+  sb_append(&doc, body.buf ? body.buf : "");
+  sb_append(&doc,
+            "  </div>\n"
+            "  <div id=\"cl-toast\" class=\"cl-toast\"></div>\n"
+            "  <script>\n");
+  emit_state_runtime_js(&doc);
+  sb_append(&doc, RUNTIME_JS_CORE);
+  sb_append(&doc,
+            "  </script>\n"
+            "</body>\n"
+            "</html>\n");
+
+  free(body.buf);
+  state_reset();
+  return doc.buf;
+}
+
 char *html_generate_from_ir(IrProgram *ir) {
-  Node *root = ir_project_origin(ir);
-  if (!root && ir && ir->root) root = ir->root->origin;
-  if (!root)
+  /* Walk ir->root only — never ir_project_origin / AST for body or state. */
+  if (!ir || !ir->root)
     return strdup("<!DOCTYPE html><html><body>empty</body></html>\n");
-  return html_generate_impl(root);
+  return html_generate_from_ir_root(ir->root);
 }
 
 char *html_generate(Node *root) {

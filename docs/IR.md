@@ -68,7 +68,7 @@ Cada `IrNode` guarda `origin` → puntero **débil** al AST (debug / theme resid
 |------|----------|
 | **IR-1** ✅ | Puerto y services solo hablan IR |
 | **IR-2** ✅ | React (`react_ir.c`) y Svelte: body/modules caminan **solo `IrNode`** |
-| Residual | `theme.css` en scaffold puede leer origin AST; HTML preview aún mixto |
+| Residual | (cerrado G1/G2) theme + HTML preview en path IR-puro |
 
 ### Node kinds
 

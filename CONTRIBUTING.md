@@ -22,9 +22,11 @@ make         # Unix
 ```bash
 # Windows
 powershell -ExecutionPolicy Bypass -File tests\run_tests.ps1
+powershell -ExecutionPolicy Bypass -File tests\run_myapp_check.ps1   # needs Node.js
 
 # Unix
 ./tests/run_tests.sh
+./tests/run_myapp_check.sh   # needs Node.js
 ```
 
 ## Workflow

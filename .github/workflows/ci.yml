@@ -8,8 +8,9 @@ on:
 
 jobs:
   test-windows:
-    name: Build + golden tests (Windows)
+    name: Build + goldens + my-app (Windows)
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -17,6 +18,22 @@ jobs:
         run: |
           choco install mingw -y --no-progress
           echo "C:\ProgramData\mingw64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Cache npm (my-app scaffolds)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~\AppData\Local\npm-cache
+            my-app\dist\react\node_modules
+            my-app\dist\svelte\node_modules
+          key: ${{ runner.os }}-myapp-v1-${{ hashFiles('my-app/src/**/*.cord', 'my-app/cordlang.json', 'my-app/public/**') }}
+          restore-keys: |
+            ${{ runner.os }}-myapp-v1-
 
       - name: Build
         shell: cmd
@@ -28,19 +45,45 @@ jobs:
           powershell -ExecutionPolicy Bypass -File tests\run_tests.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: my-app react + svelte --check (G4)
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File tests\run_myapp_check.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
   test-ubuntu:
-    name: Build + golden tests (Ubuntu)
+    name: Build + goldens + my-app (Ubuntu)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
       - name: Install toolchain
         run: sudo apt-get update && sudo apt-get install -y build-essential
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Cache npm (my-app scaffolds)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            my-app/dist/react/node_modules
+            my-app/dist/svelte/node_modules
+          key: ${{ runner.os }}-myapp-v1-${{ hashFiles('my-app/src/**/*.cord', 'my-app/cordlang.json', 'my-app/public/**') }}
+          restore-keys: |
+            ${{ runner.os }}-myapp-v1-
+
       - name: Build
         run: make -j"$(nproc)"
 
       - name: Golden tests
         run: |
-          chmod +x tests/run_tests.sh
+          chmod +x tests/run_tests.sh tests/run_myapp_check.sh
           ./tests/run_tests.sh
+
+      - name: my-app react + svelte --check (G4)
+        run: ./tests/run_myapp_check.sh
