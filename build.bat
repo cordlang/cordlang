@@ -1,6 +1,6 @@
 @echo off
 echo Building Cordlang (hexagonal + native runtime)...
-gcc -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -g -std=c17 -Isrc -o cordlang ^
+gcc -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -g -std=c17 -D_POSIX_C_SOURCE=200809L -Isrc -o cordlang ^
   src/main.c ^
   src/domain/ast.c ^
   src/domain/diag.c ^

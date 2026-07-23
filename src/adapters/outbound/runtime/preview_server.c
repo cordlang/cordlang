@@ -1,3 +1,8 @@
+/* Feature-test macros must precede system headers (glibc / POSIX). */
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 #include "adapters/outbound/runtime/preview_server.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,10 +20,7 @@ typedef int socklen_t;
 #define CLOSESOCK closesocket
 #define SOCK_ERR SOCKET_ERROR
 #else
-/* POSIX / Linux: select(2), strdup, sockets */
-#ifndef _POSIX_C_SOURCE
-#define _POSIX_C_SOURCE 200809L
-#endif
+/* Linux/macOS: sockets + select(2) for interruptible accept loop */
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>

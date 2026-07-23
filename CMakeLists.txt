@@ -38,6 +38,8 @@ set(SOURCES
 
 add_executable(cordlang ${SOURCES})
 target_include_directories(cordlang PRIVATE src)
+# strdup / POSIX APIs under -std=c17 on glibc
+target_compile_definitions(cordlang PRIVATE _POSIX_C_SOURCE=200809L)
 target_compile_options(cordlang PRIVATE -Wall -Wextra -Wno-unused-parameter -Wno-unused-function)
 
 if(WIN32)
