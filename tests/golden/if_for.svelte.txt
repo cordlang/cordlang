@@ -11,7 +11,7 @@
     {title}
   </h1>
   {#if showHint}
-    <p class="text-gray-500">
+    <p class="text-muted">
       Hint: click items
     </p>
   {/if}

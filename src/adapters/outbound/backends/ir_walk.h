@@ -105,7 +105,7 @@ static inline void irw_collect_classes(char *out, size_t outsz, const IrNode *el
     } else if (strcmp(k, "bold") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
       snprintf(piece, sizeof(piece), " font-bold");
     else if (strcmp(k, "muted") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
-      snprintf(piece, sizeof(piece), " text-gray-500");
+      snprintf(piece, sizeof(piece), " text-muted");
     else if (strcmp(k, "center") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
       snprintf(piece, sizeof(piece), " items-center justify-center");
     else if (strcmp(k, "between") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))

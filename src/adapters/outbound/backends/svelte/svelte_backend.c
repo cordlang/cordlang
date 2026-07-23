@@ -228,7 +228,7 @@ static void collect_classes_ir(char *classes, size_t sz, const IrNode *node,
       else if (strcmp(k, "bold") == 0)
         strncat(classes, " font-bold", sz - strlen(classes) - 1);
       else if (strcmp(k, "muted") == 0)
-        strncat(classes, " text-gray-500", sz - strlen(classes) - 1);
+        strncat(classes, " text-muted", sz - strlen(classes) - 1);
       else if (strcmp(k, "sticky") == 0)
         strncat(classes, " sticky top-0", sz - strlen(classes) - 1);
       else if (strcmp(k, "primary") == 0)

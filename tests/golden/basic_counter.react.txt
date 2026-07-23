@@ -10,7 +10,7 @@ export default function Counter({ label = "Counter" }) {
         <h1 className="text-2xl font-bold">
           {label}
         </h1>
-        <p className="text-lg text-gray-500">
+        <p className="text-lg text-muted">
           {'Count: '}
           {count}
         </p>

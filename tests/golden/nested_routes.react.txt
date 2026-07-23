@@ -9,7 +9,7 @@ export default function HomePage({  }) {
         <h1 className="text-2xl font-bold">
           {'Home'}
         </h1>
-        <p className="text-gray-500">
+        <p className="text-muted">
           {'Welcome home.'}
         </p>
         <Link to="/shop">
@@ -31,7 +31,7 @@ export default function ShopPage({  }) {
         <h1 className="text-2xl font-bold">
           {'Products'}
         </h1>
-        <p className="text-gray-500">
+        <p className="text-muted">
           {'Browse the shop.'}
         </p>
         <Link to="/shop/1">
@@ -54,7 +54,7 @@ export default function ProductPage({ id }) {
           {'Product '}
           {id}
         </h1>
-        <p className="text-gray-500">
+        <p className="text-muted">
           {'Details for item.'}
         </p>
         <Link to="/shop">

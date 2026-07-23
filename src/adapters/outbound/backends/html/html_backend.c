@@ -112,6 +112,7 @@ static const char *RUNTIME_CSS =
   ".gap-8{gap:.5rem}.gap-16{gap:1rem}\n"
   "/* Text */\n"
   ".font-bold{font-weight:700}.text-gray-500{color:#6b7280}.text-gray-700{color:#374151}\n"
+  ".text-muted{color:var(--color-muted,#57534e)}\n"
   ".text-xs{font-size:.75rem}.text-sm{font-size:.875rem}.text-base{font-size:1rem}\n"
   ".text-lg{font-size:1.125rem}.text-xl{font-size:1.25rem}.text-2xl{font-size:1.5rem}\n"
   ".text-3xl{font-size:1.875rem}.text-4xl{font-size:2.25rem}\n"
@@ -247,7 +248,7 @@ static void gen_style_classes(StrBuf *sb, Node *style_map) {
       else if (strcmp(key, "evenly") == 0) sb_append(sb, " justify-evenly");
       else if (strcmp(key, "sticky") == 0) sb_append(sb, " sticky top-0");
       else if (strcmp(key, "bold") == 0) sb_append(sb, " font-bold");
-      else if (strcmp(key, "muted") == 0) sb_append(sb, " text-gray-500");
+      else if (strcmp(key, "muted") == 0) sb_append(sb, " text-muted");
       else if (strcmp(key, "overflow") == 0) {
         sb_append(sb, " overflow-");
         sb_append(sb, val);
@@ -545,7 +546,7 @@ static void collect_classes(char *classes, size_t classes_sz, Node *node, const 
       else if (strcmp(child->value, "around") == 0) strncat(classes, " justify-around", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "evenly") == 0) strncat(classes, " justify-evenly", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "bold") == 0) strncat(classes, " font-bold", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->value, "muted") == 0) strncat(classes, " text-gray-500", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->value, "muted") == 0) strncat(classes, " text-muted", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "sticky") == 0) strncat(classes, " sticky top-0", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "primary") == 0) strncat(classes, " btn-primary", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "outline") == 0) strncat(classes, " btn-outline", classes_sz - strlen(classes) - 1);
@@ -967,7 +968,7 @@ static void gen_style_classes_ir(StrBuf *sb, IrNode *style_map) {
       else if (strcmp(key, "bold") == 0)
         sb_append(sb, " font-bold");
       else if (strcmp(key, "muted") == 0)
-        sb_append(sb, " text-gray-500");
+        sb_append(sb, " text-muted");
       else if (strcmp(key, "overflow") == 0) {
         sb_append(sb, " overflow-");
         sb_append(sb, val);
@@ -1020,7 +1021,7 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
       else if (strcmp(child->name, "bold") == 0)
         strncat(classes, " font-bold", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->name, "muted") == 0)
-        strncat(classes, " text-gray-500", classes_sz - strlen(classes) - 1);
+        strncat(classes, " text-muted", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->name, "sticky") == 0)
         strncat(classes, " sticky top-0", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->name, "primary") == 0)

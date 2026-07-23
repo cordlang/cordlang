@@ -269,7 +269,7 @@ static void append_style_entry_class(char *classes, size_t classes_sz,
   else if (strcmp(key, "bold") == 0)
     strncat(classes, " font-bold", classes_sz - strlen(classes) - 1);
   else if (strcmp(key, "muted") == 0)
-    strncat(classes, " text-gray-500", classes_sz - strlen(classes) - 1);
+    strncat(classes, " text-muted", classes_sz - strlen(classes) - 1);
   else if (strcmp(key, "overflow") == 0) {
     snprintf(vbuf, sizeof(vbuf), " overflow-%s", val);
     strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
@@ -332,7 +332,7 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
       else if (strcmp(k, "bold") == 0)
         strncat(classes, " font-bold", classes_sz - strlen(classes) - 1);
       else if (strcmp(k, "muted") == 0)
-        strncat(classes, " text-gray-500", classes_sz - strlen(classes) - 1);
+        strncat(classes, " text-muted", classes_sz - strlen(classes) - 1);
       else if (strcmp(k, "sticky") == 0)
         strncat(classes, " sticky top-0", classes_sz - strlen(classes) - 1);
       else if (strcmp(k, "primary") == 0)

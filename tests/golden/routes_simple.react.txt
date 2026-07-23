@@ -9,7 +9,7 @@ export default function HomePage({  }) {
         <h1 className="text-2xl font-bold">
           {'Home'}
         </h1>
-        <p className="text-gray-500">
+        <p className="text-muted">
           {'Welcome home.'}
         </p>
         <Link to="/about">
@@ -31,7 +31,7 @@ export default function AboutPage({  }) {
         <h1 className="text-2xl font-bold">
           {'About'}
         </h1>
-        <p className="text-gray-500">
+        <p className="text-muted">
           {'About this app.'}
         </p>
         <Link to="/">

@@ -166,7 +166,7 @@ static void gen_style_classes(StrBuf *sb, Node *style_map) {
       else if (strcmp(key, "evenly") == 0) sb_append(sb, " justify-evenly");
       else if (strcmp(key, "sticky") == 0) sb_append(sb, " sticky top-0");
       else if (strcmp(key, "bold") == 0) sb_append(sb, " font-bold");
-      else if (strcmp(key, "muted") == 0) sb_append(sb, " text-gray-500");
+      else if (strcmp(key, "muted") == 0) sb_append(sb, " text-muted");
       else if (strcmp(key, "overflow") == 0) {
         sb_append(sb, " overflow-");
         sb_append(sb, val);
@@ -313,7 +313,7 @@ static void collect_classes(char *classes, size_t classes_sz, Node *node,
       else if (strcmp(child->value, "bold") == 0)
         strncat(classes, " font-bold", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "muted") == 0)
-        strncat(classes, " text-gray-500", classes_sz - strlen(classes) - 1);
+        strncat(classes, " text-muted", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "sticky") == 0)
         strncat(classes, " sticky top-0", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "primary") == 0)

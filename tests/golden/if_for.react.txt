@@ -12,7 +12,7 @@ export default function ListDemo({ title = "Items" }) {
         </h1>
         {showHint && (
           <>
-            <p className="text-gray-500">
+            <p className="text-muted">
               {'Hint: click items'}
             </p>
           </>
