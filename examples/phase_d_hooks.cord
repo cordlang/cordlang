@@ -1,0 +1,47 @@
+# Phase D — advanced React hooks (see docs/REACT.md)
+# D1 useInsertionEffect / useEffectEvent
+# D2 useSyncExternalStore
+# D3 useImperativeHandle + forwardRef
+# D4 React 19 Actions polish (pending + form action)
+
+def FancyInput forwardRef
+  ref inputEl
+  imperativeHandle ref=inputEl
+    focus: () => inputEl.current?.focus()
+    blur: () => inputEl.current?.blur()
+
+  input text ref=inputEl placeholder="Fancy input"
+
+def PhaseDDemo
+  state count=0
+  action form = submitForm init=null pending=saving
+
+  insertionEffect deps=()
+    console.log("inject styles")
+
+  effectEvent onMsg = handleMessage
+
+  # useSyncExternalStore — wire your store.subscribe / getSnapshot
+  externalStore snapshot = subscribe getSnapshot getServerSnapshot=null
+
+  col gap=16 p=24
+    h1 "Phase D hooks" size=2xl bold
+    p "Count: #{count}"
+    row gap=8
+      btn "+" @click=setCount(count + 1) variant=primary
+      btn "Log via effectEvent" @click=onMsg("hi") variant=outline
+
+    if saving
+      p "Enviando..." muted
+
+    form action=formAction
+      input text name=email placeholder="Email"
+      btn "Enviar" variant=primary
+
+    p "External snapshot: #{snapshot}" muted
+    FancyInput
+
+# Testing Library recipe (docs/REACT.md § Phase D):
+#   render(<PhaseDDemo />)
+#   fireEvent.click(screen.getByText('+'))
+#   expect(screen.getByText(/Count: 1/)).toBeInTheDocument()

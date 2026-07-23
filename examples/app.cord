@@ -1,0 +1,69 @@
+# Full Cordlang example: components + state + layout + React Router
+
+layout default
+  header sticky bg=white shadow=sm
+    row between center p=16
+      h1 "Cordlang Demo" size=xl bold color=primary
+      nav
+        row gap=16 center
+          link "Home" to=/
+          link "Counter" to=/counter
+          link "Shop" to=/shop
+  main p=24
+    slot
+  footer muted center p=16
+    p "Built with Cordlang → React Router"
+
+route / => HomePage
+route /counter => CounterPage
+route /shop => ShopPage
+
+def HomePage
+  col gap=16 max-w=640
+    h1 "Welcome" size=2xl bold
+    p "This app was compiled from Cordlang with components, state, and routing." muted
+    row gap=8
+      link "Try the counter" to=/counter
+      link "Browse shop" to=/shop
+
+def CounterPage
+  col gap=16 center
+    h1 "Counter" size=2xl bold
+    Counter label="Live state"
+
+def Counter
+  state count=0
+  props label=""
+
+  col gap=12 center p=16
+    if label
+      p label muted
+    p "Count: " size=lg
+    span count size=4xl bold color=primary
+    row gap=8 center
+      btn "-" @click=setCount(count - 1) variant=outline
+      btn "Reset" @click=setCount(0) variant=ghost
+      btn "+" @click=setCount(count + 1) variant=primary
+
+def ShopPage
+  state query=""
+
+  col gap=16
+    h1 "Shop" size=2xl bold
+    row gap=8 center
+      input search placeholder="Search..."
+      btn "Search" variant=primary
+    grid cols=3 gap=16
+      ProductCard title="Sneakers" price="89"
+      ProductCard title="Backpack" price="49"
+      ProductCard title="Watch" price="120"
+
+def ProductCard
+  props title, price
+
+  card shadow=md rounded=12 overflow=hidden
+    stack gap=8 p=16
+      h3 title bold
+      row between center
+        span price color=primary bold size=lg
+        btn "Add" variant=primary @click=addToCart

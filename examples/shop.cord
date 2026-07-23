@@ -1,0 +1,21 @@
+page
+  header sticky bg=white shadow=sm
+    row between center p=16
+      h1 "My Shop" color=primary
+      row gap=8 center
+        input search placeholder="Search products..." @change=handleSearch
+        btn "Cart (0)" variant=outline @click=toggleCart
+        btn "Login" variant=ghost @click=showLogin
+  main p=16
+    grid cols=3 gap=16
+      for product in products
+        card shadow=md rounded=12 overflow=hidden
+          img src=product.image aspect=4/3 fit=cover
+          stack gap=8 p=16
+            h3 product.name bold
+            p product.description muted lines=2
+            row between center
+              span "$#{product.price}" color=primary bold size=lg
+              btn "Add to Cart" variant=primary @click=addToCart(product.id)
+  footer muted center p=16
+    p "© 2026 My Shop. All rights reserved."

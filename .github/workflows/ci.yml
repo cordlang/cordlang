@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test-windows:
+    name: Build + golden tests (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MinGW
+        run: |
+          choco install mingw -y --no-progress
+          echo "C:\ProgramData\mingw64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Build
+        shell: cmd
+        run: build.bat
+
+      - name: Golden tests
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File tests\run_tests.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  test-ubuntu:
+    name: Build + golden tests (Ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y build-essential
+
+      - name: Build
+        run: |
+          if [ -f Makefile ]; then make; else
+            gcc -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -g -std=c17 -Isrc -o cordlang \
+              src/main.c \
+              src/domain/ast.c src/domain/diag.c src/domain/interp.c src/domain/ir.c src/domain/expr.c \
+              src/application/init_service.c src/application/compile_service.c \
+              src/application/check_service.c src/application/symbols_service.c \
+              src/application/fmt_service.c src/application/run_service.c \
+              src/application/watch_service.c src/application/preview_service.c \
+              src/adapters/inbound/cli.c \
+              src/adapters/outbound/fs/fs.c \
+              src/adapters/outbound/lexer/lexer.c \
+              src/adapters/outbound/parser/parser.c \
+              src/adapters/outbound/compiler/compiler.c \
+              src/adapters/outbound/backends/registry.c \
+              src/adapters/outbound/backends/source_attr.c \
+              src/adapters/outbound/backends/theme_css.c \
+              src/adapters/outbound/backends/react/react_backend.c \
+              src/adapters/outbound/backends/react/react_ir.c \
+              src/adapters/outbound/backends/react/react_scaffold.c \
+              src/adapters/outbound/backends/svelte/svelte_backend.c \
+              src/adapters/outbound/backends/svelte/svelte_scaffold.c \
+              src/adapters/outbound/backends/html/html_backend.c \
+              src/adapters/outbound/runtime/preview_server.c
+          fi
+
+      - name: Golden tests
+        run: |
+          chmod +x tests/run_tests.sh 2>/dev/null || true
+          if [ -x tests/run_tests.sh ]; then ./tests/run_tests.sh; else
+            echo "run_tests.sh missing or not executable"; exit 1
+          fi

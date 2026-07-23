@@ -1,0 +1,94 @@
+// ===== src/pages/HomePage.jsx =====
+/* cordlang: source=src/pages/HomePage.cord */
+import { Link } from 'react-router-dom';
+
+export default function HomePage({  }) {
+  return (
+    <>
+      <div className="flex flex-col gap-16">
+        <h1 className="text-2xl font-bold">
+          {'Home'}
+        </h1>
+        <p className="text-gray-500">
+          {'Welcome home.'}
+        </p>
+        <Link to="/about">
+          {'Go to About'}
+        </Link>
+      </div>
+    </>
+  );
+}
+
+// ===== src/pages/AboutPage.jsx =====
+/* cordlang: source=src/pages/AboutPage.cord */
+import { Link } from 'react-router-dom';
+
+export default function AboutPage({  }) {
+  return (
+    <>
+      <div className="flex flex-col gap-16">
+        <h1 className="text-2xl font-bold">
+          {'About'}
+        </h1>
+        <p className="text-gray-500">
+          {'About this app.'}
+        </p>
+        <Link to="/">
+          {'Back home'}
+        </Link>
+      </div>
+    </>
+  );
+}
+
+// ===== src/layouts/DefaultLayout.jsx =====
+/* cordlang: source=src/layouts/default.cord */
+import { Link, Outlet } from 'react-router-dom';
+
+export default function DefaultLayout({  }) {
+  return (
+    <>
+      <header className="sticky top-0 bg-white shadow-sm">
+        <div className="flex flex-row justify-between items-center justify-center p-16">
+          <h1 className="text-xl font-bold">
+            {'App'}
+          </h1>
+          <nav>
+            <div className="flex flex-row gap-16 items-center justify-center">
+              <Link to="/">
+                {'Home'}
+              </Link>
+              <Link to="/about">
+                {'About'}
+              </Link>
+            </div>
+          </nav>
+        </div>
+      </header>
+      <main className="p-24">
+        <Outlet />
+      </main>
+    </>
+  );
+}
+
+// ===== src/App.jsx =====
+/* cordlang: source=src/app.cord */
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import DefaultLayout from './layouts/DefaultLayout';
+import HomePage from './pages/HomePage';
+import AboutPage from './pages/AboutPage';
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route element={<DefaultLayout />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/about" element={<AboutPage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  );
+}

@@ -1,0 +1,47 @@
+# Golden: multi-layout nested routes (B1)
+# Routes without layout= use default; layout=shop uses Shop layout.
+
+layout default
+  header sticky bg=white shadow=sm
+    row between center p=16
+      h1 "App" size=xl bold
+      nav
+        row gap=16 center
+          link "Home" to=/
+          link "Shop" to=/shop
+  main p=24
+    slot
+
+layout shop
+  header sticky bg=blue-600
+    row between center p=16
+      h1 "Shop" size=xl bold color=white
+      nav
+        row gap=16 center
+          link "All" to=/shop
+          link "Home" to=/
+  main p=24
+    slot
+
+route / => HomePage
+route /shop => ShopPage layout=shop
+route /shop/:id => ProductPage layout=shop
+
+def HomePage
+  col gap=16
+    h1 "Home" size=2xl bold
+    p "Welcome home." muted
+    link "Go to Shop" to=/shop
+
+def ShopPage
+  col gap=16
+    h1 "Products" size=2xl bold
+    p "Browse the shop." muted
+    link "Product 1" to=/shop/1
+
+def ProductPage
+  props id
+  col gap=16
+    h1 "Product #{id}" size=2xl bold
+    p "Details for item." muted
+    link "Back to shop" to=/shop

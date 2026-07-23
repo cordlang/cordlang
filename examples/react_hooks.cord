@@ -1,0 +1,44 @@
+# Kitchen-sink: React hooks surface in Cordlang (see docs/REACT.md)
+
+context Theme = "light"
+
+def HooksDemo
+  state count=0
+  state text=""
+  props title="Hooks demo"
+
+  params id
+  navigate go
+  ref inputEl
+  id formId
+  ctx theme = Theme
+  memo doubled = count * 2
+  callback onInc = () => setCount(count + 1) deps=(count)
+  deferred deferredText = text
+  transition isPending, startTransition
+  reducer items = listReducer init=[]
+
+  effect deps=(count)
+    console.log("count changed", count)
+
+  effect deps=() cleanup=console.log("unmount")
+    console.log("mounted")
+
+  provide Theme value=theme
+    col gap=16 p=24
+      h1 "#{title}" size=2xl bold
+      p "Theme: #{theme}" muted
+      p "Route param id: #{id}" muted
+      p "Count: #{count} (x2 = #{doubled})"
+      p "Deferred: #{deferredText}" muted
+      if isPending
+        p "Transition pending..." muted
+
+      row gap=8
+        btn "+" @click=onInc variant=primary
+        btn "Home" @click=go("/") variant=outline
+
+      input text bind=text placeholder="Type..." ref=inputEl
+
+      for item in items key=item.id
+        p "#{item.name}"

@@ -1,0 +1,29 @@
+# Phase B: fetch (B7) + productive form action + bind (B3)
+# Static JSON: public/api/products.json → /api/products.json after scaffold
+
+def ContactForm
+  action form = submitForm init=null pending=saving
+  fetch products = "/api/products.json"
+
+  col gap=16 p=24 max-w=480
+    h1 "Fetch + Form" size=2xl bold
+    if productsLoading
+      p "Loading products..." muted
+    if productsError
+      p "Failed to load products" muted
+    if products
+      p "Loaded products" muted
+
+    if saving
+      p "Sending..." muted
+
+    form action=formAction
+      col gap=8
+        input email bind=email name=email placeholder="you@example.com" required
+        input text bind=name name=name placeholder="Your name"
+        btn "Send" variant=primary
+
+    form @submit=handleClientSubmit
+      col gap=8
+        input text bind=note name=note placeholder="Client-side form"
+        btn "Save note" variant=outline

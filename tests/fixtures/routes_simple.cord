@@ -1,0 +1,27 @@
+# Golden: 2 routes + layout (single file)
+
+layout default
+  header sticky bg=white shadow=sm
+    row between center p=16
+      h1 "App" size=xl bold
+      nav
+        row gap=16 center
+          link "Home" to=/
+          link "About" to=/about
+  main p=24
+    slot
+
+route / => HomePage
+route /about => AboutPage
+
+def HomePage
+  col gap=16
+    h1 "Home" size=2xl bold
+    p "Welcome home." muted
+    link "Go to About" to=/about
+
+def AboutPage
+  col gap=16
+    h1 "About" size=2xl bold
+    p "About this app." muted
+    link "Back home" to=/

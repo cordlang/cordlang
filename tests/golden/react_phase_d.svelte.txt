@@ -1,0 +1,55 @@
+<!-- ===== src/components/FancyInput.svelte ===== -->
+<!-- cordlang: source=src/components/FancyInput.cord -->
+<script>
+  let inputEl = $state(null);
+</script>
+
+<input bind:this={inputEl} type="text" />
+
+<!-- ===== src/components/PhaseDDemo.svelte ===== -->
+<!-- cordlang: source=src/components/PhaseDDemo.cord -->
+<script>
+  import FancyInput from './FancyInput.svelte';
+  let count = $state(0);
+  let form = $state(null);
+  let saving = $state(false);
+  async function formAction(e) {
+    e.preventDefault();
+    saving = true;
+    try {
+      form = await submitForm(form, new FormData(e.target));
+    } finally {
+      saving = false;
+    }
+  }
+  function setCount(v) { count = typeof v === 'function' ? v(count) : v; }
+</script>
+
+<div class="flex flex-col gap-8">
+  <p>
+    Count: 
+    {count}
+  </p>
+  <button class="btn" onclick={() => setCount(count + 1)}>
+    +
+  </button>
+  {#if saving}
+    <p>
+      pending
+    </p>
+  {/if}
+  <form onsubmit={formAction}>
+    <button class="btn">
+      Go
+    </button>
+  </form>
+  <FancyInput />
+</div>
+
+<!-- ===== src/App.svelte ===== -->
+<!-- cordlang: source=src/app.cord -->
+<script>
+  import FancyInput from './components/FancyInput.svelte';
+</script>
+
+<FancyInput />

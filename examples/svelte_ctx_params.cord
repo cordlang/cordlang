@@ -1,0 +1,20 @@
+route "/" => HomePage
+route "/products/:id" => ProductPage
+
+context Theme = "light"
+
+def HomePage
+  state theme="dark"
+  provide Theme value=theme
+    col gap=16 p=24
+      h1 "Shop home" size=2xl bold
+      p "Theme: #{theme}"
+      link to=/products/42 "Product 42"
+
+def ProductPage
+  params id
+  ctx theme = Theme
+  col gap=16 p=24
+    h1 "Product #{id}" size=2xl bold
+    p "Theme from context: #{theme}"
+    link to=/ "Back home"

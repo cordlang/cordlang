@@ -1,0 +1,8 @@
+col gap=16 max-w=640
+  h1 "Welcome" size=2xl bold
+  p "Cada página y componente vive en su propio archivo .cord" muted
+  p "app.cord solo declara layout + routes." muted
+  row gap=8
+    link "Probar Counter" to=/counter
+    link "Ver Shop" to=/shop
+    link "About" to=/about

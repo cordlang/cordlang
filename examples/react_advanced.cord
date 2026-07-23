@@ -1,0 +1,33 @@
+# React advanced: Suspense, lazy, useActionState, portal, errorBoundary, layoutEffect
+# See docs/REACT.md
+
+context Theme = "light"
+
+lazy HeavyChart = components/HeavyChart
+
+def AdvancedDemo
+  state open=false
+  action form = submitForm init=null pending=saving
+  layoutEffect deps=()
+    console.log("layout measure")
+
+  errorBoundary
+    fallback
+      col p=16
+        h2 "Algo falló" bold
+        p "Error boundary capturó el error" muted
+    suspense fallback="Cargando gráfico..."
+      col gap=16 p=24
+        h1 "Advanced React" size=2xl bold
+        if saving
+          p "Enviando..." muted
+        form action=formAction
+          input text name=email placeholder="Email"
+          btn "Enviar" variant=primary
+        btn "Toggle portal" @click=setOpen(!open) variant=outline
+        HeavyChart
+        if open
+          portal to=document.body
+            col p=24 bg=white shadow=md rounded=12
+              h3 "Modal via portal" bold
+              btn "Cerrar" @click=setOpen(false) variant=primary

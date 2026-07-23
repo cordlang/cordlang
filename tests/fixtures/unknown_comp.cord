@@ -1,0 +1,5 @@
+# Intentional semantic error: UnknownComp is not defined
+def App
+  col gap=8
+    h1 "Broken"
+    UnknownComp title="x"

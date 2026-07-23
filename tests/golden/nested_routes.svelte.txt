@@ -1,0 +1,165 @@
+<!-- ===== src/pages/HomePage.svelte ===== -->
+<!-- cordlang: source=src/pages/HomePage.cord -->
+<script>
+</script>
+
+<div class="flex flex-col gap-16">
+  <h1 class="text-2xl font-bold">
+    Home
+  </h1>
+  <p class="text-gray-500">
+    Welcome home.
+  </p>
+  <a href="#/shop">
+    Go to Shop
+  </a>
+</div>
+
+<!-- ===== src/pages/ShopPage.svelte ===== -->
+<!-- cordlang: source=src/pages/ShopPage.cord -->
+<script>
+</script>
+
+<div class="flex flex-col gap-16">
+  <h1 class="text-2xl font-bold">
+    Products
+  </h1>
+  <p class="text-gray-500">
+    Browse the shop.
+  </p>
+  <a href="#/shop/1">
+    Product 1
+  </a>
+</div>
+
+<!-- ===== src/pages/ProductPage.svelte ===== -->
+<!-- cordlang: source=src/pages/ProductPage.cord -->
+<script>
+  let { id } = $props();
+</script>
+
+<div class="flex flex-col gap-16">
+  <h1 class="text-2xl font-bold">
+    Product 
+    {id}
+  </h1>
+  <p class="text-gray-500">
+    Details for item.
+  </p>
+  <a href="#/shop">
+    Back to shop
+  </a>
+</div>
+
+<!-- ===== src/layouts/DefaultLayout.svelte ===== -->
+<!-- cordlang: source=src/layouts/default.cord -->
+<script>
+  let { children } = $props();
+</script>
+
+<header class="sticky top-0 bg-white shadow-sm">
+  <div class="flex flex-row justify-between items-center justify-center p-16">
+    <h1 class="text-xl font-bold">
+      App
+    </h1>
+    <nav>
+      <div class="flex flex-row gap-16 items-center justify-center">
+        <a href="#/">
+          Home
+        </a>
+        <a href="#/shop">
+          Shop
+        </a>
+      </div>
+    </nav>
+  </div>
+</header>
+<main class="p-24">
+  {@render children?.()}
+</main>
+
+<!-- ===== src/layouts/Shop.svelte ===== -->
+<!-- cordlang: source=src/layouts/Shop.cord -->
+<script>
+  let { children } = $props();
+</script>
+
+<header class="sticky top-0 bg-blue-600">
+  <div class="flex flex-row justify-between items-center justify-center p-16">
+    <h1 class="text-xl font-bold text-white">
+      Shop
+    </h1>
+    <nav>
+      <div class="flex flex-row gap-16 items-center justify-center">
+        <a href="#/shop">
+          All
+        </a>
+        <a href="#/">
+          Home
+        </a>
+      </div>
+    </nav>
+  </div>
+</header>
+<main class="p-24">
+  {@render children?.()}
+</main>
+
+<!-- ===== src/App.svelte ===== -->
+<!-- cordlang: source=src/app.cord -->
+<script>
+  import { onMount } from 'svelte';
+  import DefaultLayout from './layouts/DefaultLayout.svelte';
+  import Shop from './layouts/Shop.svelte';
+  import HomePage from './pages/HomePage.svelte';
+  import ShopPage from './pages/ShopPage.svelte';
+  import ProductPage from './pages/ProductPage.svelte';
+
+  const routes = [
+    { path: '/', component: HomePage, layout: DefaultLayout },
+    { path: '/shop', component: ShopPage, layout: Shop },
+    { path: '/shop/:id', component: ProductPage, layout: Shop },
+  ];
+
+  function currentPath() {
+    const raw = window.location.hash.replace(/^#/, '') || '/';
+    const h = raw.split('?')[0] || '/';
+    return h.startsWith('/') ? h : '/' + h;
+  }
+  function matchRoute(pathname) {
+    const segs = pathname.replace(/\/+$/, '').split('/').filter(Boolean);
+    for (const r of routes) {
+      const pp = r.path.replace(/\/+$/, '').split('/').filter(Boolean);
+      if (pp.length !== segs.length) continue;
+      const params = {};
+      let ok = true;
+      for (let i = 0; i < pp.length; i++) {
+        if (pp[i].startsWith(':')) params[pp[i].slice(1)] = decodeURIComponent(segs[i]);
+        else if (pp[i] !== segs[i]) { ok = false; break; }
+      }
+      if (ok) return { component: r.component, layout: r.layout, params };
+    }
+    return null;
+  }
+  let path = $state(currentPath());
+  onMount(() => {
+    const onHash = () => { path = currentPath(); };
+    window.addEventListener('hashchange', onHash);
+    if (!window.location.hash) window.location.hash = '#/';
+    return () => window.removeEventListener('hashchange', onHash);
+  });
+  let matched = $derived(matchRoute(path) ?? matchRoute('/') ?? null);
+  let Page = $derived(matched?.component ?? null);
+  let Layout = $derived(matched?.layout ?? null);
+  let params = $derived(matched?.params ?? {});
+</script>
+
+{#if Layout && Page}
+  <Layout>
+    {#snippet children()}
+      <Page {...params} />
+    {/snippet}
+  </Layout>
+{:else if Page}
+  <Page {...params} />
+{/if}

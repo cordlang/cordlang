@@ -1,0 +1,12 @@
+def Counter
+  state count=0
+  props label="Counter App"
+
+  col gap=16 p=24 center
+    h1 "#{label}" size=2xl bold
+    p "Cuenta actual: #{count}" size=lg muted
+    row gap=8 center
+      btn "-" @click=setCount(count - 1) variant=outline
+      span "#{count}" size=4xl bold
+      btn "+" @click=setCount(count + 1) variant=primary
+    p "Click the buttons — state is real React useState" muted

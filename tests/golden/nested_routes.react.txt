@@ -1,0 +1,153 @@
+// ===== src/pages/HomePage.jsx =====
+/* cordlang: source=src/pages/HomePage.cord */
+import { Link } from 'react-router-dom';
+
+export default function HomePage({  }) {
+  return (
+    <>
+      <div className="flex flex-col gap-16">
+        <h1 className="text-2xl font-bold">
+          {'Home'}
+        </h1>
+        <p className="text-gray-500">
+          {'Welcome home.'}
+        </p>
+        <Link to="/shop">
+          {'Go to Shop'}
+        </Link>
+      </div>
+    </>
+  );
+}
+
+// ===== src/pages/ShopPage.jsx =====
+/* cordlang: source=src/pages/ShopPage.cord */
+import { Link } from 'react-router-dom';
+
+export default function ShopPage({  }) {
+  return (
+    <>
+      <div className="flex flex-col gap-16">
+        <h1 className="text-2xl font-bold">
+          {'Products'}
+        </h1>
+        <p className="text-gray-500">
+          {'Browse the shop.'}
+        </p>
+        <Link to="/shop/1">
+          {'Product 1'}
+        </Link>
+      </div>
+    </>
+  );
+}
+
+// ===== src/pages/ProductPage.jsx =====
+/* cordlang: source=src/pages/ProductPage.cord */
+import { Link } from 'react-router-dom';
+
+export default function ProductPage({ id }) {
+  return (
+    <>
+      <div className="flex flex-col gap-16">
+        <h1 className="text-2xl font-bold">
+          {'Product '}
+          {id}
+        </h1>
+        <p className="text-gray-500">
+          {'Details for item.'}
+        </p>
+        <Link to="/shop">
+          {'Back to shop'}
+        </Link>
+      </div>
+    </>
+  );
+}
+
+// ===== src/layouts/DefaultLayout.jsx =====
+/* cordlang: source=src/layouts/default.cord */
+import { Link, Outlet } from 'react-router-dom';
+
+export default function DefaultLayout({  }) {
+  return (
+    <>
+      <header className="sticky top-0 bg-white shadow-sm">
+        <div className="flex flex-row justify-between items-center justify-center p-16">
+          <h1 className="text-xl font-bold">
+            {'App'}
+          </h1>
+          <nav>
+            <div className="flex flex-row gap-16 items-center justify-center">
+              <Link to="/">
+                {'Home'}
+              </Link>
+              <Link to="/shop">
+                {'Shop'}
+              </Link>
+            </div>
+          </nav>
+        </div>
+      </header>
+      <main className="p-24">
+        <Outlet />
+      </main>
+    </>
+  );
+}
+
+// ===== src/layouts/Shop.jsx =====
+/* cordlang: source=src/layouts/Shop.cord */
+import { Link, Outlet } from 'react-router-dom';
+
+export default function Shop({  }) {
+  return (
+    <>
+      <header className="sticky top-0 bg-blue-600">
+        <div className="flex flex-row justify-between items-center justify-center p-16">
+          <h1 className="text-xl font-bold text-white">
+            {'Shop'}
+          </h1>
+          <nav>
+            <div className="flex flex-row gap-16 items-center justify-center">
+              <Link to="/shop">
+                {'All'}
+              </Link>
+              <Link to="/">
+                {'Home'}
+              </Link>
+            </div>
+          </nav>
+        </div>
+      </header>
+      <main className="p-24">
+        <Outlet />
+      </main>
+    </>
+  );
+}
+
+// ===== src/App.jsx =====
+/* cordlang: source=src/app.cord */
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import DefaultLayout from './layouts/DefaultLayout';
+import Shop from './layouts/Shop';
+import HomePage from './pages/HomePage';
+import ShopPage from './pages/ShopPage';
+import ProductPage from './pages/ProductPage';
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route element={<DefaultLayout />}>
+          <Route path="/" element={<HomePage />} />
+        </Route>
+        <Route element={<Shop />}>
+          <Route path="/shop" element={<ShopPage />} />
+          <Route path="/shop/:id" element={<ProductPage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  );
+}

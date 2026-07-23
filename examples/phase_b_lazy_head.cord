@@ -1,0 +1,52 @@
+# Phase B: B2 lazy routes, B4 loading/empty, B5 head/title
+# Compile: cordlang compile examples/phase_b_lazy_head.cord --backend react|svelte
+#
+# Also supported (multi-file projects):
+#   lazy ProductPage = pages/ProductPage
+#   route /shop/:id => ProductPage
+
+layout default
+  header sticky bg=white shadow=sm
+    row between center p=16
+      h1 "Phase B Demo" bold
+      nav
+        row gap=16
+          link "Home" to=/
+          link "Product" to=/shop/42
+          link "Heavy" to=/heavy
+  main p=24
+    slot
+
+route / => HomePhaseB
+route /shop/:id => ProductPage lazy
+route /heavy => HeavyPage lazy
+
+def HomePhaseB
+  title "Inicio — Phase B"
+  state items=""
+  col gap=16
+    h1 "Home" size=2xl bold
+    p "Lazy routes: ProductPage y HeavyPage (attr lazy)." muted
+    empty if=!items
+      p "No hay items todavía" muted
+    loading
+      fallback
+        p "Cargando lista..."
+      col gap=8
+        p "Contenido bajo loading wrapper" muted
+
+def ProductPage
+  params id
+  head
+    title "Producto"
+  col gap=16
+    h1 "Producto #{id}" size=2xl bold
+    p "Página code-split: route /shop/:id => ProductPage lazy" muted
+    link "Volver" to=/
+
+def HeavyPage
+  title "Heavy page"
+  col gap=16
+    h1 "Heavy" size=2xl bold
+    p "Code-split via: route /heavy => HeavyPage lazy" muted
+    link "Volver" to=/

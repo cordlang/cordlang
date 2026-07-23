@@ -1,0 +1,22 @@
+def Counter
+  state count=0
+  props label=""
+
+  col gap=8 center p=16
+    p "Cuenta"
+    row gap=8
+      btn "-" @click=decrement
+      span count size=2xl bold
+      btn "+" @click=increment
+
+route / => HomePage
+route /about => AboutPage
+
+def HomePage
+  col p=24
+    h1 "Home"
+    Counter label="main"
+
+def AboutPage
+  col p=24
+    h1 "About"

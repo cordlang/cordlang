@@ -1,0 +1,43 @@
+// ===== src/components/ListDemo.jsx =====
+/* cordlang: source=src/components/ListDemo.cord */
+import { useState, Fragment } from 'react';
+
+export default function ListDemo({ title = "Items" }) {
+  const [showHint, setShowHint] = useState(1);
+  return (
+    <>
+      <div className="flex flex-col gap-16 p-24">
+        <h1 className="text-2xl font-bold">
+          {title}
+        </h1>
+        {showHint && (
+          <>
+            <p className="text-gray-500">
+              {'Hint: click items'}
+            </p>
+          </>
+        )}
+        {(items || []).map((item, idx) => (
+          <Fragment key={item.id}>
+            <div className="flex flex-row gap-8 items-center justify-center">
+              <span className="font-bold">
+                {item.name}
+              </span>
+              <button className="btn btn-outline" onClick={() => selectItem(item.id)}>
+                {'Select'}
+              </button>
+            </div>
+          </Fragment>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// ===== src/App.jsx =====
+/* cordlang: source=src/app.cord */
+import ListDemo from './components/ListDemo';
+
+export default function App() {
+  return <ListDemo />;
+}

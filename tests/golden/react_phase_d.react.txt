@@ -1,0 +1,69 @@
+// ===== src/components/FancyInput.jsx =====
+/* cordlang: source=src/components/FancyInput.cord */
+import { useRef, useImperativeHandle, forwardRef } from 'react';
+
+export default forwardRef(function FancyInput({  }, ref) {
+  const inputEl = useRef(null);
+  useImperativeHandle(inputEl, () => ({
+    focus: () => inputEl.current?.focus()
+  }), []);
+  return (
+    <>
+      <input ref={inputEl} type="text" />
+    </>
+  );
+});
+
+// ===== src/components/PhaseDDemo.jsx =====
+/* cordlang: source=src/components/PhaseDDemo.cord */
+import { useState, useInsertionEffect, useEffectEvent, useSyncExternalStore, useActionState } from 'react';
+import FancyInput from './FancyInput';
+
+/* cordlang: default action stub - replace with your server action */
+async function submitForm(prev, formData) {
+  return null;
+}
+
+export default function PhaseDDemo({  }) {
+  const [count, setCount] = useState(0);
+  useInsertionEffect(() => {
+    injectStyles();
+  }, []);
+  const onMsg = useEffectEvent(handleMessage);
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot);
+  const [form, formAction, saving] = useActionState(submitForm, null);
+  return (
+    <>
+      <div className="flex flex-col gap-8">
+        <p>
+          {'Count: '}
+          {count}
+        </p>
+        <button className="btn" onClick={() => setCount(count + 1)}>
+          {'+'}
+        </button>
+        {saving && (
+          <>
+            <p>
+              {'pending'}
+            </p>
+          </>
+        )}
+        <form action={formAction} aria-busy={saving}>
+          <button className="btn" disabled={saving}>
+            {'Go'}
+          </button>
+        </form>
+        <FancyInput />
+      </div>
+    </>
+  );
+}
+
+// ===== src/App.jsx =====
+/* cordlang: source=src/app.cord */
+import FancyInput from './components/FancyInput';
+
+export default function App() {
+  return <FancyInput />;
+}

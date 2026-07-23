@@ -1,0 +1,14 @@
+# Golden: if + for
+
+def ListDemo
+  state showHint=1
+  props title="Items"
+
+  col gap=16 p=24
+    h1 "#{title}" size=2xl bold
+    if showHint
+      p "Hint: click items" muted
+    for item in items key=item.id
+      row gap=8 center
+        span "#{item.name}" bold
+        btn "Select" variant=outline @click=selectItem(item.id)

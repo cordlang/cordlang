@@ -1,0 +1,2 @@
+route "/" => HomePage
+route "/about" => AboutPage

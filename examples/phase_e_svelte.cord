@@ -1,0 +1,52 @@
+# Phase E — Svelte surface from https://svelte.dev/docs/svelte/overview
+# See docs/SVELTE.md for full Cordlang ↔ Svelte map
+
+context Theme = "light"
+
+def PhaseEDemo
+  state open=false
+  state theme="dark"
+  store count = 0
+  layoutEffect
+    console.log("pre-paint measure")
+
+  provide Theme value=theme
+    col gap=16 p=24
+      title "Phase E Svelte"
+
+      h1 "Svelte docs → Cordlang" size=2xl bold
+      p "Runes, await, snippets, use:, transitions, stores, portal" muted
+
+      row gap=8 center
+        btn "-" @click=count.update(n => n - 1) variant=outline
+        span "#{count}" size=2xl bold
+        btn "+" @click=count.update(n => n + 1) variant=primary
+
+      if open
+        col p=16 transition=fade
+          p "Visible with transition:fade"
+
+      btn "Toggle" @click=setOpen(!open) variant=outline
+
+      div use=autofocus
+        p "element has use:autofocus"
+
+      snippet card(title)
+        col p=12
+          h3 "#{title}" bold
+          p "snippet body" muted
+
+      render card("Hello snippet")
+
+      await Promise.resolve(42) then=data
+        p "await then: #{data}"
+        loading
+          p "await pending…" muted
+        error err
+          p "await catch" muted
+
+      if open
+        portal to=document.body
+          col p=24
+            h3 "Portal modal" bold
+            btn "Close" @click=setOpen(false) variant=primary

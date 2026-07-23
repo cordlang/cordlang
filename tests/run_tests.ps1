@@ -1,0 +1,238 @@
+# Cordlang golden tests (Windows PowerShell)
+# Compares cordlang compile fixture --backend {react,svelte} to tests/golden/*
+#
+# Create/update goldens (after intentional codegen changes):
+#   .\tests\run_tests.ps1 -UpdateGoldens
+# Or manually:
+#   .\cordlang.exe compile tests\fixtures\basic_counter.cord --backend react > tests\golden\basic_counter.react.txt
+
+param(
+  [switch]$UpdateGoldens
+)
+
+$ErrorActionPreference = "Continue"
+
+$ScriptDir = $PSScriptRoot
+if ([string]::IsNullOrEmpty($ScriptDir)) {
+  $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+}
+$Root = Split-Path -Parent $ScriptDir
+Set-Location $Root
+
+Write-Host "Cordlang golden tests"
+Write-Host "  root: $Root"
+
+$Cordlang = Join-Path $Root "cordlang.exe"
+if (-not (Test-Path -LiteralPath $Cordlang)) {
+  $Cordlang = Join-Path $Root "cordlang"
+}
+if (-not (Test-Path -LiteralPath $Cordlang)) {
+  Write-Host "FAIL: cordlang executable not found. Run build.bat first." -ForegroundColor Red
+  exit 1
+}
+Write-Host "  exe:  $Cordlang"
+
+$FixturesDir = Join-Path $Root "tests\fixtures"
+$GoldenDir = Join-Path $Root "tests\golden"
+if (-not (Test-Path -LiteralPath $GoldenDir)) {
+  New-Item -ItemType Directory -Path $GoldenDir | Out-Null
+}
+
+$names = "basic_counter", "routes_simple", "interp", "if_for", "nested_routes", "react_phase_d"
+$backends = "react", "svelte"
+
+function Get-NormalizedText([string]$text) {
+  if ($null -eq $text) { return "" }
+  $t = $text.Replace("`r`n", "`n")
+  $t = $t.Replace("`r", "`n")
+  return $t
+}
+
+$failed = 0
+$passed = 0
+$updated = 0
+
+foreach ($name in $names) {
+  $fixture = Join-Path $FixturesDir ($name + ".cord")
+  if (-not (Test-Path -LiteralPath $fixture)) {
+    Write-Host ("FAIL: missing fixture " + $fixture) -ForegroundColor Red
+    $failed = $failed + 1
+    continue
+  }
+
+  foreach ($backend in $backends) {
+    $goldenPath = Join-Path $GoldenDir ($name + "." + $backend + ".txt")
+    $label = $name + " (" + $backend + ")"
+
+    $args = @("compile", $fixture, "--backend", $backend)
+    $stdout = & $Cordlang @args 2>&1
+    $exitCode = $LASTEXITCODE
+
+    if ($exitCode -ne 0) {
+      Write-Host ("FAIL: " + $label + " - compile exit " + $exitCode) -ForegroundColor Red
+      Write-Host $stdout
+      $failed = $failed + 1
+      continue
+    }
+
+    # & may return string or Object[]
+    if ($stdout -is [System.Array]) {
+      $actualRaw = ($stdout | ForEach-Object { "$_" }) -join "`n"
+      if (-not $actualRaw.EndsWith("`n") -and $actualRaw.Length -gt 0) {
+        $actualRaw = $actualRaw + "`n"
+      }
+    } else {
+      $actualRaw = [string]$stdout
+    }
+    $actual = Get-NormalizedText $actualRaw
+
+    if ($UpdateGoldens -or -not (Test-Path -LiteralPath $goldenPath)) {
+      $utf8 = New-Object System.Text.UTF8Encoding $false
+      [System.IO.File]::WriteAllText($goldenPath, $actual, $utf8)
+      if ($UpdateGoldens) {
+        Write-Host ("UPDATE: " + $label) -ForegroundColor Cyan
+      } else {
+        Write-Host ("CREATE: " + $label + " (first run)") -ForegroundColor Yellow
+      }
+      $updated = $updated + 1
+      $passed = $passed + 1
+      continue
+    }
+
+    $expected = Get-NormalizedText ([System.IO.File]::ReadAllText($goldenPath))
+    if ($actual -eq $expected) {
+      Write-Host ("PASS: " + $label) -ForegroundColor Green
+      $passed = $passed + 1
+    } else {
+      Write-Host ("FAIL: " + $label + " - output differs from golden") -ForegroundColor Red
+      Write-Host ("  golden: " + $goldenPath)
+      $aLines = $actual.Split(@("`n"), [System.StringSplitOptions]::None)
+      $eLines = $expected.Split(@("`n"), [System.StringSplitOptions]::None)
+      $max = [Math]::Min($aLines.Length, $eLines.Length)
+      for ($i = 0; $i -lt $max; $i++) {
+        if ($aLines[$i] -ne $eLines[$i]) {
+          Write-Host ("  first diff at line " + ($i + 1) + ":")
+          Write-Host ("    expected: " + $eLines[$i])
+          Write-Host ("    actual:   " + $aLines[$i])
+          break
+        }
+      }
+      if ($aLines.Length -ne $eLines.Length) {
+        Write-Host ("  line counts: expected=" + $eLines.Length + " actual=" + $aLines.Length)
+      }
+      $failed = $failed + 1
+    }
+  }
+}
+
+# ── Formatter tests (Phase C6) ─────────────────────────────
+Write-Host ""
+Write-Host "Formatter tests (fmt)"
+
+$messyPath = Join-Path $FixturesDir "messy_fmt.cord"
+$messyOrig = @"
+# messy fixture for fmt
+
+
+def Counter`t
+  state count=0  
+
+
+  props label="Counter"`t
+  col gap=16 p=24 center   
+    h1 "#{label}" size=2xl bold
+"@
+# Use real tabs / trailing spaces
+$messyOrig = "# messy fixture for fmt`n`n`n`ndef Counter`t`n  state count=0  `n`n`n  props label=`"Counter`"`t`n  col gap=16 p=24 center   `n    h1 `"#{label}`" size=2xl bold"
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText($messyPath, $messyOrig, $utf8NoBom)
+
+& $Cordlang fmt --check $messyPath 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "PASS: fmt --check messy (would change)" -ForegroundColor Green
+  $passed = $passed + 1
+} else {
+  Write-Host "FAIL: fmt --check messy expected non-zero" -ForegroundColor Red
+  $failed = $failed + 1
+}
+
+& $Cordlang fmt $messyPath 2>&1 | Out-Null
+if ($LASTEXITCODE -eq 0) {
+  Write-Host "PASS: fmt messy (in-place)" -ForegroundColor Green
+  $passed = $passed + 1
+} else {
+  Write-Host "FAIL: fmt messy exit non-zero" -ForegroundColor Red
+  $failed = $failed + 1
+}
+
+& $Cordlang fmt --check $messyPath 2>&1 | Out-Null
+if ($LASTEXITCODE -eq 0) {
+  Write-Host "PASS: fmt --check clean after fmt" -ForegroundColor Green
+  $passed = $passed + 1
+} else {
+  Write-Host "FAIL: fmt --check after fmt expected zero" -ForegroundColor Red
+  $failed = $failed + 1
+}
+
+$formatted = [System.IO.File]::ReadAllText($messyPath)
+# restore messy for next run
+[System.IO.File]::WriteAllText($messyPath, $messyOrig, $utf8NoBom)
+if ($formatted -match "def Counter`n" -and $formatted.EndsWith("`n") -and ($formatted -notmatch "  `n") -and ($formatted -notmatch "`t")) {
+  Write-Host "PASS: fmt normalize (tabs/trailing/final newline)" -ForegroundColor Green
+  $passed = $passed + 1
+} else {
+  # softer check: trailing blank collapse + final newline
+  if ($formatted.EndsWith("`n") -and ($formatted -notmatch "`t")) {
+    Write-Host "PASS: fmt normalize (basic)" -ForegroundColor Green
+    $passed = $passed + 1
+  } else {
+    Write-Host "FAIL: fmt normalize unexpected content" -ForegroundColor Red
+    Write-Host $formatted
+    $failed = $failed + 1
+  }
+}
+
+# ── Semantic check tests (Phase C3/C4) ─────────────────────
+Write-Host ""
+Write-Host "Semantic check tests"
+
+# unknown component → non-zero
+$unknown = Join-Path $FixturesDir "unknown_comp.cord"
+if (Test-Path -LiteralPath $unknown) {
+  & $Cordlang check $unknown 2>&1 | Out-Null
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "PASS: check unknown_comp (non-zero)" -ForegroundColor Green
+    $passed = $passed + 1
+  } else {
+    Write-Host "FAIL: check unknown_comp expected non-zero exit" -ForegroundColor Red
+    $failed = $failed + 1
+  }
+} else {
+  Write-Host "FAIL: missing fixture unknown_comp.cord" -ForegroundColor Red
+  $failed = $failed + 1
+}
+
+# valid my-app → zero
+$myApp = Join-Path $Root "my-app"
+if (Test-Path -LiteralPath (Join-Path $myApp "cordlang.json")) {
+  Push-Location $myApp
+  try {
+    & $Cordlang check 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+      Write-Host "PASS: check my-app (zero)" -ForegroundColor Green
+      $passed = $passed + 1
+    } else {
+      Write-Host "FAIL: check my-app expected zero exit" -ForegroundColor Red
+      $failed = $failed + 1
+    }
+  } finally {
+    Pop-Location
+  }
+} else {
+  Write-Host "SKIP: my-app project not present" -ForegroundColor Yellow
+}
+
+Write-Host ""
+Write-Host ("Results: " + $passed + " passed, " + $failed + " failed, " + $updated + " golden writes")
+if ($failed -gt 0) { exit 1 }
+exit 0

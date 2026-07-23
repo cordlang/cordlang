@@ -1,0 +1,12 @@
+# Golden: #{expr} interpolation
+
+def Greeter
+  props userName="friend"
+  state visits=1
+
+  col gap=12 p=24
+    h1 "Hola, #{userName}!" size=2xl bold
+    p "Visitas: #{visits}" muted
+    p "Total: $#{visits}" size=lg
+    btn "Cart (#{visits})" variant=primary @click=setVisits(visits + 1)
+    btn "Reset" variant=outline @click=setVisits(0)

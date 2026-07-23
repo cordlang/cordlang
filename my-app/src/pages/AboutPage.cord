@@ -1,0 +1,7 @@
+col gap=16 max-w=640
+  h1 "About" size=2xl bold
+  p "Cordlang multi-archivo: use, route → módulo, layout." muted
+  p "Escribís UI modular sin meter todo en app.cord." muted
+  row gap=8
+    link "Volver al home" to=/
+    btn "Primary style" variant=primary

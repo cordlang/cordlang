@@ -1,0 +1,16 @@
+# Entry: layout + routes only. Pages/components live in their own files.
+# route / => pages/HomePage  → loads src/pages/HomePage.cord automatically
+
+theme shop
+  primary: "#2563eb"
+  bg: "#ffffff"
+  text: "#1a1a1a"
+  muted: "#6b7280"
+  radius: 12
+
+use layouts/default
+
+route / => pages/HomePage
+route /counter => pages/CounterPage
+route /shop => pages/ShopPage
+route /about => pages/AboutPage

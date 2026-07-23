@@ -1,0 +1,8 @@
+props title, price
+
+card shadow=md rounded=12 overflow=hidden
+  stack gap=8 p=16
+    h3 "#{title}" bold
+    row between center
+      span "$#{price}" color=primary bold size=lg
+      btn "Add #{title}" variant=primary @click=console.log(title)

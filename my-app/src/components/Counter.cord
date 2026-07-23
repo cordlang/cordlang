@@ -1,0 +1,14 @@
+# Reusable component (filename → Counter)
+
+state count=0
+props label=""
+
+col gap=12 center p=16
+  if label
+    p "#{label}" muted
+  p "Count: #{count}" size=lg
+  span "#{count}" size=4xl bold color=primary
+  row gap=8 center
+    btn "-" @click=setCount(count - 1) variant=outline
+    btn "Reset" @click=setCount(0) variant=ghost
+    btn "+" @click=setCount(count + 1) variant=primary

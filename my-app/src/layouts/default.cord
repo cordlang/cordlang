@@ -1,0 +1,16 @@
+# App shell — slot is where the active route renders
+
+layout default
+  header sticky bg=white shadow=sm
+    row between center p=16
+      h1 "Cordlang Demo" size=xl bold color=primary
+      nav
+        row gap=16 center
+          link "Home" to=/
+          link "Counter" to=/counter
+          link "Shop" to=/shop
+          link "About" to=/about
+  main p=24
+    slot
+  footer muted center p=16
+    p "Compiled from Cordlang → React"

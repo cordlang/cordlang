@@ -1,0 +1,11 @@
+# messy fixture for fmt
+
+
+
+def Counter	
+  state count=0  
+
+
+  props label="Counter"	
+  col gap=16 p=24 center   
+    h1 "#{label}" size=2xl bold

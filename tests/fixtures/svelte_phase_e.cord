@@ -1,0 +1,18 @@
+# Optional Phase E smoke fixture (not in golden suite unless registered)
+def PhaseESmoke
+  store n = 0
+  snippet box(label)
+    p "#{label}"
+  col gap=8
+    span "#{n}"
+    div transition=fade
+      p "fade"
+    div use=tooltip
+      p "tip"
+    render box("hi")
+    await Promise.resolve(1) then=v
+      p "#{v}"
+      loading
+        p "..."
+    portal to=document.body
+      p "portal"

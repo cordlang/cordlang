@@ -1,0 +1,5 @@
+def Counter
+  state count=0
+
+  col gap=8
+    btn "+" @click=increment

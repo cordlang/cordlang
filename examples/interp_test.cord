@@ -1,0 +1,4 @@
+col
+  h1 "Hola, #{user.name}!"
+  p "Total: $#{price}"
+  btn "Cart (#{count})"

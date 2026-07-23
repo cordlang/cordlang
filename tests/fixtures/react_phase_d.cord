@@ -1,0 +1,22 @@
+# Phase D golden fixture (React advanced hooks)
+def FancyInput forwardRef
+  ref inputEl
+  imperativeHandle ref=inputEl
+    focus: () => inputEl.current?.focus()
+  input text ref=inputEl
+
+def PhaseDDemo
+  state count=0
+  action form = submitForm init=null pending=saving
+  insertionEffect deps=()
+    injectStyles()
+  effectEvent onMsg = handleMessage
+  externalStore snapshot = subscribe getSnapshot
+  col gap=8
+    p "Count: #{count}"
+    btn "+" @click=setCount(count + 1)
+    if saving
+      p "pending"
+    form action=formAction
+      btn "Go"
+    FancyInput

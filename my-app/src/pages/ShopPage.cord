@@ -1,0 +1,12 @@
+use ../components/ProductCard
+
+col gap=16
+  h1 "Shop" size=2xl bold
+  p "ProductCard importado con use" muted
+  grid cols=3 gap=16
+    ProductCard title="Sneakers" price="89"
+    ProductCard title="Backpack" price="49"
+    ProductCard title="Watch" price="120"
+    ProductCard title="Headphones" price="79"
+    ProductCard title="Bottle" price="19"
+    ProductCard title="Cap" price="25"

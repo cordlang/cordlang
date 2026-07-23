@@ -1,0 +1,6 @@
+use ../components/Counter
+
+col gap=16 center
+  h1 "Counter" size=2xl bold
+  p "State + interpolación en un componente reutilizable" muted
+  Counter label="Live counter"
