@@ -48,8 +48,30 @@ Same multi-file `src/**/*.cord` for every backend.
 - DX: `check`, `fmt`, `symbols`, `goto`, `--watch`, `--check` (vite build)
 - Demo app: [`my-app/`](./my-app/)
 
-Design notes & syntax reference: [`docs/LANGUAGE.md`](./docs/LANGUAGE.md)  
-Roadmap: [`docs/ROADMAP.md`](./docs/ROADMAP.md)
+### Docs
+
+| Doc | What |
+|-----|------|
+| [docs/GUIDE.md](./docs/GUIDE.md) | **User guide + samples** |
+| [docs/CHEATSHEET.md](./docs/CHEATSHEET.md) | One-screen syntax |
+| [docs/EXAMPLES.md](./docs/EXAMPLES.md) | Catalog of examples |
+| [docs/AI.md](./docs/AI.md) | **For AI models** — what to write / avoid |
+| [AGENTS.md](./AGENTS.md) | Coding-agent brief |
+| [docs/ROADMAP.md](./docs/ROADMAP.md) | Roadmap |
+| [docs/REACT.md](./docs/REACT.md) · [SVELTE.md](./docs/SVELTE.md) · [IR.md](./docs/IR.md) | Maps & IR |
+
+### AI / agents
+
+Cordlang is designed for **LLM-authored UI**. Point tools at:
+
+| Path | Role |
+|------|------|
+| [`docs/AI.md`](./docs/AI.md) | Hard rules (do / don't) for any model |
+| [`AGENTS.md`](./AGENTS.md) | Repo-wide coding-agent brief |
+| [`skills/write-cord/`](./skills/write-cord/) | **Portable skill** (any tool / LLM) |
+| [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot |
+
+Rule of thumb for models: **write `.cord`, not JSX**, then `cordlang run react|svelte`.
 
 ---
 

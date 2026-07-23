@@ -258,7 +258,7 @@ Mapa completo: [`docs/SVELTE.md`](./SVELTE.md) (basado en [svelte.dev/docs/svelt
 | F1 | Backend **Vue 3** | Tras IR residual limpio |
 | F2 | Backend **Solid** | Idem |
 | F3 | Package registry de componentes `.cord` | |
-| F4 | AI prompts / skill “write cord not jsx” | |
+| F4 | AI prompts / skill “write cord not jsx” | ✅ `docs/AI.md` + `AGENTS.md` + `skills/write-cord` |
 | F5 | Playground web (WASM compile) | |
 | F6 | CI multi-backend | ✅ goldens Win/Linux; demo `--check` = G4 |
 | F7 | Versionado del lenguaje (0.x → 1.0 freeze) | |
@@ -289,7 +289,7 @@ Objetivo: dejar el hilo **claro** y el repo **listo para GitHub**, luego cerrar 
 | **G2** | HTML preview IR-puro | **P0** | `html_generate_from_ir` camina solo `IrNode` | ✅ walk `ir->root` only |
 | **G3** | CI estable | **P0** | GitHub Action: build + goldens (Win/Linux) | ✅ Win + Ubuntu verdes |
 | **G4** | Demo `my-app` en CI | **P1** | `cordlang run react --check` y `svelte --check` en CI (cache npm) | ✅ `tests/run_myapp_check.*` + workflow |
-| **G5** | Docs 1.0-ish | **P1** | README + LANGUAGE + mapas alineados al codegen | un solo “quick start” confiable |
+| **G5** | Docs 1.0-ish + AI skill | **P1** | GUIDE/CHEATSHEET/EXAMPLES + AI.md + AGENTS + write-cord skill | ✅ |
 | **G6** | License | **P1** | Elegir y commitear LICENSE (p. ej. MIT) | ✅ MIT + AUTHORS.md |
 | **G7** | Source maps reales | **P2** | mappings no stub `.cord` → out | stack traces útiles |
 | **G8** | LSP / editor | **P2** | hover + goto sobre `symbols` | extensión o server mínimo |
@@ -305,8 +305,8 @@ IR residuales cerrados (G1–G2), CI verde (G3), demo documentada y versionable 
 | **DX editor** | G7 source maps, G8 LSP | Si el dolor es escribir `.cord` |
 | **Ecosistema** | Vue/Solid (F1–F2), playground WASM (F5) | Cuando IR + CI estén aburridos de tan estables |
 
-**Hecho en G:** G0–G4, G6.  
-**Siguiente:** **G5** polish docs (opcional) → Kit **o** LSP (G7/G8 / E6).
+**Hecho en G:** G0–G6 (docs + AI skill incluidos).  
+**Siguiente:** Kit (E6) **o** LSP/source maps (G7/G8) — elige carril producto vs editor.
 
 ---
 
@@ -369,7 +369,7 @@ IR residuales cerrados (G1–G2), CI verde (G3), demo documentada y versionable 
 | **M3 — Deep React** | D* selecto | 🟡 MVP |
 | **M4 — Deep Svelte** | E* selecto | 🟡 MVP (sin Kit) |
 | **M5 — IR platform** | IR-1 + IR-2 | ✅ |
-| **M6 — Public + polish** | Fase G (G0–G4,G6 ✅ · G5 residual) | casi done |
+| **M6 — Public + polish** | Fase G (G0–G6 ✅) | ✅ done-ish |
 | **M7 — Meta / ecosystem** | Kit/Next, F* | después |
 
 Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `ir`, `dx`, `ci`, `docs`.

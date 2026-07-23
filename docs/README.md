@@ -1,11 +1,35 @@
 # Cordlang documentation
 
-| Doc | What it is |
-|------|------------|
-| [ROADMAP.md](./ROADMAP.md) | Phases done, **next sprint (Fase G)**, 1.0 criteria |
-| [LANGUAGE.md](./LANGUAGE.md) | Language design & syntax (from former `idea.md`) |
-| [REACT.md](./REACT.md) | Cordlang ↔ React map |
-| [SVELTE.md](./SVELTE.md) | Cordlang ↔ Svelte 5 map |
-| [IR.md](./IR.md) | Intermediate representation pipeline |
+Start here for humans and for AI tools.
 
-Start at the root [README.md](../README.md) for install & CLI.
+| Doc | Audience | Content |
+|-----|----------|---------|
+| [GUIDE.md](./GUIDE.md) | Everyone | Practical guide **with samples** |
+| [CHEATSHEET.md](./CHEATSHEET.md) | Everyone | One-screen syntax |
+| [EXAMPLES.md](./EXAMPLES.md) | Everyone | Catalog of `examples/` + `my-app/` |
+| [AI.md](./AI.md) | **AI models** | Do / don't contract for LLMs |
+| [LANGUAGE.md](./LANGUAGE.md) | Design | Language design notes (ex-`idea.md`) |
+| [REACT.md](./REACT.md) | Backend map | Cordlang ↔ React |
+| [SVELTE.md](./SVELTE.md) | Backend map | Cordlang ↔ Svelte 5 |
+| [IR.md](./IR.md) | Compiler | IR pipeline |
+| [ROADMAP.md](./ROADMAP.md) | Planning | Phases A–G, next steps |
+
+## Repo entry points
+
+| Path | Purpose |
+|------|---------|
+| [../README.md](../README.md) | Install, CLI, status |
+| [../AGENTS.md](../AGENTS.md) | Instructions for coding agents |
+| [../skills/write-cord/SKILL.md](../skills/write-cord/SKILL.md) | Portable AI skill |
+| [../skills/README.md](../skills/README.md) | Skills convention |
+| [../.github/copilot-instructions.md](../.github/copilot-instructions.md) | Copilot brief |
+| [../my-app/](../my-app/) | Multi-file demo |
+| [../examples/](../examples/) | Single-file samples |
+
+## Learning path
+
+1. [GUIDE.md](./GUIDE.md) §1–3 (install + core samples)  
+2. Open `my-app/src/` and `examples/counter.cord`  
+3. [CHEATSHEET.md](./CHEATSHEET.md) while coding  
+4. [REACT.md](./REACT.md) / [SVELTE.md](./SVELTE.md) when mapping mental models  
+5. If you are an LLM: [AI.md](./AI.md) + [AGENTS.md](../AGENTS.md)  
