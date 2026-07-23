@@ -132,6 +132,7 @@ static StyleMap style_mappings[] = {
   {"size", "text-", 1},
   {"w", "w-", 1},
   {"h", "h-", 1},
+  {"min-h", "min-h-", 1},
   {"max-w", "max-w-", 1},
   {"z", "z-", 1},
   {"op", "opacity-", 1},
@@ -160,15 +161,22 @@ static void gen_style_classes(StrBuf *sb, Node *style_map) {
     }
 
     if (!mapped) {
-      if (strcmp(key, "between") == 0) sb_append(sb, " justify-between");
-      else if (strcmp(key, "center") == 0) sb_append(sb, " items-center justify-center");
+      if (strcmp(key, "between") == 0) sb_append(sb, " flex justify-between");
+      else if (strcmp(key, "center") == 0)
+        sb_append(sb, " flex items-center justify-center");
       else if (strcmp(key, "around") == 0) sb_append(sb, " justify-around");
       else if (strcmp(key, "evenly") == 0) sb_append(sb, " justify-evenly");
       else if (strcmp(key, "sticky") == 0) sb_append(sb, " sticky top-0");
       else if (strcmp(key, "bold") == 0) sb_append(sb, " font-bold");
       else if (strcmp(key, "muted") == 0) sb_append(sb, " text-muted");
+      else if (strcmp(key, "font-mono") == 0) sb_append(sb, " font-mono");
+      else if (strcmp(key, "flex-1") == 0) sb_append(sb, " flex-1");
+      else if (strcmp(key, "border") == 0) sb_append(sb, " border border-gray-200");
       else if (strcmp(key, "overflow") == 0) {
         sb_append(sb, " overflow-");
+        sb_append(sb, val);
+      } else if (strcmp(key, "min-h") == 0) {
+        sb_append(sb, " min-h-");
         sb_append(sb, val);
       }
     }
@@ -228,10 +236,13 @@ static int is_style_attr_name(const char *name) {
          strcmp(name, "overflow") == 0 || strcmp(name, "fit") == 0 ||
          strcmp(name, "aspect") == 0 || strcmp(name, "lines") == 0 ||
          strcmp(name, "w") == 0 || strcmp(name, "h") == 0 ||
+         strcmp(name, "min-h") == 0 || strcmp(name, "border") == 0 ||
          strcmp(name, "mx") == 0 || strcmp(name, "my") == 0 ||
          strcmp(name, "px") == 0 || strcmp(name, "py") == 0 ||
          strcmp(name, "m") == 0 || strcmp(name, "op") == 0 ||
-         strcmp(name, "z") == 0;
+         strcmp(name, "z") == 0 || strcmp(name, "flex-1") == 0 ||
+         strcmp(name, "font-mono") == 0 || strcmp(name, "center") == 0 ||
+         strcmp(name, "between") == 0;
 }
 
 /* Generation context — tracks React hook imports needed */
@@ -869,8 +880,13 @@ static void gen_children(StrBuf *sb, Node *node, int depth, GenCtx *ctx) {
       }
     } else if (child->type == NODE_SLOT) {
       sb_indent(sb, depth);
-      sb_append(sb, "<Outlet />\n");
-      if (ctx) ctx->use_router = 1;
+      if (ctx && ctx->is_layout) {
+        sb_append(sb, "<Outlet />\n");
+        if (ctx) ctx->use_router = 1;
+      } else {
+        sb_append(sb, "{children}\n");
+        if (ctx) ctx->use_children = 1;
+      }
     } else if (child->type == NODE_INTERPOLATION) {
       gen_interpolation(sb, child, depth);
     } else if (child->type == NODE_TEXT) {
@@ -881,9 +897,6 @@ static void gen_children(StrBuf *sb, Node *node, int depth, GenCtx *ctx) {
         char *body = interp_to_js_template_body(child->value);
         sb_appendf(sb, "{`%s`}\n", body ? body : "");
         free(body);
-      } else if (child->value && looks_like_js_expr(child->value) &&
-                 strchr(child->value, '.')) {
-        sb_appendf(sb, "{%s}\n", child->value);
       } else {
         sb_append(sb, "{'");
         if (child->value) {

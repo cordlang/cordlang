@@ -6,7 +6,7 @@
   function setCount(v) { count = typeof v === 'function' ? v(count) : v; }
 </script>
 
-<div class="flex flex-col gap-16 p-24 items-center justify-center">
+<div class="flex flex-col gap-16 p-24 flex items-center justify-center">
   <h1 class="text-2xl font-bold">
     {label}
   </h1>
@@ -14,7 +14,7 @@
     Count: 
     {count}
   </p>
-  <div class="flex flex-row gap-8 items-center justify-center">
+  <div class="flex flex-row gap-8 flex items-center justify-center">
     <button class="btn btn-outline" onclick={() => setCount(count - 1)}>
       -
     </button>

@@ -221,9 +221,9 @@ static void collect_classes_ir(char *classes, size_t sz, const IrNode *node,
     /* Bool-like attrs (name is the flag / size token) */
     if (attr_is_true(c) || (!c->value || !c->value[0])) {
       if (strcmp(k, "between") == 0)
-        strncat(classes, " justify-between", sz - strlen(classes) - 1);
+        strncat(classes, " flex justify-between", sz - strlen(classes) - 1);
       else if (strcmp(k, "center") == 0)
-        strncat(classes, " items-center justify-center",
+        strncat(classes, " flex items-center justify-center",
                 sz - strlen(classes) - 1);
       else if (strcmp(k, "bold") == 0)
         strncat(classes, " font-bold", sz - strlen(classes) - 1);
@@ -640,9 +640,6 @@ static void gen_text_or_interp_ir(StrBuf *sb, IrNode *node, int depth) {
         p = end + 1;
       }
       sb_append(sb, "\n");
-    } else if (node->value && looks_like_js_expr(node->value) &&
-               strchr(node->value, '.')) {
-      sb_appendf(sb, "{%s}\n", node->value);
     } else {
       sb_append(sb, node->value ? node->value : "");
       sb_append(sb, "\n");

@@ -53,14 +53,34 @@ static int consume(Parser *p, TokenType type, const char *msg) {
 
 static char *token_str(Token t) {
   /* Allow empty strings (len == 0) e.g. props label="" */
-  if (t.start) {
-    char *s = malloc(t.len + 1);
-    if (!s) return NULL;
-    if (t.len > 0) memcpy(s, t.start, t.len);
-    s[t.len] = '\0';
+  if (!t.start) return NULL;
+  char *s = malloc(t.len + 1);
+  if (!s) return NULL;
+  if (t.type == TOKEN_STRING) {
+    /* Unescape \" \\ \n \t \r inside string token span */
+    size_t j = 0;
+    for (size_t i = 0; i < t.len; i++) {
+      if (t.start[i] == '\\' && i + 1 < t.len) {
+        i++;
+        char e = t.start[i];
+        if (e == 'n')
+          s[j++] = '\n';
+        else if (e == 't')
+          s[j++] = '\t';
+        else if (e == 'r')
+          s[j++] = '\r';
+        else
+          s[j++] = e;
+      } else {
+        s[j++] = t.start[i];
+      }
+    }
+    s[j] = '\0';
     return s;
   }
-  return NULL;
+  if (t.len > 0) memcpy(s, t.start, t.len);
+  s[t.len] = '\0';
+  return s;
 }
 
 static Node *parse_stmt(Parser *p);

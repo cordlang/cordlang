@@ -25,7 +25,9 @@ static inline int irw_is_style_attr(const char *name) {
                   strcmp(name, "center") == 0 || strcmp(name, "between") == 0 ||
                   strcmp(name, "bold") == 0 || strcmp(name, "muted") == 0 ||
                   strcmp(name, "sticky") == 0 || strcmp(name, "primary") == 0 ||
-                  strcmp(name, "outline") == 0 || strcmp(name, "ghost") == 0);
+                  strcmp(name, "outline") == 0 || strcmp(name, "ghost") == 0 ||
+                  strcmp(name, "border") == 0 || strcmp(name, "min-h") == 0 ||
+                  strcmp(name, "flex-1") == 0 || strcmp(name, "font-mono") == 0);
 }
 
 static inline int irw_looks_number(const char *s) {
@@ -86,6 +88,12 @@ static inline void irw_collect_classes(char *out, size_t outsz, const IrNode *el
     }
   }
   if (!el) return;
+  int has_between = 0;
+  for (size_t i = 0; i < el->n_kids; i++) {
+    IrNode *a = el->kids[i];
+    if (!a || a->kind != IR_ATTR || !a->name) continue;
+    if (strcmp(a->name, "between") == 0) has_between = 1;
+  }
   for (size_t i = 0; i < el->n_kids; i++) {
     IrNode *a = el->kids[i];
     if (!a || a->kind != IR_ATTR || !a->name) continue;
@@ -95,6 +103,9 @@ static inline void irw_collect_classes(char *out, size_t outsz, const IrNode *el
     piece[0] = '\0';
     if (strcmp(k, "gap") == 0) snprintf(piece, sizeof(piece), " gap-%s", v);
     else if (strcmp(k, "p") == 0) snprintf(piece, sizeof(piece), " p-%s", v);
+    else if (strcmp(k, "w") == 0) snprintf(piece, sizeof(piece), " w-%s", v);
+    else if (strcmp(k, "h") == 0) snprintf(piece, sizeof(piece), " h-%s", v);
+    else if (strcmp(k, "min-h") == 0) snprintf(piece, sizeof(piece), " min-h-%s", v);
     else if (strcmp(k, "size") == 0) {
       if (strcmp(v, "2xl") == 0) snprintf(piece, sizeof(piece), " text-2xl");
       else if (strcmp(v, "4xl") == 0) snprintf(piece, sizeof(piece), " text-4xl");
@@ -106,10 +117,19 @@ static inline void irw_collect_classes(char *out, size_t outsz, const IrNode *el
       snprintf(piece, sizeof(piece), " font-bold");
     else if (strcmp(k, "muted") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
       snprintf(piece, sizeof(piece), " text-muted");
+    else if (strcmp(k, "font-mono") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
+      snprintf(piece, sizeof(piece), " font-mono");
+    else if (strcmp(k, "flex-1") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
+      snprintf(piece, sizeof(piece), " flex-1");
+    else if (strcmp(k, "border") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
+      snprintf(piece, sizeof(piece), " border border-gray-200");
+    else if (strcmp(k, "border") == 0)
+      snprintf(piece, sizeof(piece), " border border-%s", v);
     else if (strcmp(k, "center") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
-      snprintf(piece, sizeof(piece), " items-center justify-center");
+      snprintf(piece, sizeof(piece),
+               has_between ? " flex items-center" : " flex items-center justify-center");
     else if (strcmp(k, "between") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
-      snprintf(piece, sizeof(piece), " justify-between");
+      snprintf(piece, sizeof(piece), " flex justify-between");
     else if (strcmp(k, "sticky") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
       snprintf(piece, sizeof(piece), " sticky top-0");
     else if (strcmp(k, "bg") == 0) snprintf(piece, sizeof(piece), " bg-%s", v);
@@ -119,6 +139,8 @@ static inline void irw_collect_classes(char *out, size_t outsz, const IrNode *el
       snprintf(piece, sizeof(piece), " btn-%s", v);
     else if (strcmp(k, "max-w") == 0)
       snprintf(piece, sizeof(piece), " max-w-%s", v);
+    else if (strcmp(k, "rounded") == 0)
+      snprintf(piece, sizeof(piece), " rounded-%s", v);
     if (piece[0] && n + strlen(piece) + 1 < outsz) {
       memcpy(out + n, piece, strlen(piece) + 1);
       n += strlen(piece);

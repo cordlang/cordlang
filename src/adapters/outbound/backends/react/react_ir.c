@@ -123,6 +123,7 @@ static int is_style_attr_name(const char *name) {
           strcmp(name, "overflow") == 0 || strcmp(name, "fit") == 0 ||
           strcmp(name, "aspect") == 0 || strcmp(name, "lines") == 0 ||
           strcmp(name, "w") == 0 || strcmp(name, "h") == 0 ||
+          strcmp(name, "min-h") == 0 || strcmp(name, "border") == 0 ||
           strcmp(name, "mx") == 0 || strcmp(name, "my") == 0 ||
           strcmp(name, "px") == 0 || strcmp(name, "py") == 0 ||
           strcmp(name, "m") == 0 || strcmp(name, "op") == 0 ||
@@ -139,7 +140,9 @@ static int is_style_bool_name(const char *name) {
           strcmp(name, "secondary") == 0 || strcmp(name, "xs") == 0 ||
           strcmp(name, "sm") == 0 || strcmp(name, "lg") == 0 ||
           strcmp(name, "xl") == 0 || strcmp(name, "2xl") == 0 ||
-          strcmp(name, "3xl") == 0 || strcmp(name, "4xl") == 0);
+          strcmp(name, "3xl") == 0 || strcmp(name, "4xl") == 0 ||
+          strcmp(name, "flex-1") == 0 || strcmp(name, "font-mono") == 0 ||
+          strcmp(name, "border") == 0);
 }
 
 static const char *tag_to_div_plus_class(const char *tag) {
@@ -297,6 +300,13 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
   if (base_class) strncat(classes, base_class, classes_sz - 1);
   if (!node) return;
 
+  int has_between = 0;
+  for (size_t i = 0; i < node->n_kids; i++) {
+    IrNode *child = node->kids[i];
+    if (!child || child->kind != IR_ATTR || !child->name) continue;
+    if (strcmp(child->name, "between") == 0) has_between = 1;
+  }
+
   for (size_t i = 0; i < node->n_kids; i++) {
     IrNode *child = node->kids[i];
     if (!child || child->kind != IR_ATTR || !child->name) continue;
@@ -321,9 +331,12 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
 
     if (attr_is_true(v)) {
       if (strcmp(k, "between") == 0)
-        strncat(classes, " justify-between", classes_sz - strlen(classes) - 1);
+        strncat(classes, " flex justify-between",
+                classes_sz - strlen(classes) - 1);
       else if (strcmp(k, "center") == 0)
-        strncat(classes, " items-center justify-center",
+        strncat(classes,
+                has_between ? " flex items-center"
+                            : " flex items-center justify-center",
                 classes_sz - strlen(classes) - 1);
       else if (strcmp(k, "around") == 0)
         strncat(classes, " justify-around", classes_sz - strlen(classes) - 1);
@@ -333,6 +346,13 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
         strncat(classes, " font-bold", classes_sz - strlen(classes) - 1);
       else if (strcmp(k, "muted") == 0)
         strncat(classes, " text-muted", classes_sz - strlen(classes) - 1);
+      else if (strcmp(k, "font-mono") == 0)
+        strncat(classes, " font-mono", classes_sz - strlen(classes) - 1);
+      else if (strcmp(k, "flex-1") == 0)
+        strncat(classes, " flex-1", classes_sz - strlen(classes) - 1);
+      else if (strcmp(k, "border") == 0)
+        strncat(classes, " border border-gray-200",
+                classes_sz - strlen(classes) - 1);
       else if (strcmp(k, "sticky") == 0)
         strncat(classes, " sticky top-0", classes_sz - strlen(classes) - 1);
       else if (strcmp(k, "primary") == 0)
@@ -411,6 +431,12 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
       strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
     } else if (strcmp(k, "h") == 0) {
       snprintf(vbuf, sizeof(vbuf), " h-%s", v);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(k, "min-h") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " min-h-%s", v);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(k, "border") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " border border-%s", v);
       strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
     }
   }
@@ -1285,8 +1311,13 @@ static void gen_ir_children(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
       }
     } else if (child->kind == IR_SLOT) {
       sb_indent(sb, depth);
-      sb_append(sb, "<Outlet />\n");
-      if (ctx) ctx->use_router = 1;
+      if (ctx && ctx->is_layout) {
+        sb_append(sb, "<Outlet />\n");
+        if (ctx) ctx->use_router = 1;
+      } else {
+        sb_append(sb, "{children}\n");
+        if (ctx) ctx->use_children = 1;
+      }
     } else if (child->kind == IR_INTERP) {
       gen_ir_interpolation(sb, child, depth);
     } else if (child->kind == IR_TEXT) {
@@ -1296,9 +1327,6 @@ static void gen_ir_children(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
         char *body = interp_to_js_template_body(child->value);
         sb_appendf(sb, "{`%s`}\n", body ? body : "");
         free(body);
-      } else if (child->value && looks_like_js_expr(child->value) &&
-                 strchr(child->value, '.')) {
-        sb_appendf(sb, "{%s}\n", child->value);
       } else {
         sb_append(sb, "{'");
         if (child->value) {

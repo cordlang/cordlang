@@ -93,9 +93,17 @@ static Token read_string(Lexer *lexer) {
   const char *start = lexer->source + lexer->pos;
   size_t len = 0;
   while (peek(lexer) && peek(lexer) != '"') {
-    if (peek(lexer) == '\\') { advance(lexer); }
-    advance(lexer);
-    len++;
+    if (peek(lexer) == '\\') {
+      advance(lexer); /* backslash */
+      len++;
+      if (peek(lexer)) {
+        advance(lexer); /* escaped char */
+        len++;
+      }
+    } else {
+      advance(lexer);
+      len++;
+    }
   }
   if (peek(lexer) == '"') {
     advance(lexer);

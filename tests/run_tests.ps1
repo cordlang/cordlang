@@ -38,7 +38,7 @@ if (-not (Test-Path -LiteralPath $GoldenDir)) {
   New-Item -ItemType Directory -Path $GoldenDir | Out-Null
 }
 
-$names = "basic_counter", "routes_simple", "interp", "if_for", "nested_routes", "react_phase_d"
+$names = "basic_counter", "routes_simple", "interp", "if_for", "nested_routes", "react_phase_d", "component_slot", "string_dotted"
 $backends = "react", "svelte"
 
 function Get-NormalizedText([string]$text) {

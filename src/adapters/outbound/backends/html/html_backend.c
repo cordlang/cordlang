@@ -102,14 +102,19 @@ static const char *RUNTIME_CSS =
   ".min-h-screen{min-height:100vh}\n"
   ".sticky{position:sticky}.top-0{top:0}\n"
   ".overflow-hidden{overflow:hidden}\n"
-  "/* Spacing */\n"
-  ".p-4{padding:1rem}.p-6{padding:1.5rem}.p-8{padding:2rem}.p-16{padding:4rem}.p-24{padding:6rem}\n"
+  "/* Spacing — Cord scale (p=16 → 1rem, aligned with React Tailwind scaffold) */\n"
+  ".p-4{padding:1rem}.p-6{padding:1.5rem}.p-8{padding:.5rem}.p-12{padding:.75rem}\n"
+  ".p-16{padding:1rem}.p-24{padding:1.5rem}.p-32{padding:2rem}\n"
   ".px-4{padding-left:1rem;padding-right:1rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}\n"
-  ".gap-2{gap:.5rem}.gap-4{gap:1rem}.gap-8{gap:2rem}.gap-16{gap:4rem}\n"
+  ".gap-2{gap:.5rem}.gap-4{gap:1rem}.gap-8{gap:.5rem}.gap-12{gap:.75rem}\n"
+  ".gap-16{gap:1rem}.gap-24{gap:1.5rem}\n"
   ".m-0{margin:0}\n"
-  "/* Size helpers used by Cordlang attrs (raw numbers) */\n"
-  ".p-8{padding:2rem}.p-12{padding:3rem}.p-16{padding:1rem}.p-24{padding:1.5rem}\n"
-  ".gap-8{gap:.5rem}.gap-16{gap:1rem}\n"
+  ".w-240{width:15rem}.h-screen{height:100vh}.min-h-screen{min-height:100vh}\n"
+  ".flex-1{flex:1 1 0%}.font-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}\n"
+  ".border{border-width:1px;border-style:solid}.border-gray-200{border-color:#e5e7eb}\n"
+  ".max-w-640{max-width:40rem}.max-w-720{max-width:45rem}.max-w-md{max-width:28rem}\n"
+  ".max-w-lg{max-width:32rem}.max-w-xl{max-width:36rem}.max-w-2xl{max-width:42rem}\n"
+  ".rounded-8{border-radius:8px}.rounded-12{border-radius:12px}\n"
   "/* Text */\n"
   ".font-bold{font-weight:700}.text-gray-500{color:#6b7280}.text-gray-700{color:#374151}\n"
   ".text-muted{color:var(--color-muted,#57534e)}\n"
@@ -129,8 +134,6 @@ static const char *RUNTIME_CSS =
   ".grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}\n"
   ".grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}\n"
   ".grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}\n"
-  ".max-w-640{max-width:40rem}.max-w-md{max-width:28rem}.max-w-lg{max-width:32rem}\n"
-  ".max-w-xl{max-width:36rem}.max-w-2xl{max-width:42rem}\n"
   "/* Components */\n"
   ".btn{display:inline-flex;align-items:center;justify-content:center;border-radius:.5rem;"
   "padding:.5rem 1rem;font-weight:500;border:1px solid transparent;cursor:pointer;"
@@ -242,8 +245,8 @@ static void gen_style_classes(StrBuf *sb, Node *style_map) {
     }
 
     if (!mapped) {
-      if (strcmp(key, "between") == 0) sb_append(sb, " justify-between");
-      else if (strcmp(key, "center") == 0) sb_append(sb, " items-center justify-center");
+      if (strcmp(key, "between") == 0) sb_append(sb, " flex justify-between");
+      else if (strcmp(key, "center") == 0) sb_append(sb, " flex items-center justify-center");
       else if (strcmp(key, "around") == 0) sb_append(sb, " justify-around");
       else if (strcmp(key, "evenly") == 0) sb_append(sb, " justify-evenly");
       else if (strcmp(key, "sticky") == 0) sb_append(sb, " sticky top-0");
@@ -541,8 +544,8 @@ static void collect_classes(char *classes, size_t classes_sz, Node *node, const 
     Node *child = node->children[i];
     char vbuf[96];
     if (child->type == NODE_BOOL_ATTR && child->value) {
-      if (strcmp(child->value, "between") == 0) strncat(classes, " justify-between", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->value, "center") == 0) strncat(classes, " items-center justify-center", classes_sz - strlen(classes) - 1);
+      if (strcmp(child->value, "between") == 0) strncat(classes, " flex justify-between", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->value, "center") == 0) strncat(classes, " flex items-center justify-center", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "around") == 0) strncat(classes, " justify-around", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "evenly") == 0) strncat(classes, " justify-evenly", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "bold") == 0) strncat(classes, " font-bold", classes_sz - strlen(classes) - 1);
@@ -956,9 +959,9 @@ static void gen_style_classes_ir(StrBuf *sb, IrNode *style_map) {
 
     if (!mapped) {
       if (strcmp(key, "between") == 0)
-        sb_append(sb, " justify-between");
+        sb_append(sb, " flex justify-between");
       else if (strcmp(key, "center") == 0)
-        sb_append(sb, " items-center justify-center");
+        sb_append(sb, " flex items-center justify-center");
       else if (strcmp(key, "around") == 0)
         sb_append(sb, " justify-around");
       else if (strcmp(key, "evenly") == 0)
@@ -1010,9 +1013,9 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
     /* Bool-like attrs: IR_ATTR name with value "true" */
     if (ir_attr_is_true(child->value)) {
       if (strcmp(child->name, "between") == 0)
-        strncat(classes, " justify-between", classes_sz - strlen(classes) - 1);
+        strncat(classes, " flex justify-between", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->name, "center") == 0)
-        strncat(classes, " items-center justify-center",
+        strncat(classes, " flex items-center justify-center",
                 classes_sz - strlen(classes) - 1);
       else if (strcmp(child->name, "around") == 0)
         strncat(classes, " justify-around", classes_sz - strlen(classes) - 1);

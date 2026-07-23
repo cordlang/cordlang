@@ -73,12 +73,12 @@ export default function DefaultLayout({  }) {
   return (
     <>
       <header className="sticky top-0 bg-white shadow-sm">
-        <div className="flex flex-row justify-between items-center justify-center p-16">
+        <div className="flex flex-row flex justify-between flex items-center p-16">
           <h1 className="text-xl font-bold">
             {'App'}
           </h1>
           <nav>
-            <div className="flex flex-row gap-16 items-center justify-center">
+            <div className="flex flex-row gap-16 flex items-center justify-center">
               <Link to="/">
                 {'Home'}
               </Link>
@@ -104,12 +104,12 @@ export default function Shop({  }) {
   return (
     <>
       <header className="sticky top-0 bg-blue-600">
-        <div className="flex flex-row justify-between items-center justify-center p-16">
+        <div className="flex flex-row flex justify-between flex items-center p-16">
           <h1 className="text-xl font-bold text-white">
             {'Shop'}
           </h1>
           <nav>
-            <div className="flex flex-row gap-16 items-center justify-center">
+            <div className="flex flex-row gap-16 flex items-center justify-center">
               <Link to="/shop">
                 {'All'}
               </Link>

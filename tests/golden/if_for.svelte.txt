@@ -16,7 +16,7 @@
     </p>
   {/if}
   {#each items || [] as item (item.id)}
-    <div class="flex flex-row gap-8 items-center justify-center">
+    <div class="flex flex-row gap-8 flex items-center justify-center">
       <span class="font-bold">
         {item.name}
       </span>

@@ -1,0 +1,21 @@
+<!-- ===== src/components/X.svelte ===== -->
+<!-- cordlang: source=src/components/X.cord -->
+<script>
+</script>
+
+<div class="flex flex-col">
+  <p>
+    build.bat
+  </p>
+  <p>
+    say "hi" please
+  </p>
+</div>
+
+<!-- ===== src/App.svelte ===== -->
+<!-- cordlang: source=src/app.cord -->
+<script>
+  import X from './components/X.svelte';
+</script>
+
+<X />
