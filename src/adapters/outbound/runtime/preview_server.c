@@ -15,10 +15,16 @@ typedef int socklen_t;
 #define CLOSESOCK closesocket
 #define SOCK_ERR SOCKET_ERROR
 #else
+/* POSIX / Linux: select(2), strdup, sockets */
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
 #include <sys/types.h>
+#include <sys/time.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
