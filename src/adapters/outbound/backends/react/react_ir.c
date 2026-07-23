@@ -331,7 +331,9 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
 
     if (attr_is_true(v)) {
       if (strcmp(k, "between") == 0)
-        strncat(classes, " flex justify-between",
+        strncat(classes,
+                strstr(classes, "flex") ? " justify-between"
+                                        : " flex justify-between",
                 classes_sz - strlen(classes) - 1);
       else if (strcmp(k, "center") == 0)
         strncat(classes,
@@ -406,6 +408,21 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
     } else if (strcmp(k, "p") == 0) {
       snprintf(vbuf, sizeof(vbuf), " p-%s", v);
       strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(k, "px") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " px-%s", v);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(k, "py") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " py-%s", v);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(k, "m") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " m-%s", v);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(k, "mx") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " mx-%s", v);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(k, "my") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " my-%s", v);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
     } else if (strcmp(k, "bg") == 0) {
       if (theme_is_color_token(v)) {
         char tok[64];
@@ -437,6 +454,9 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
       strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
     } else if (strcmp(k, "border") == 0) {
       snprintf(vbuf, sizeof(vbuf), " border border-%s", v);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(k, "z") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " z-%s", v);
       strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
     }
   }

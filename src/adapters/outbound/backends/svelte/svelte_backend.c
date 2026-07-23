@@ -257,7 +257,10 @@ static void collect_classes_ir(char *classes, size_t sz, const IrNode *node,
     /* Bool-like attrs (name is the flag / size token) */
     if (attr_is_true(c) || (!c->value || !c->value[0])) {
       if (strcmp(k, "between") == 0)
-        strncat(classes, " flex justify-between", sz - strlen(classes) - 1);
+        strncat(classes,
+                strstr(classes, "flex") ? " justify-between"
+                                        : " flex justify-between",
+                sz - strlen(classes) - 1);
       else if (strcmp(k, "center") == 0)
         strncat(classes,
                 has_between ? " flex items-center"

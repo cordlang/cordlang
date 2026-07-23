@@ -50,7 +50,7 @@ export default function DefaultLayout({  }) {
   return (
     <>
       <header className="sticky top-0 bg-white shadow-sm">
-        <div className="flex flex-row flex justify-between flex items-center p-16">
+        <div className="flex flex-row justify-between flex items-center p-16">
           <h1 className="text-xl font-bold">
             {'App'}
           </h1>

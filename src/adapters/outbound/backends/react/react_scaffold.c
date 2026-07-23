@@ -204,6 +204,22 @@ static int write_vite_skeleton(const char *project_dir, const char *out) {
       "}\n"
       "a:hover {\n"
       "  text-decoration: underline;\n"
+      "}\n"
+      "\n"
+      "/* Stack sidebar shells on narrow viewports */\n"
+      "@media (max-width: 768px) {\n"
+      "  body .flex.flex-row:has(> aside) {\n"
+      "    flex-direction: column;\n"
+      "  }\n"
+      "  body aside.w-240 {\n"
+      "    width: 100%;\n"
+      "    position: relative;\n"
+      "    top: auto;\n"
+      "    min-height: 0;\n"
+      "  }\n"
+      "  body header.sticky {\n"
+      "    z-index: 40;\n"
+      "  }\n"
       "}\n";
 
   /* Cord attrs like p=16 / gap=16 / max-w=640 map to class names p-16, etc.

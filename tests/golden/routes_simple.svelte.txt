@@ -39,7 +39,7 @@
 </script>
 
 <header class="sticky top-0 bg-white shadow-sm">
-  <div class="flex flex-row flex justify-between flex items-center p-16">
+  <div class="flex flex-row justify-between flex items-center p-16">
     <h1 class="text-xl font-bold">
       App
     </h1>
