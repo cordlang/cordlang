@@ -214,21 +214,27 @@ Domain stays free of I/O. Backends consume the **canonical IR** (IR-2).
 
 ## Contributing
 
-1. Build with `build.bat` / `make`
-2. Keep goldens green (`tests/run_tests.ps1`)
-3. Prefer additive language features + IR mapping before backend-specific hacks
-4. Update `docs/REACT.md` / `SVELTE.md` when the surface changes
+- **How to contribute:** [CONTRIBUTING.md](./CONTRIBUTING.md) (build, tests, PR rules)  
+- **Who made Cordlang:** [AUTHORS.md](./AUTHORS.md)  
+- Roadmap / issues ideas: [docs/ROADMAP.md](./docs/ROADMAP.md)
 
-Issues/milestones ideas: see end of [ROADMAP.md](./docs/ROADMAP.md).
+```bash
+build.bat   # or: make
+powershell -ExecutionPolicy Bypass -File tests\run_tests.ps1
+```
+
+Prefer additive language features + IR mapping before backend-specific hacks. Keep goldens green.
 
 ---
 
 ## License
 
-No license file is committed yet. Add one (e.g. MIT) before publishing if you intend open-source redistribution.
+[MIT](./LICENSE) — Copyright (c) 2026 [owellandry](https://github.com/owellandry) (shimonikg) and Cordlang contributors.
+
+Free to use, modify, and redistribute (including commercial use), with attribution.
 
 ---
 
 ## Next
 
-See **“Ahora”** in [docs/ROADMAP.md](./docs/ROADMAP.md): close IR residuals (theme + HTML preview), CI, then meta-frameworks (SvelteKit / Next) or editor DX.
+See **Fase G** in [docs/ROADMAP.md](./docs/ROADMAP.md): IR residuals (theme + HTML preview), CI polish, then meta-frameworks (SvelteKit / Next) or editor DX.

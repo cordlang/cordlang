@@ -290,7 +290,7 @@ Objetivo: dejar el hilo **claro** y el repo **listo para GitHub**, luego cerrar 
 | **G3** | CI estable | **P0** | GitHub Action: build + goldens (Win/Linux) | badge verde en main |
 | **G4** | Demo `my-app` en CI | **P1** | `cordlang run react --check` y `svelte --check` en CI (cache npm) | ambos vite build OK |
 | **G5** | Docs 1.0-ish | **P1** | README + LANGUAGE + mapas alineados al codegen | un solo “quick start” confiable |
-| **G6** | License | **P1** | Elegir y commitear LICENSE (p. ej. MIT) | archivo en root |
+| **G6** | License | **P1** | Elegir y commitear LICENSE (p. ej. MIT) | ✅ MIT + AUTHORS.md |
 | **G7** | Source maps reales | **P2** | mappings no stub `.cord` → out | stack traces útiles |
 | **G8** | LSP / editor | **P2** | hover + goto sobre `symbols` | extensión o server mínimo |
 
@@ -343,7 +343,7 @@ IR residuales cerrados (G1–G2), CI verde (G3), demo documentada y versionable 
 - [ ] `docs/REACT.md` + `docs/SVELTE.md` 100% al día con codegen  
 - [ ] Syntax freeze del subset 1.0 (`docs/LANGUAGE.md`)  
 - [ ] Theme + HTML sin residual AST (G1–G2)  
-- [ ] LICENSE publicada  
+- [x] LICENSE publicada (MIT)  
 
 ---
 
