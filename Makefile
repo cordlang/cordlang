@@ -1,7 +1,7 @@
 CC = gcc
 # c17 + POSIX (strdup, etc. on glibc). On Windows MinGW, extra define is harmless.
 CFLAGS = -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -g -std=c17 \
-	-D_POSIX_C_SOURCE=200809L -Isrc
+	-D_DEFAULT_SOURCE -D_POSIX_C_SOURCE=200809L -Isrc
 TARGET = cordlang
 
 SRC = \
