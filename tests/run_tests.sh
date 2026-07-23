@@ -22,7 +22,7 @@ if [[ "${1:-}" == "--update" || "${1:-}" == "-UpdateGoldens" ]]; then
   UPDATE=1
 fi
 
-FIXTURES=(basic_counter routes_simple interp if_for nested_routes component_slot string_dotted escape_hash_brace)
+FIXTURES=(basic_counter routes_simple interp if_for nested_routes component_slot string_dotted escape_hash_brace react_phase_d)
 BACKENDS=(react svelte)
 GOLDEN_DIR="$ROOT/tests/golden"
 mkdir -p "$GOLDEN_DIR"

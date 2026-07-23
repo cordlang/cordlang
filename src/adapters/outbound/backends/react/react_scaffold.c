@@ -38,7 +38,58 @@ static int scaffold_write_src(const char *rel_from_src, const char *content,
   return 0;
 }
 
-static int write_vite_skeleton(const char *out) {
+/* Best-effort: "key": "value" from cordlang.json (no full JSON parser). */
+static int cfg_string(const char *json, const char *key, char *out, size_t outsz) {
+  if (!json || !key || !out || outsz == 0) return 0;
+  char pat[80];
+  snprintf(pat, sizeof(pat), "\"%s\"", key);
+  const char *p = strstr(json, pat);
+  if (!p) return 0;
+  p = strchr(p + strlen(pat), ':');
+  if (!p) return 0;
+  p++;
+  while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') p++;
+  if (*p != '"') return 0;
+  p++;
+  size_t i = 0;
+  while (*p && *p != '"' && i + 1 < outsz) {
+    if (*p == '\\' && p[1]) {
+      p++;
+      out[i++] = *p++;
+      continue;
+    }
+    out[i++] = *p++;
+  }
+  out[i] = '\0';
+  return i > 0;
+}
+
+static void load_html_meta(const char *project_dir, char *lang, size_t lang_sz,
+                           char *title, size_t title_sz) {
+  snprintf(lang, lang_sz, "en");
+  snprintf(title, title_sz, "Cordlang App");
+  if (!project_dir) return;
+  char *cfg_path = fs_join(project_dir, "cordlang.json");
+  if (!cfg_path) return;
+  size_t len = 0;
+  char *json = fs_read_file(cfg_path, &len);
+  free(cfg_path);
+  if (!json) return;
+  char buf[256];
+  if (cfg_string(json, "lang", buf, sizeof(buf)))
+    snprintf(lang, lang_sz, "%s", buf);
+  if (cfg_string(json, "title", buf, sizeof(buf)))
+    snprintf(title, title_sz, "%s", buf);
+  else if (cfg_string(json, "name", buf, sizeof(buf)))
+    snprintf(title, title_sz, "%s", buf);
+  free(json);
+}
+
+static int write_vite_skeleton(const char *project_dir, const char *out) {
+  char lang[32];
+  char title[256];
+  load_html_meta(project_dir, lang, sizeof(lang), title, sizeof(title));
+
   const char *pkg =
       "{\n"
       "  \"name\": \"cordlang-react-app\",\n"
@@ -72,29 +123,34 @@ static int write_vite_skeleton(const char *out) {
       "  plugins: [react()],\n"
       "})\n";
 
-  const char *html =
-      "<!doctype html>\n"
-      "<html lang=\"en\">\n"
-      "  <head>\n"
-      "    <meta charset=\"UTF-8\" />\n"
-      "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
-      "    <title>Cordlang App</title>\n"
-      "  </head>\n"
-      "  <body>\n"
-      "    <div id=\"root\"></div>\n"
-      "    <script type=\"module\" src=\"/src/main.jsx\"></script>\n"
-      "  </body>\n"
-      "</html>\n";
+  char html[1024];
+  snprintf(html, sizeof(html),
+           "<!doctype html>\n"
+           "<html lang=\"%s\">\n"
+           "  <head>\n"
+           "    <meta charset=\"UTF-8\" />\n"
+           "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
+           "    <title>%s</title>\n"
+           "  </head>\n"
+           "  <body>\n"
+           "    <div id=\"root\"></div>\n"
+           "    <script type=\"module\" src=\"/src/main.jsx\"></script>\n"
+           "  </body>\n"
+           "</html>\n",
+           lang, title);
 
   const char *main_jsx =
       "import React from 'react'\n"
       "import { createRoot } from 'react-dom/client'\n"
       "import App from './App.jsx'\n"
+      "import ErrorBoundary from './ErrorBoundary.jsx'\n"
       "import './index.css'\n"
       "\n"
       "createRoot(document.getElementById('root')).render(\n"
       "  <React.StrictMode>\n"
-      "    <App />\n"
+      "    <ErrorBoundary>\n"
+      "      <App />\n"
+      "    </ErrorBoundary>\n"
       "  </React.StrictMode>\n"
       ")\n";
 
@@ -318,7 +374,7 @@ int react_scaffold_from_ast(const char *project_dir, Node *root) {
     free(p3);
   }
 
-  int rc = write_vite_skeleton(out);
+  int rc = write_vite_skeleton(project_dir, out);
   if (rc != 0) {
     fprintf(stderr, "Error: failed writing Vite skeleton\n");
     free(out);
@@ -365,7 +421,7 @@ int react_scaffold(const char *project_dir, const char *app_jsx) {
     free(out);
     return -1;
   }
-  int rc = write_vite_skeleton(out);
+  int rc = write_vite_skeleton(project_dir, out);
   rc |= write_path(out, "src/App.jsx",
                    app_jsx ? app_jsx
                            : "export default function App(){return null}\n");
@@ -400,7 +456,7 @@ int react_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
     free(p3);
   }
 
-  int rc = write_vite_skeleton(out);
+  int rc = write_vite_skeleton(project_dir, out);
   if (rc != 0) {
     fprintf(stderr, "Error: failed writing Vite skeleton\n");
     free(out);
