@@ -1328,15 +1328,17 @@ static void gen_ir_children(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
         sb_appendf(sb, "{`%s`}\n", body ? body : "");
         free(body);
       } else {
+        char *plain = interp_plain_text(child->value);
         sb_append(sb, "{'");
-        if (child->value) {
-          for (const char *p = child->value; *p; p++) {
+        if (plain) {
+          for (const char *p = plain; *p; p++) {
             if (*p == '\'' || *p == '\\') sb_append(sb, "\\");
             char ch[2] = {*p, 0};
             sb_append(sb, ch);
           }
         }
         sb_append(sb, "'}\n");
+        free(plain);
       }
     } else if (child->kind != IR_ATTR && child->kind != IR_EVENT &&
                child->kind != IR_PROP && child->kind != IR_STATE &&
@@ -1511,7 +1513,17 @@ static void gen_ir_node(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
           sb_appendf(sb, "{`%s`}\n", body ? body : "");
           free(body);
         } else {
-          sb_appendf(sb, "{'%s'}\n", node->value);
+          char *plain = interp_plain_text(node->value);
+          sb_append(sb, "{'");
+          if (plain) {
+            for (const char *p = plain; *p; p++) {
+              if (*p == '\'' || *p == '\\') sb_append(sb, "\\");
+              char ch[2] = {*p, 0};
+              sb_append(sb, ch);
+            }
+          }
+          sb_append(sb, "'}\n");
+          free(plain);
         }
       }
       break;

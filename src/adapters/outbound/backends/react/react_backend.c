@@ -898,15 +898,17 @@ static void gen_children(StrBuf *sb, Node *node, int depth, GenCtx *ctx) {
         sb_appendf(sb, "{`%s`}\n", body ? body : "");
         free(body);
       } else {
+        char *plain = interp_plain_text(child->value);
         sb_append(sb, "{'");
-        if (child->value) {
-          for (const char *p = child->value; *p; p++) {
+        if (plain) {
+          for (const char *p = plain; *p; p++) {
             if (*p == '\'' || *p == '\\') sb_append(sb, "\\");
             char ch[2] = {*p, 0};
             sb_append(sb, ch);
           }
         }
         sb_append(sb, "'}\n");
+        free(plain);
       }
     } else if (child->type == NODE_STRING) {
       sb_indent(sb, depth);
@@ -915,7 +917,17 @@ static void gen_children(StrBuf *sb, Node *node, int depth, GenCtx *ctx) {
         sb_appendf(sb, "{`%s`}\n", body ? body : "");
         free(body);
       } else {
-        sb_appendf(sb, "{'%s'}\n", child->value ? child->value : "");
+        char *plain = interp_plain_text(child->value);
+        sb_append(sb, "{'");
+        if (plain) {
+          for (const char *p = plain; *p; p++) {
+            if (*p == '\'' || *p == '\\') sb_append(sb, "\\");
+            char ch[2] = {*p, 0};
+            sb_append(sb, ch);
+          }
+        }
+        sb_append(sb, "'}\n");
+        free(plain);
       }
     } else if (child->type != NODE_ATTR && child->type != NODE_EVENT &&
                child->type != NODE_BOOL_ATTR && child->type != NODE_STYLE_MAP &&
@@ -1112,7 +1124,17 @@ static void gen_node(StrBuf *sb, Node *node, int depth, GenCtx *ctx) {
           sb_appendf(sb, "{`%s`}\n", body ? body : "");
           free(body);
         } else {
-          sb_appendf(sb, "{'%s'}\n", node->value);
+          char *plain = interp_plain_text(node->value);
+          sb_append(sb, "{'");
+          if (plain) {
+            for (const char *p = plain; *p; p++) {
+              if (*p == '\'' || *p == '\\') sb_append(sb, "\\");
+              char ch[2] = {*p, 0};
+              sb_append(sb, ch);
+            }
+          }
+          sb_append(sb, "'}\n");
+          free(plain);
         }
       }
       break;

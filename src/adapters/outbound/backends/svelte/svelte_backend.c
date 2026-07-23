@@ -599,9 +599,11 @@ static void gen_text_or_interp_ir(StrBuf *sb, IrNode *node, int depth) {
     sb_indent(sb, depth);
     for (size_t i = 0; i < node->n_kids; i++) {
       IrNode *c = node->kids[i];
-      if (c->kind == IR_TEXT && c->value)
-        sb_append(sb, c->value);
-      else if (c->kind == IR_INTERP && c->value)
+      if (c->kind == IR_TEXT && c->value) {
+        char *plain = interp_plain_text(c->value);
+        if (plain) sb_append(sb, plain);
+        free(plain);
+      } else if (c->kind == IR_INTERP && c->value)
         emit_interp_expr(sb, c->value);
     }
     sb_append(sb, "\n");
@@ -615,8 +617,38 @@ static void gen_text_or_interp_ir(StrBuf *sb, IrNode *node, int depth) {
       while (*p) {
         const char *hash = strstr(p, "#{");
         if (!hash) {
-          sb_append(sb, p);
+          char *plain = interp_plain_text(p);
+          if (plain) sb_append(sb, plain);
+          free(plain);
           break;
+        }
+        if (hash > node->value && hash[-1] == '\\') {
+          /* literal \#{…}: emit text before \, then #{…} without '\' */
+          if (hash - 1 > p) {
+            size_t n = (size_t)((hash - 1) - p);
+            char *tmp = malloc(n + 1);
+            if (tmp) {
+              memcpy(tmp, p, n);
+              tmp[n] = '\0';
+              sb_append(sb, tmp);
+              free(tmp);
+            }
+          }
+          const char *end = strchr(hash + 2, '}');
+          if (!end) {
+            sb_append(sb, hash);
+            break;
+          }
+          size_t n = (size_t)(end - hash + 1);
+          char *tmp = malloc(n + 1);
+          if (tmp) {
+            memcpy(tmp, hash, n);
+            tmp[n] = '\0';
+            sb_append(sb, tmp);
+            free(tmp);
+          }
+          p = end + 1;
+          continue;
         }
         if (hash > p) {
           char tmp[512];
@@ -641,7 +673,9 @@ static void gen_text_or_interp_ir(StrBuf *sb, IrNode *node, int depth) {
       }
       sb_append(sb, "\n");
     } else {
-      sb_append(sb, node->value ? node->value : "");
+      char *plain = interp_plain_text(node->value);
+      sb_append(sb, plain ? plain : "");
+      free(plain);
       sb_append(sb, "\n");
     }
   }

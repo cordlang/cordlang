@@ -777,7 +777,9 @@ static void gen_children(StrBuf *sb, Node *node, int depth) {
         /* Prefer live data-bind spans for known state inside mixed text */
         emit_text_with_live_interp(sb, child->value);
       } else {
-        html_escape_append(sb, child->value ? child->value : "");
+        char *plain = interp_plain_text(child->value);
+        html_escape_append(sb, plain ? plain : "");
+        free(plain);
       }
       sb_append(sb, "\n");
     } else if (child->type == NODE_STRING) {
@@ -785,7 +787,9 @@ static void gen_children(StrBuf *sb, Node *node, int depth) {
       if (child->value && interp_has(child->value)) {
         emit_text_with_live_interp(sb, child->value);
       } else {
-        html_escape_append(sb, child->value ? child->value : "");
+        char *plain = interp_plain_text(child->value);
+        html_escape_append(sb, plain ? plain : "");
+        free(plain);
       }
       sb_append(sb, "\n");
     } else if (!is_decl_only(child->type)) {
@@ -824,7 +828,9 @@ static void gen_node(StrBuf *sb, Node *node, int depth) {
         if (interp_has(node->value)) {
           emit_text_with_live_interp(sb, node->value);
         } else {
-          html_escape_append(sb, node->value);
+          char *plain = interp_plain_text(node->value);
+          html_escape_append(sb, plain ? plain : "");
+          free(plain);
         }
         sb_append(sb, "\n");
       }
@@ -1271,7 +1277,9 @@ static void gen_ir_children(StrBuf *sb, IrNode *node, int depth) {
       if (child->value && interp_has(child->value)) {
         emit_text_with_live_interp(sb, child->value);
       } else {
-        html_escape_append(sb, child->value ? child->value : "");
+        char *plain = interp_plain_text(child->value);
+        html_escape_append(sb, plain ? plain : "");
+        free(plain);
       }
       sb_append(sb, "\n");
     } else if (child->kind == IR_SLOT) {
@@ -1314,7 +1322,9 @@ static void gen_ir_node(StrBuf *sb, IrNode *node, int depth) {
         if (interp_has(node->value)) {
           emit_text_with_live_interp(sb, node->value);
         } else {
-          html_escape_append(sb, node->value);
+          char *plain = interp_plain_text(node->value);
+          html_escape_append(sb, plain ? plain : "");
+          free(plain);
         }
         sb_append(sb, "\n");
       }

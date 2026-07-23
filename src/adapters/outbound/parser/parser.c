@@ -57,7 +57,8 @@ static char *token_str(Token t) {
   char *s = malloc(t.len + 1);
   if (!s) return NULL;
   if (t.type == TOKEN_STRING) {
-    /* Unescape \" \\ \n \t \r inside string token span */
+    /* Unescape \" \\ \n \t \r inside string token span.
+     * Keep \#{…} escaped so interp can emit literal "#{…}". */
     size_t j = 0;
     for (size_t i = 0; i < t.len; i++) {
       if (t.start[i] == '\\' && i + 1 < t.len) {
@@ -69,7 +70,10 @@ static char *token_str(Token t) {
           s[j++] = '\t';
         else if (e == 'r')
           s[j++] = '\r';
-        else
+        else if (e == '#' && i + 1 < t.len && t.start[i + 1] == '{') {
+          s[j++] = '\\';
+          s[j++] = '#';
+        } else
           s[j++] = e;
       } else {
         s[j++] = t.start[i];

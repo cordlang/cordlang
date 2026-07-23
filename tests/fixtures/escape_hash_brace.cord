@@ -1,0 +1,9 @@
+# Golden: escaped \#{…} is literal text, not interpolation
+
+def Demo
+  state count=1
+
+  col gap=8
+    p "show \#{count}"
+    p "live #{count}"
+    p "mix \#{count} and #{count}"
