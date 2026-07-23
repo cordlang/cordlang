@@ -144,11 +144,37 @@ static int write_vite_skeleton(const char *out) {
       "  text-decoration: underline;\n"
       "}\n";
 
+  /* Same Cord spacing scale as react_scaffold (p=16 → 1rem, not Tailwind 4rem). */
   const char *tailwind =
       "/** @type {import('tailwindcss').Config} */\n"
       "export default {\n"
       "  content: ['./index.html', './src/**/*.{js,svelte}'],\n"
-      "  theme: { extend: {} },\n"
+      "  theme: {\n"
+      "    extend: {\n"
+      "      spacing: {\n"
+      "        8: '0.5rem',\n"
+      "        12: '0.75rem',\n"
+      "        16: '1rem',\n"
+      "        24: '1.5rem',\n"
+      "        32: '2rem',\n"
+      "        40: '2.5rem',\n"
+      "        48: '3rem',\n"
+      "        64: '4rem',\n"
+      "        240: '15rem',\n"
+      "      },\n"
+      "      width: {\n"
+      "        240: '15rem',\n"
+      "      },\n"
+      "      maxWidth: {\n"
+      "        640: '40rem',\n"
+      "        720: '45rem',\n"
+      "      },\n"
+      "      borderRadius: {\n"
+      "        8: '8px',\n"
+      "        12: '12px',\n"
+      "      },\n"
+      "    },\n"
+      "  },\n"
       "  plugins: [],\n"
       "}\n";
 
