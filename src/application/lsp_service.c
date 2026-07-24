@@ -5,6 +5,7 @@
 #include "domain/ast.h"
 #include "domain/diag.h"
 #include "domain/known_attrs.h"
+#include "domain/version.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -681,14 +682,17 @@ static void handle_message(const char *msg) {
   if (!method) return;
 
   if (strcmp(method, "initialize") == 0) {
-    respond_ok(has_id ? id : "0",
-               "{\"capabilities\":{"
-               "\"textDocumentSync\":1,"
-               "\"documentSymbolProvider\":true,"
-               "\"definitionProvider\":true,"
-               "\"completionProvider\":{\"triggerCharacters\":[\" \",\"=\",\"@\"]},"
-               "\"hoverProvider\":true"
-               "},\"serverInfo\":{\"name\":\"cordlang\",\"version\":\"1.0.0\"}}");
+    char caps[512];
+    snprintf(caps, sizeof(caps),
+             "{\"capabilities\":{"
+             "\"textDocumentSync\":1,"
+             "\"documentSymbolProvider\":true,"
+             "\"definitionProvider\":true,"
+             "\"completionProvider\":{\"triggerCharacters\":[\" \",\"=\",\"@\"]},"
+             "\"hoverProvider\":true"
+             "},\"serverInfo\":{\"name\":\"cordlang\",\"version\":\"%s\"}}",
+             CORDLANG_VERSION);
+    respond_ok(has_id ? id : "0", caps);
     return;
   }
   if (strcmp(method, "initialized") == 0) return;

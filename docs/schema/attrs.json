@@ -23,8 +23,21 @@
     "getServerSnapshot", "then", "catch", "as", "when", "of",
     "text", "email", "password", "search", "tel", "url", "date", "time",
     "datetime-local", "file", "submit", "reset", "button", "number", "range",
-    "color", "hidden"
+    "color", "hidden",
+    "purpose", "importance"
   ],
+  "semanticAttrs": {
+    "purpose": {
+      "description": "Optional intent hint for AI / tooling (not visual). HTML/email may emit data-purpose.",
+      "vocabulary": [
+        "navigation", "content", "action", "form", "status", "decoration", "landmark"
+      ]
+    },
+    "importance": {
+      "description": "Relative priority for summarization / focus (not visual). HTML/email may emit data-importance.",
+      "vocabulary": ["primary", "secondary", "tertiary", "optional", "critical"]
+    }
+  },
   "eventPrefix": "@",
   "forbiddenJsxAttrs": [
     "className", "onClick", "onChange", "onSubmit", "onInput", "htmlFor",
@@ -34,6 +47,7 @@
     "PascalCase tags are components; arbitrary props allowed.",
     "Events are @name=expr (NODE_EVENT), not attrs.",
     "Interpolation is #{expr}; escape literal with \\#{.",
-    "aria-* and data-* are always known; check warns on img without alt."
+    "aria-* and data-* are always known; check warns on img without alt.",
+    "purpose / importance are optional semantic metadata; prefer the documented vocabulary."
   ]
 }

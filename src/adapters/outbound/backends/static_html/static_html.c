@@ -455,9 +455,13 @@ static void emit_html_attrs(StrBuf *sb, IrNode *node, const char *tag) {
       continue;
     const char *an = c->name;
     if (strcmp(an, "to") == 0) an = "href";
+    if (strcmp(an, "purpose") == 0) an = "data-purpose";
+    if (strcmp(an, "importance") == 0) an = "data-importance";
     if (strcmp(an, "src") == 0 || strcmp(an, "alt") == 0 ||
         strcmp(an, "href") == 0 || strcmp(an, "width") == 0 ||
-        strcmp(an, "height") == 0 || strcmp(an, "title") == 0) {
+        strcmp(an, "height") == 0 || strcmp(an, "title") == 0 ||
+        strcmp(an, "data-purpose") == 0 ||
+        strcmp(an, "data-importance") == 0) {
       sb_appendf(sb, " %s=\"", an);
       html_escape_append(sb, c->value ? c->value : "");
       sb_append(sb, "\"");

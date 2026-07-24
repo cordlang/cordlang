@@ -46,6 +46,17 @@ props open: boolean = false
 
 Types are validated by `check`; codegen still emits JS (types are contracts for humans/IA, not a TS host).
 
+### Semantic metadata (optional)
+
+Attrs `purpose` and `importance` are **known** (no `check` warning). Prefer the vocabulary in [`schema/attrs.json`](./schema/attrs.json) `semanticAttrs`:
+
+```cord
+btn "Save" variant=primary purpose=action importance=primary
+p "Hint" muted purpose=content importance=optional
+```
+
+HTML/email backends may passthrough as `data-purpose` / `data-importance`. SPA backends may ignore them (metadata for AI/tooling, not layout).
+
 ---
 
 ## DO
@@ -67,6 +78,7 @@ Types are validated by `check`; codegen still emits JS (types are contracts for 
 | Use `theme` for design tokens | CSS vars backend |
 | Use `context` / `provide` / `ctx` | shared theme etc. |
 | Stick to attrs in `schema/attrs.json` | unknown attrs → `check` warning |
+| Optional `purpose` / `importance` | semantic metadata (see below) |
 | Run `cordlang check` after edits | when CLI available |
 | Point users to `cordlang run react\|svelte` | for real apps |
 

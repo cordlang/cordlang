@@ -10,6 +10,27 @@ Ver [`../templates/`](../templates/) — 5 seeds para vibecode / dogfooding.
 | form-fetch | `templates/form-fetch/` | Forms + data |
 | docs-shell | `templates/docs-shell/` | Documentación |
 
-No convertir templates React de internet. Ampliar solo con UI Cord.
+## Crear proyecto desde template
 
-Futuro: `cordlang add <id>` cuando el packaging esté listo (ROADMAP Horizonte B).
+```bash
+cordlang init my-app --template counter
+cordlang init landing-demo --template landing
+cd my-app && cordlang check && cordlang run
+```
+
+También: `cordlang init my-app -t dashboard`.
+
+El CLI copia `templates/<id>/` al destino (debe poder resolver `templates/` subiendo desde el cwd — típicamente desde un checkout del repo Cordlang).
+
+## Paquetes locales
+
+Para reutilizar una carpeta de `.cord` **dentro** de un proyecto existente:
+
+```bash
+cordlang add templates/counter          # → src/vendor/…
+cordlang add ../my-pkg --lib            # → src/lib/…
+```
+
+Detalle: [`PACKAGES.md`](./PACKAGES.md).
+
+No convertir templates React de internet. Ampliar solo con UI Cord.

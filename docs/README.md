@@ -18,6 +18,11 @@ Start here for humans and for AI tools.
 | [PDF.md](./PDF.md) | Backend map | HTML → external PDF |
 | [NEXT.md](./NEXT.md) | Meta backend | Next.js wrap |
 | [SVELTEKIT.md](./SVELTEKIT.md) | Meta backend | SvelteKit wrap |
+| [TEMPLATES.md](./TEMPLATES.md) | Seeds | `init --template` + templates/ |
+| [PACKAGES.md](./PACKAGES.md) | Ecosystem | `cordlang add` local packages |
+| [VERSIONING.md](./VERSIONING.md) | Policy | Language 1.0 vs CLI semver |
+| [PLAYGROUND.md](./PLAYGROUND.md) | Ecosystem | WASM playground stub |
+| [NATIVE.md](./NATIVE.md) | Experimental | Flutter / SwiftUI / Compose contract |
 | [IR.md](./IR.md) | Compiler | IR pipeline |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Contributors | Parser → AST → IR → codegen |
 | [ROADMAP.md](./ROADMAP.md) | Planning | Phases A–H, next steps |

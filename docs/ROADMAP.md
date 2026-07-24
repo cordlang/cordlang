@@ -269,15 +269,16 @@ Mapa completo: [`docs/SVELTE.md`](./SVELTE.md) (basado en [svelte.dev/docs/svelt
 |---|------|-------|
 | F1 | Backend **Vue 3** | ✅ `backends/vue/` + goldens + `docs/VUE.md` |
 | F2 | Backend **Solid** | ✅ `backends/solid/` + goldens + `docs/SOLID.md` |
-| F3 | Package registry de componentes `.cord` | |
+| F3 | Package registry de componentes `.cord` | ✅ MVP local: `cordlang add` → `src/vendor|lib/` + [`PACKAGES.md`](./PACKAGES.md) (sin registry remoto) |
 | F4 | AI prompts / skill “write cord not jsx” | ✅ `docs/AI.md` + `AGENTS.md` + `skills/write-cord` |
-| F5 | Playground web (WASM compile) | |
+| F5 | Playground web (WASM compile) | ✅ stub: `playground/` + [`PLAYGROUND.md`](./PLAYGROUND.md) (WASM real pendiente) |
 | F6 | CI multi-backend | ✅ goldens Win/Linux; demo `--check` = G4 |
-| F7 | Versionado del lenguaje (0.x → 1.0 freeze) | |
+| F7 | Versionado del lenguaje (0.x → 1.0 freeze) | ✅ [`VERSIONING.md`](./VERSIONING.md) + `CORDLANG_VERSION` / `cordlang --version` |
 | F8 | Backend **email** HTML estático | ✅ `backends/email/` + `static_html` + `docs/EMAIL.md` |
 | F9 | Backend **pdf** (HTML + conversión externa) | ✅ `backends/pdf/` + `docs/PDF.md` |
 | F10 | Meta **Next** (wrap React) | ✅ `backends/next/` + `docs/NEXT.md` + smoke |
 | F11 | Meta **SvelteKit** (wrap Svelte) | ✅ `backends/sveltekit/` + `docs/SVELTEKIT.md` + smoke |
+| F12 | Native Flutter/SwiftUI/Compose | 🟡 spike docs + [`NATIVE.md`](./NATIVE.md) + `examples/native/` (sin backend registrado) |
 
 ---
 
@@ -335,12 +336,12 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 
 | Tema | Notas |
 |------|--------|
-| Metadata semántica (`purpose`, `importance`) | Vocabulario versionado + codegen; no attrs libres |
-| Marketplace `cord add` | Paquetes 100 % Cord |
-| Email HTML / PDF desde IR | Multi-salida barata |
-| Vue / Solid | Backends nuevos sobre IR estable |
-| SvelteKit / Next RSC | Backends meta aparte, no ensuciar SPA |
-| Flutter / SwiftUI / Compose | Muy largo plazo |
+| Metadata semántica (`purpose`, `importance`) | ✅ vocabulario en `schema/attrs.json` + `known_attrs`; passthrough HTML/email `data-*` |
+| Marketplace `cord add` | ✅ MVP local (`cordlang add`); registry remoto pendiente |
+| Email HTML / PDF desde IR | ✅ |
+| Vue / Solid | ✅ |
+| SvelteKit / Next RSC | ✅ MVP meta (client wrap) |
+| Flutter / SwiftUI / Compose | 🟡 spike [`NATIVE.md`](./NATIVE.md) |
 | `@ai` en fuente | Evitar en build; si existe → preprocesador offline que escribe `.cord` normal |
 
 ### 4.4 No haremos
@@ -420,7 +421,7 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 | **M6 — Public + polish** | Fase G (G0–G6 ✅) | ✅ |
 | **M7 — Horizonte A** | A1–A6 (DX, contratos, paridad, IA workflow, templates, analyze) | ✅ gate 1.0 |
 | **M8 — Madurez** | Fase H (regresión, ARCHITECTURE, SPEC, bench, IR passes) | ✅ |
-| **M9 — Horizonte B / meta** | Platform → Vue → Solid → email/PDF → Next/Kit → ecosystem → native | en curso |
+| **M9 — Horizonte B / meta** | Platform → Vue → Solid → email/PDF → Next/Kit → ecosystem (`add`, templates, versioning, playground stub) → native spike | 🟡 en curso |
 
 Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `ir`, `dx`, `ci`, `docs`.
 
@@ -435,4 +436,4 @@ Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `ir`, `dx`, `ci`
 
 ---
 
-*Última actualización: Fase H (madurez) ✅; prioridades = Horizonte A residual / B.*
+*Última actualización: Fase F ecosistema MVP (add / init --template / versioning / playground stub / native spike); prioridades = polish + WASM real / registry remoto.*

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cordlang Playground (stub)</title>
+  <style>
+    :root {
+      --bg: #0c1222;
+      --panel: #141c2e;
+      --text: #e8eefc;
+      --muted: #9aa8c7;
+      --accent: #5b8def;
+      --code: #0a0f1a;
+      --border: #243049;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      background: radial-gradient(1200px 600px at 10% -10%, #1a2744, var(--bg));
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    main {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+    h1 { font-size: 1.75rem; margin: 0 0 0.35rem; letter-spacing: -0.02em; }
+    .tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 0.15rem 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+    p { color: var(--muted); max-width: 62ch; }
+    pre {
+      background: var(--code);
+      border: 1px solid var(--border);
+      padding: 1rem 1.1rem;
+      overflow: auto;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.85rem;
+      color: var(--text);
+    }
+    code { font-family: inherit; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 1.25rem;
+      margin: 1.5rem 0;
+    }
+    a { color: var(--accent); }
+    ol { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <span class="tag">MVP stub · WASM not bundled</span>
+    <h1>Cordlang Playground</h1>
+    <p>
+      Compile <code>.cord</code> with the <strong>Cordlang CLI</strong> for now.
+      A future build will ship a WASM compiler for in-browser codegen.
+    </p>
+
+    <div class="panel">
+      <p style="margin-top:0;color:var(--text)"><strong>CLI workflow</strong></p>
+      <pre><code>cordlang compile sample.cord --ir
+cordlang compile sample.cord --backend react
+cordlang check sample.cord</code></pre>
+    </div>
+
+    <p><strong>Sample</strong> <code>counter.cord</code></p>
+    <pre id="sample"><code>def Counter
+  state count=0
+  props label: string = "Counter"
+  col gap=16 p=24 center
+    h1 "#{label}" size=xl bold
+    span "#{count}" size=4xl bold
+    row gap=8 center
+      btn "-" @click=setCount(count - 1) variant=outline
+      btn "+" @click=setCount(count + 1) variant=primary</code></pre>
+
+    <ol>
+      <li>Save the sample as <code>sample.cord</code></li>
+      <li>Run <code>cordlang compile sample.cord --ir</code> to inspect the IR</li>
+      <li>Run with <code>--backend react|svelte|vue|solid</code> for codegen</li>
+    </ol>
+
+    <p>
+      Docs: <a href="../docs/PLAYGROUND.md">docs/PLAYGROUND.md</a> ·
+      <a href="../docs/IR.md">IR.md</a> ·
+      <a href="../docs/GUIDE.md">GUIDE.md</a>
+    </p>
+  </main>
+</body>
+</html>

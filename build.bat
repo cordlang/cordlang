@@ -8,6 +8,7 @@ gcc -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-function -Wno-format
   src/domain/ir.c ^
   src/domain/expr.c ^
   src/application/init_service.c ^
+  src/application/add_service.c ^
   src/application/compile_service.c ^
   src/application/check_service.c ^
   src/application/analyze_service.c ^

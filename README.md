@@ -108,7 +108,11 @@ Produces `cordlang.exe` (Windows) or `cordlang`.
 
 ```bash
 cordlang init my-app
+cordlang init my-app --template counter   # counter | landing | dashboard | form-fetch | docs-shell
 cd my-app
+
+cordlang add ../path/to/pkg               # → src/vendor/<name>/
+cordlang --version
 
 cordlang run                 # HTML preview at http://127.0.0.1:4173
 cordlang run react           # generate dist/react

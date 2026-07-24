@@ -74,7 +74,9 @@ static inline int cord_is_dom_attr(const char *name) {
           strcmp(name, "datetime-local") == 0 || strcmp(name, "file") == 0 ||
           strcmp(name, "submit") == 0 || strcmp(name, "reset") == 0 ||
           strcmp(name, "button") == 0 || strcmp(name, "number") == 0 ||
-          strcmp(name, "range") == 0 || strcmp(name, "hidden") == 0);
+          strcmp(name, "range") == 0 || strcmp(name, "hidden") == 0 ||
+          /* Semantic metadata (AI / a11y intent) → data-purpose / data-importance */
+          strcmp(name, "purpose") == 0 || strcmp(name, "importance") == 0);
 }
 
 static inline int cord_is_builtin_tag(const char *tag) {

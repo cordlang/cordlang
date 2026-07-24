@@ -1,4 +1,5 @@
 #include "application/init_service.h"
+#include "application/add_service.h"
 #include "application/compile_service.h"
 #include "application/check_service.h"
 #include "application/analyze_service.h"
@@ -16,6 +17,7 @@
 #include "domain/diag.h"
 #include "domain/ir.h"
 #include "domain/ir_pass.h"
+#include "domain/version.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,7 +25,8 @@
 static void print_usage(void) {
   printf("Cordlang — universal UI intermediate language\n\n");
   printf("Usage:\n");
-  printf("  cordlang init [name]           Create a new project\n");
+  printf("  cordlang init [name] [--template <id>]  Create a new project\n");
+  printf("  cordlang add <path-or-name> [--lib]     Copy a local Cord package\n");
   printf("  cordlang run                   Native runtime preview (HTML, no Node)\n");
   printf("  cordlang run preview           Same as: cordlang run\n");
   printf("  cordlang run <backend>         Compile + scaffold full project\n");
@@ -40,6 +43,7 @@ static void print_usage(void) {
   printf("  cordlang symbols [entry]       List components, routes, layouts\n");
   printf("  cordlang goto <Name> [entry]   Print definition path of a symbol\n");
   printf("  cordlang lsp                   Minimal Language Server (stdio JSON-RPC)\n");
+  printf("  cordlang --version             Print CLI version\n");
   printf("  cordlang help                  Show this help\n\n");
   printf("Backends:\n");
   printf("  preview / html                 Built-in runtime preview (default for run)\n");
@@ -51,6 +55,10 @@ static void print_usage(void) {
   printf("  pdf                            Static HTML for external PDF conversion\n");
   printf("  next                           Next.js App Router wrapper around React emit\n");
   printf("  sveltekit                      SvelteKit wrapper around Svelte emit\n\n");
+  printf("Flags (init):\n");
+  printf("  --template <id>                Seed from templates/ (counter, landing, …)\n");
+  printf("Flags (add):\n");
+  printf("  --lib                          Install into src/lib/<name>/ (default: src/vendor/)\n\n");
   printf("Flags (run react|svelte|vue|solid|next|sveltekit):\n");
   printf("  --check                        After first scaffold: npm install if needed + build\n");
   printf("  --watch                        Poll .cord files; rebuild dist/<backend> on change\n");
@@ -67,6 +75,9 @@ static void print_usage(void) {
   printf("  --ast / --tokens / --ir        Debug parse / IR output\n\n");
   printf("Examples:\n");
   printf("  cordlang init my-app\n");
+  printf("  cordlang init my-app --template counter\n");
+  printf("  cordlang add ../pkgs/ui-kit\n");
+  printf("  cordlang add counter --lib\n");
   printf("  cd my-app && cordlang run         # preview in browser\n");
   printf("  cd my-app && cordlang run react   # generate React app\n");
   printf("  cd my-app && cordlang run svelte  # generate Svelte app\n");
@@ -501,9 +512,64 @@ int cli_run(int argc, char **argv) {
     return 0;
   }
 
+  if (strcmp(cmd, "--version") == 0 || strcmp(cmd, "-V") == 0 ||
+      strcmp(cmd, "version") == 0) {
+    printf("cordlang %s\n", CORDLANG_VERSION);
+    return 0;
+  }
+
   if (strcmp(cmd, "init") == 0) {
-    const char *name = argc > 2 ? argv[2] : ".";
-    return init_service_run(name);
+    const char *name = ".";
+    const char *tmpl = NULL;
+    for (int i = 2; i < argc; i++) {
+      if (strcmp(argv[i], "--template") == 0 || strcmp(argv[i], "-t") == 0) {
+        if (i + 1 >= argc) {
+          fprintf(stderr, "Error: --template requires a name\n");
+          fprintf(stderr,
+                  "Usage: cordlang init [name] --template <id>\n"
+                  "Templates: counter, landing, dashboard, form-fetch, "
+                  "docs-shell\n");
+          return 1;
+        }
+        tmpl = argv[++i];
+      } else if (argv[i][0] == '-') {
+        fprintf(stderr, "Error: unknown init flag: %s\n", argv[i]);
+        return 1;
+      } else if (strcmp(name, ".") == 0) {
+        name = argv[i];
+      } else {
+        fprintf(stderr, "Error: unexpected argument: %s\n", argv[i]);
+        return 1;
+      }
+    }
+    return init_service_run(name, tmpl);
+  }
+
+  if (strcmp(cmd, "add") == 0) {
+    const char *pkg = NULL;
+    int dest_lib = 0;
+    for (int i = 2; i < argc; i++) {
+      if (strcmp(argv[i], "--lib") == 0) {
+        dest_lib = 1;
+      } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
+        printf("Usage: cordlang add <path-or-name> [--lib]\n\n");
+        printf("Copy a local Cord package (folder of .cord files, optional\n");
+        printf("cordlang.pkg.json) into the current project:\n");
+        printf("  default → src/vendor/<name>/\n");
+        printf("  --lib   → src/lib/<name>/\n\n");
+        printf("See docs/PACKAGES.md\n");
+        return 0;
+      } else if (argv[i][0] == '-') {
+        fprintf(stderr, "Error: unknown add flag: %s\n", argv[i]);
+        return 1;
+      } else if (!pkg) {
+        pkg = argv[i];
+      } else {
+        fprintf(stderr, "Error: unexpected argument: %s\n", argv[i]);
+        return 1;
+      }
+    }
+    return add_service_run(pkg, dest_lib);
   }
 
   if (strcmp(cmd, "run") == 0) {

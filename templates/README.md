@@ -1,8 +1,15 @@
 # Cord-native templates
 
-Plantillas **escritas en `.cord`**, no puertos de themes React. Copiar a un proyecto o usar como referencia.
+Plantillas **escritas en `.cord`**, no puertos de themes React.
 
-`cord add <template>` llega cuando el formato de paquete sea estable (Horizonte B). Hasta entonces: este directorio + [`docs/TEMPLATES.md`](../docs/TEMPLATES.md).
+```bash
+cordlang init my-app --template counter
+cordlang init my-landing --template landing
+```
+
+Ids: `counter`, `landing`, `dashboard`, `form-fetch`, `docs-shell`.
+
+Docs: [`docs/TEMPLATES.md`](../docs/TEMPLATES.md) · paquetes locales: [`docs/PACKAGES.md`](../docs/PACKAGES.md).
 
 | Template | Qué incluye |
 |----------|-------------|
@@ -13,6 +20,7 @@ Plantillas **escritas en `.cord`**, no puertos de themes React. Copiar a un proy
 | [`docs-shell/`](./docs-shell/) | Docs layout (nav + slot) |
 
 ```bash
+# Alternativa manual
 cp -r templates/landing my-landing
 cd my-landing && cordlang check && cordlang run react
 ```
