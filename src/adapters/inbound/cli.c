@@ -1,3 +1,5 @@
+#include "application/preset_service.h"
+#include "adapters/outbound/backends/preset_registry.h"
 #include "application/init_service.h"
 #include "application/add_service.h"
 #include "application/compile_service.h"
@@ -27,6 +29,7 @@ static void print_usage(void) {
   printf("Usage:\n");
   printf("  cordlang init [name] [--template <id>]  Create a new project\n");
   printf("  cordlang add <path-or-name> [--lib]     Copy a local Cord package\n");
+  printf("  cordlang preset list|add <id>…         Project capabilities (icons/motion/…)\n");
   printf("  cordlang run                   Native runtime preview (HTML, no Node)\n");
   printf("  cordlang run preview           Same as: cordlang run\n");
   printf("  cordlang run <backend>         Compile + scaffold full project\n");
@@ -494,6 +497,7 @@ static int ai_print_context(void) {
       "../docs/AI_CONTEXT.md",
       NULL,
   };
+  int printed = 0;
   for (int i = 0; paths[i]; i++) {
     if (!fs_exists(paths[i])) continue;
     size_t len = 0;
@@ -502,14 +506,34 @@ static int ai_print_context(void) {
     fwrite(body, 1, len, stdout);
     if (len == 0 || body[len - 1] != '\n') fputc('\n', stdout);
     free(body);
-    return 0;
+    printed = 1;
+    break;
   }
-  /* Embedded fallback if docs not found from CWD */
-  printf("# Cordlang AI context (embedded fallback)\n\n");
-  printf("Prefer .cord over JSX. Use #{expr}, @click=, state/setX.\n");
-  printf("Validate: cordlang check [--json]\n");
-  printf("Schema: docs/schema/attrs.json · Skill: skills/write-cord/\n");
-  printf("Full file missing — open docs/AI_CONTEXT.md from the repo.\n");
+  if (!printed) {
+    printf("# Cordlang AI context (embedded fallback)\n\n");
+    printf("Prefer .cord over JSX. Use #{expr}, @click=, state/setX.\n");
+    printf("Validate: cordlang check [--json]\n");
+    printf("Schema: docs/schema/attrs.json · Skill: skills/write-cord/\n");
+    printf("Capabilities: presets icons/motion/charts — see docs/LIBRARIES.md\n");
+    printf("Full file missing — open docs/AI_CONTEXT.md from the repo.\n");
+  }
+  /* Append active project presets when cordlang.json is nearby */
+  {
+    char names[16][PRESET_NAME_LEN];
+    const char *dirs[] = {".", "my-app", NULL};
+    for (int d = 0; dirs[d]; d++) {
+      int n = preset_load_from_project(dirs[d], names, 16);
+      if (n < 0) continue;
+      printf("\n## Project presets (%s)\n\n", dirs[d]);
+      if (n == 0)
+        printf("(none — `cordlang preset add icons motion`)\n");
+      else {
+        for (int i = 0; i < n; i++) printf("- %s\n", names[i]);
+      }
+      printf("\nBackends: react, svelte, vue, solid (adapters merge npm per target).\n");
+      break;
+    }
+  }
   return 0;
 }
 
@@ -671,6 +695,10 @@ int cli_run(int argc, char **argv) {
       }
     }
     return add_service_run(pkg, dest_lib);
+  }
+
+  if (strcmp(cmd, "preset") == 0) {
+    return preset_service_run(argc - 2, argv + 2);
   }
 
   if (strcmp(cmd, "run") == 0) {

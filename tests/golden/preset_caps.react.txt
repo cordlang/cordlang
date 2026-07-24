@@ -1,0 +1,36 @@
+// ===== src/components/CapDemo.jsx =====
+/* cordlang: source=src/components/CapDemo.cord */
+import CordIcon from '../CordIcon';
+import CordMotion from '../CordMotion';
+import CordChart from '../CordChart';
+
+export default function CapDemo({  }) {
+  return (
+    <>
+      <div className="flex flex-col gap-16 p-24">
+        <div className="flex flex-row gap-8 flex items-center justify-center">
+          <CordIcon name="sparkles">
+          </CordIcon>
+          <h1 className="text-2xl font-bold">
+            {'Capabilities'}
+          </h1>
+        </div>
+        <CordMotion fade={true}>
+          <p className="text-muted">
+            {'Motion + icons'}
+          </p>
+        </CordMotion>
+        <CordChart type="bar" data={sales}>
+        </CordChart>
+      </div>
+    </>
+  );
+}
+
+// ===== src/App.jsx =====
+/* cordlang: source=src/app.cord */
+import CapDemo from './components/CapDemo';
+
+export default function App() {
+  return <CapDemo />;
+}

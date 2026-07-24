@@ -58,8 +58,24 @@ static inline const char *irw_html_tag(const char *tag) {
   if (strcmp(tag, "link") == 0) return "a";
   if (strcmp(tag, "fragment") == 0) return NULL;
   if (strcmp(tag, "checkbox") == 0 || strcmp(tag, "radio") == 0) return "input";
-  if (strcmp(tag, "icon") == 0) return "span";
+  if (strcmp(tag, "icon") == 0) return "CordIcon";
+  if (strcmp(tag, "motion") == 0 || strcmp(tag, "Motion") == 0) return "CordMotion";
+  if (strcmp(tag, "chart") == 0 || strcmp(tag, "Chart") == 0) return "CordChart";
   return tag;
+}
+
+static inline int irw_is_cord_capability_tag(const char *tag) {
+  return tag && (strcmp(tag, "icon") == 0 || strcmp(tag, "motion") == 0 ||
+                 strcmp(tag, "Motion") == 0 || strcmp(tag, "chart") == 0 ||
+                 strcmp(tag, "Chart") == 0);
+}
+
+static inline const char *irw_cord_bridge_name(const char *tag) {
+  if (!tag) return NULL;
+  if (strcmp(tag, "icon") == 0) return "CordIcon";
+  if (strcmp(tag, "motion") == 0 || strcmp(tag, "Motion") == 0) return "CordMotion";
+  if (strcmp(tag, "chart") == 0 || strcmp(tag, "Chart") == 0) return "CordChart";
+  return NULL;
 }
 
 static inline const char *irw_base_class(const char *tag) {

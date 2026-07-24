@@ -1,0 +1,3 @@
+def Button
+  props label: string = "Button"
+  btn "#{label}" variant=primary

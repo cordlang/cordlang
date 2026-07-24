@@ -38,7 +38,7 @@ if (-not (Test-Path -LiteralPath $GoldenDir)) {
   New-Item -ItemType Directory -Path $GoldenDir | Out-Null
 }
 
-$names = "basic_counter", "routes_simple", "interp", "if_for", "nested_routes", "react_phase_d", "component_slot", "string_dotted", "escape_hash_brace", "svelte_phase_e"
+$names = "basic_counter", "routes_simple", "interp", "if_for", "nested_routes", "react_phase_d", "component_slot", "string_dotted", "escape_hash_brace", "svelte_phase_e", "preset_caps"
 $backends = "react", "svelte", "vue", "solid"
 $extraGoldens = @(
   @{ Name = "email_static"; Backend = "email" },
@@ -422,6 +422,32 @@ if (Test-Path -LiteralPath $iaUa) {
 } else {
   Write-Host "FAIL: missing ia_fail_unknown_attr.cord" -ForegroundColor Red
   $failed = $failed + 1
+}
+
+$iaTrapPairs = @(
+  @{ File = "ia_fail_usestate.cord"; Code = "jsx-hook" },
+  @{ File = "ia_fail_map.cord"; Code = "jsx-map" },
+  @{ File = "ia_fail_jsx_tag.cord"; Code = "jsx-tag" },
+  @{ File = "ia_fail_missing_preset.cord"; Code = "missing-preset" },
+  @{ File = "ia_fail_foreign_unbound.cord"; Code = "foreign-unbound" }
+)
+foreach ($pair in $iaTrapPairs) {
+  $iaPath = Join-Path $FixturesDir $pair.File
+  if (Test-Path -LiteralPath $iaPath) {
+    $out = & $Cordlang check --json $iaPath 2>&1 | Out-String
+    $codePat = '"code":"' + $pair.Code + '"'
+    if ($out -match [regex]::Escape($codePat)) {
+      Write-Host ("PASS: check " + $pair.File + " → " + $pair.Code) -ForegroundColor Green
+      $passed = $passed + 1
+    } else {
+      Write-Host ("FAIL: check " + $pair.File + " expected code " + $pair.Code) -ForegroundColor Red
+      Write-Host $out
+      $failed = $failed + 1
+    }
+  } else {
+    Write-Host ("FAIL: missing " + $pair.File) -ForegroundColor Red
+    $failed = $failed + 1
+  }
 }
 
 & $Cordlang analyze $typedOk 2>&1 | Out-Null

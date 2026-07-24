@@ -1,0 +1,12 @@
+# Capabilities demo — requires presets icons + motion (+ charts optional)
+# cordlang preset add icons motion charts
+
+def CapDemo
+  state sales = 0
+  col gap=16 p=24
+    row gap=8 center
+      icon name=sparkles size=24
+      h1 "Capabilities" size=2xl bold
+    motion fade
+      p "Motion + icons without framework imports in .cord" muted
+    chart type=bar data=sales

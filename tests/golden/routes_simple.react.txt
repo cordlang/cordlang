@@ -1,6 +1,6 @@
 // ===== src/pages/HomePage.jsx =====
 /* cordlang: source=src/pages/HomePage.cord */
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 
 export default function HomePage({  }) {
   return (
@@ -12,9 +12,9 @@ export default function HomePage({  }) {
         <p className="text-muted">
           {'Welcome home.'}
         </p>
-        <Link to="/about">
+        <NavLink to="/about">
           {'Go to About'}
-        </Link>
+        </NavLink>
       </div>
     </>
   );
@@ -22,7 +22,7 @@ export default function HomePage({  }) {
 
 // ===== src/pages/AboutPage.jsx =====
 /* cordlang: source=src/pages/AboutPage.cord */
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 
 export default function AboutPage({  }) {
   return (
@@ -34,9 +34,9 @@ export default function AboutPage({  }) {
         <p className="text-muted">
           {'About this app.'}
         </p>
-        <Link to="/">
+        <NavLink to="/" end>
           {'Back home'}
-        </Link>
+        </NavLink>
       </div>
     </>
   );
@@ -44,7 +44,7 @@ export default function AboutPage({  }) {
 
 // ===== src/layouts/DefaultLayout.jsx =====
 /* cordlang: source=src/layouts/default.cord */
-import { Link, Outlet } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 
 export default function DefaultLayout({  }) {
   return (
@@ -56,12 +56,12 @@ export default function DefaultLayout({  }) {
           </h1>
           <nav>
             <div className="flex flex-row gap-16 flex items-center justify-center">
-              <Link to="/">
+              <NavLink to="/" end>
                 {'Home'}
-              </Link>
-              <Link to="/about">
+              </NavLink>
+              <NavLink to="/about">
                 {'About'}
-              </Link>
+              </NavLink>
             </div>
           </nav>
         </div>

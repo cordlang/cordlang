@@ -58,6 +58,8 @@ typedef enum {
   NODE_EFFECT_EVENT,      /* useEffectEvent: value=name, value2=fn/body */
   NODE_EXTERNAL_STORE,    /* useSyncExternalStore: value=name, value2=subscribe */
   NODE_IMPERATIVE_HANDLE, /* useImperativeHandle: value=ref, value2=body */
+  /* Libraries / capabilities (append only) */
+  NODE_FOREIGN, /* foreign Comp: value=Name; attrs react/svelte/vue/solid = module */
 } NodeType;
 
 typedef struct Node {

@@ -22,7 +22,7 @@ if [[ "${1:-}" == "--update" || "${1:-}" == "-UpdateGoldens" ]]; then
   UPDATE=1
 fi
 
-FIXTURES=(basic_counter routes_simple interp if_for nested_routes component_slot string_dotted escape_hash_brace react_phase_d svelte_phase_e)
+FIXTURES=(basic_counter routes_simple interp if_for nested_routes component_slot string_dotted escape_hash_brace react_phase_d svelte_phase_e preset_caps)
 # Main matrix: SPA backends with full golden coverage.
 # email/pdf/next/sveltekit use dedicated fixtures + regression/ (see below).
 BACKENDS=(react svelte vue solid)
@@ -331,6 +331,27 @@ else
   failed=$((failed + 1))
 fi
 
+# AI trap codes: jsx-hook / jsx-map / jsx-tag
+for ia_pair in "ia_fail_usestate.cord:jsx-hook" "ia_fail_map.cord:jsx-map" "ia_fail_jsx_tag.cord:jsx-tag" "ia_fail_missing_preset.cord:missing-preset" "ia_fail_foreign_unbound.cord:foreign-unbound"; do
+  ia_file="${ia_pair%%:*}"
+  ia_code="${ia_pair##*:}"
+  ia_path="$ROOT/tests/fixtures/$ia_file"
+  if [[ -f "$ia_path" ]]; then
+    out=$("$CORDLANG" check --json "$ia_path" 2>/dev/null || true)
+    if echo "$out" | grep -q "\"code\":\"$ia_code\""; then
+      echo "PASS: check $ia_file → $ia_code"
+      passed=$((passed + 1))
+    else
+      echo "FAIL: check $ia_file expected code $ia_code"
+      echo "$out"
+      failed=$((failed + 1))
+    fi
+  else
+    echo "FAIL: missing $ia_file"
+    failed=$((failed + 1))
+  fi
+done
+
 # analyze smoke
 if "$CORDLANG" analyze "$typed_ok" >/dev/null 2>&1; then
   echo "PASS: analyze typed_props_ok"
@@ -339,6 +360,64 @@ else
   echo "FAIL: analyze typed_props_ok"
   failed=$((failed + 1))
 fi
+
+# preset CLI + scaffold merge smoke
+preset_tmp=$(mktemp -d)
+mkdir -p "$preset_tmp/src"
+cat > "$preset_tmp/cordlang.json" <<'EOF'
+{
+  "name": "preset-smoke",
+  "entry": "src/app.cord",
+  "presets": []
+}
+EOF
+cp "$ROOT/examples/preset_motion_icons.cord" "$preset_tmp/src/app.cord"
+if (cd "$preset_tmp" && "$CORDLANG" preset add icons motion charts >/dev/null 2>&1); then
+  if grep -q '"icons"' "$preset_tmp/cordlang.json" && grep -q '"motion"' "$preset_tmp/cordlang.json"; then
+    echo "PASS: preset add updates cordlang.json"
+    passed=$((passed + 1))
+  else
+    echo "FAIL: preset add did not write presets"
+    failed=$((failed + 1))
+  fi
+else
+  echo "FAIL: preset add"
+  failed=$((failed + 1))
+fi
+if (cd "$preset_tmp" && "$CORDLANG" check >/dev/null 2>&1); then
+  echo "PASS: check with presets (zero)"
+  passed=$((passed + 1))
+else
+  echo "FAIL: check with presets expected zero"
+  failed=$((failed + 1))
+fi
+for be in react svelte; do
+  if (cd "$preset_tmp" && "$CORDLANG" run "$be" --check >/dev/null 2>&1); then
+    echo "PASS: run $be --check (presets)"
+    passed=$((passed + 1))
+  else
+    echo "FAIL: run $be --check (presets)"
+    failed=$((failed + 1))
+  fi
+  pkg="$preset_tmp/dist/$be/package.json"
+  if [[ -f "$pkg" ]]; then
+    if [[ "$be" == "react" ]] && grep -q 'lucide-react\|framer-motion\|recharts' "$pkg"; then
+      echo "PASS: react package.json merged preset deps"
+      passed=$((passed + 1))
+    elif [[ "$be" == "svelte" ]] && grep -q '@lucide/svelte\|lucide-svelte' "$pkg"; then
+      echo "PASS: svelte package.json merged preset deps"
+      passed=$((passed + 1))
+    else
+      echo "FAIL: $be package.json missing preset deps"
+      cat "$pkg" || true
+      failed=$((failed + 1))
+    fi
+  else
+    echo "FAIL: missing $pkg"
+    failed=$((failed + 1))
+  fi
+done
+rm -rf "$preset_tmp"
 
 if [[ -f "$ROOT/my-app/cordlang.json" ]]; then
   if (cd "$ROOT/my-app" && "$CORDLANG" check >/dev/null 2>&1); then

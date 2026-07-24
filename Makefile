@@ -15,6 +15,7 @@ SRC = \
   src/domain/expr.c \
   src/application/init_service.c \
   src/application/add_service.c \
+  src/application/preset_service.c \
   src/application/compile_service.c \
   src/application/check_service.c \
   src/application/analyze_service.c \
@@ -33,6 +34,7 @@ SRC = \
   src/adapters/outbound/parser/parser.c \
   src/adapters/outbound/compiler/compiler.c \
   src/adapters/outbound/backends/registry.c \
+  src/adapters/outbound/backends/preset_registry.c \
   src/adapters/outbound/backends/source_attr.c \
   src/adapters/outbound/backends/theme_css.c \
   src/adapters/outbound/backends/react/react_backend.c \

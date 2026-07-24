@@ -1,0 +1,6 @@
+foreign MapView
+  props zoom: number = 1
+
+def Page
+  col
+    MapView zoom=12

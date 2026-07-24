@@ -420,6 +420,9 @@ typedef struct {
   int use_slot;
   int use_context;
   int use_params;
+  int use_cord_icon;
+  int use_cord_motion;
+  int use_cord_chart;
   char used[VU_MAX_USED][96];
   int n_used;
 } VueUnit;
@@ -432,6 +435,8 @@ typedef struct {
   int has_router;
   IrNode *contexts[32]; /* IR_HOOK context */
   int n_contexts;
+  IrNode *foreigns[32];
+  int n_foreigns;
   char lazy_route_names[16][64];
   int n_lazy_routes;
   int truncated;
@@ -501,6 +506,11 @@ static void scan_deps_ir(IrNode *n, VueUnit *u) {
     if (irw_is_pascal(n->name)) unit_add_used(u, n->name);
     if (strcmp(n->name, "link") == 0) u->use_link = 1;
     if (strcmp(n->name, "provide") == 0) u->use_context = 1;
+    if (strcmp(n->name, "icon") == 0) u->use_cord_icon = 1;
+    if (strcmp(n->name, "motion") == 0 || strcmp(n->name, "Motion") == 0)
+      u->use_cord_motion = 1;
+    if (strcmp(n->name, "chart") == 0 || strcmp(n->name, "Chart") == 0)
+      u->use_cord_chart = 1;
   }
   for (size_t i = 0; i < n->n_kids; i++) scan_deps_ir(n->kids[i], u);
 }
@@ -620,6 +630,9 @@ static void project_partition_from_ir(VueProject *p, IrNode *root) {
       }
     } else if (irw_hook_is(c, "context")) {
       project_add_context_ir(p, c);
+    } else if (c->kind == IR_FOREIGN) {
+      if (p->n_foreigns < 32) p->foreigns[p->n_foreigns++] = c;
+      else p->truncated = 1;
     }
   }
 
@@ -820,6 +833,43 @@ static void gen_element_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
   if (strcmp(tag, "provide") == 0) {
     gen_children_ir(sb, node, depth, is_layout);
     return;
+  }
+
+  {
+    const char *bridge = irw_cord_bridge_name(tag);
+    if (bridge) {
+      sb_indent(sb, depth);
+      sb_appendf(sb, "<%s", bridge);
+      int has_kids = 0;
+      for (size_t i = 0; i < node->n_kids; i++) {
+        IrNode *c = node->kids[i];
+        if (c->kind == IR_ATTR && c->name &&
+            !(c->name[0] == '_' && c->name[1] == '_')) {
+          if (is_style_attr(c->name) && strcmp(c->name, "size") != 0)
+            continue;
+          if (c->value && (irw_looks_number(c->value) || irw_looks_bool(c->value) ||
+              looks_like_js_expr(c->value))) {
+            sb_appendf(sb, " :%s=", c->name);
+            emit_vue_prop_value(sb, c->value);
+          } else if (attr_is_true(c) && strcmp(c->name, "fade") == 0) {
+            sb_append(sb, " :fade=\"true\"");
+          } else {
+            sb_appendf(sb, " %s=", c->name);
+            emit_vue_prop_value(sb, c->value);
+          }
+        } else if (is_markup_child_kind(c->kind))
+          has_kids = 1;
+      }
+      if (!has_kids) {
+        sb_append(sb, " />\n");
+        return;
+      }
+      sb_append(sb, ">\n");
+      gen_children_ir(sb, node, depth + 1, is_layout);
+      sb_indent(sb, depth);
+      sb_appendf(sb, "</%s>\n", bridge);
+      return;
+    }
   }
 
   if (irw_is_pascal(tag)) {
@@ -1515,14 +1565,36 @@ static char *gen_vue_module_ir(VueProject *proj, VueUnit *u) {
 
   for (int i = 0; i < u->n_used; i++) {
     VueUnit *dep = find_unit(proj, u->used[i]);
-    if (!dep) continue;
-    if (strcmp(u->dir, dep->dir) == 0)
-      sb_appendf(&script, "  import %s from './%s.vue';\n", dep->name,
-                 dep->name);
-    else
-      sb_appendf(&script, "  import %s from '../%s/%s.vue';\n", dep->name,
-                 dep->dir, dep->name);
+    if (dep) {
+      if (strcmp(u->dir, dep->dir) == 0)
+        sb_appendf(&script, "  import %s from './%s.vue';\n", dep->name,
+                   dep->name);
+      else
+        sb_appendf(&script, "  import %s from '../%s/%s.vue';\n", dep->name,
+                   dep->dir, dep->name);
+      continue;
+    }
+    for (int f = 0; f < proj->n_foreigns; f++) {
+      IrNode *fn = proj->foreigns[f];
+      if (!fn || !fn->name || strcmp(fn->name, u->used[i]) != 0) continue;
+      const char *mod = fn->value;
+      for (size_t k = 0; k < fn->n_kids; k++) {
+        IrNode *a = fn->kids[k];
+        if (a && a->kind == IR_ATTR && a->name && a->value &&
+            strcmp(a->name, "vue") == 0)
+          mod = a->value;
+      }
+      if (mod && mod[0])
+        sb_appendf(&script, "  import %s from '%s';\n", fn->name, mod);
+      break;
+    }
   }
+  if (u->use_cord_icon)
+    sb_append(&script, "  import CordIcon from '../CordIcon.vue';\n");
+  if (u->use_cord_motion)
+    sb_append(&script, "  import CordMotion from '../CordMotion.vue';\n");
+  if (u->use_cord_chart)
+    sb_append(&script, "  import CordChart from '../CordChart.vue';\n");
 
   IrNode *params_decl = ir_find_hook(def, "params");
   if (params_decl) u->use_params = 1;

@@ -39,12 +39,19 @@ def Counter
 - `purpose`: `navigation` \| `content` \| `action` \| `form` \| `status` \| `decoration` \| `landmark`
 - `importance`: `primary` \| `secondary` \| `tertiary` \| `optional` \| `critical`
 
+## Libraries (multi-backend)
+
+- Capabilities via `cordlang.json` → `"presets": ["icons","motion","charts"]` — **not** framework imports in `.cord`.
+- Tags: `icon name=…`, `motion`, `chart`; escape hatch: `foreign Name` + `react from "pkg"` / `svelte from "…"`.
+- Docs: [`LIBRARIES.md`](./LIBRARIES.md). CLI: `cordlang preset add icons motion`.
+
 ## CLI
 
 ```bash
 cordlang check [--json] [path]
 cordlang analyze [--json] [path]
 cordlang ai context | ai doctor [path] | ai check [path]
+cordlang preset list | preset add <id>…
 cordlang run | run react | run svelte
 ```
 
@@ -53,6 +60,7 @@ cordlang run | run react | run svelte
 - [ ] No `<jsx>` tags / `className` / `onClick`
 - [ ] Interpolation is `#{…}`
 - [ ] Attrs ⊆ `schema/attrs.json`
+- [ ] No framework `import` in `.cord` (use presets / foreign maps)
 - [ ] `cordlang check` green
 - [ ] No edits to `dist/` as source of truth
 

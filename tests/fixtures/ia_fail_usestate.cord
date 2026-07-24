@@ -1,0 +1,4 @@
+def Bad
+  useState count = 0
+  col
+    p "nope"

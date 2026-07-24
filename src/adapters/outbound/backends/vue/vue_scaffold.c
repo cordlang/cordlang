@@ -1,4 +1,5 @@
 #include "adapters/outbound/backends/vue/vue_backend.h"
+#include "adapters/outbound/backends/preset_registry.h"
 #include "adapters/outbound/backends/theme_css.h"
 #include "adapters/outbound/html_escape.h"
 #include "adapters/outbound/json/json_mini.h"
@@ -323,6 +324,14 @@ int vue_scaffold_from_ast(const char *project_dir, Node *root) {
     free(out);
     return rc;
   }
+  {
+    char *pj = fs_join(out, "package.json");
+    if (pj) {
+      preset_merge_package_json(pj, project_dir, PRESET_BACKEND_VUE);
+      free(pj);
+    }
+  }
+  preset_write_bridges(out, project_dir, PRESET_BACKEND_VUE);
 
   scaffold_public_assets(project_dir, out);
 
@@ -402,6 +411,14 @@ int vue_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
     free(out);
     return rc;
   }
+  {
+    char *pj = fs_join(out, "package.json");
+    if (pj) {
+      preset_merge_package_json(pj, project_dir, PRESET_BACKEND_VUE);
+      free(pj);
+    }
+  }
+  preset_write_bridges(out, project_dir, PRESET_BACKEND_VUE);
 
   scaffold_public_assets(project_dir, out);
 

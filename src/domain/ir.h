@@ -42,6 +42,7 @@ typedef enum {
   IR_SNIPPET, /* {#snippet} */
   IR_STORE,   /* writable store decl */
   IR_RENDER,  /* {@render} */
+  IR_FOREIGN, /* host component from external lib; name=Comp, value=default module */
 } IrKind;
 
 typedef struct IrNode {

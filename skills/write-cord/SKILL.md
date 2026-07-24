@@ -46,17 +46,18 @@ def Widget
     btn "Toggle" @click=setOpen(!open) variant=primary
 ```
 
-| Rule | Correct | Wrong |
-|------|---------|-------|
-| Interpolation | `#{count}` | `{count}` |
-| Events | `@click=setCount(count+1)` | `onClick={...}` / `className=` |
-| State | `state n=0` + `setN(...)` | `useState` in .cord |
-| Props | `props t: string = ""` | TypeScript interfaces in .cord |
-| Lists | `for x in xs key=x.id` | `.map` in .cord |
-| Links | `link "Home" to=/` | `<Link to>` |
-| Forms | `form action=formAction` + `bind=` | random HTML forms |
-| Svelte actions | `use=tooltip` on elements | `action=` on non-forms (form submit only) |
-| Attrs | only those in `docs/schema/attrs.json` | invented DOM/React names |
+| Rule | Correct | Wrong | `check` code |
+|------|---------|-------|--------------|
+| Interpolation | `#{count}` | `{count}` | `bad-interp` |
+| Events | `@click=setCount(count+1)` | `onClick={...}` / `className=` | `jsx-attr` |
+| State | `state n=0` + `setN(...)` | `useState` in .cord | `jsx-hook` |
+| Props | `props t: string = ""` | TypeScript interfaces in .cord | — |
+| Lists | `for x in xs key=x.id` | `.map` in .cord | `jsx-map` |
+| Tags | `div` / `col` / `link` | `<div>` / `<Link>` | `jsx-tag` / `jsx-hook` |
+| Links | `link "Home" to=/` | `<Link to>` | `jsx-hook` |
+| Forms | `form action=formAction` + `bind=` | random HTML forms | — |
+| Svelte actions | `use=tooltip` on elements | `action=` on non-forms (form submit only) | — |
+| Attrs | only those in `docs/schema/attrs.json` | invented DOM/React names | warn / `jsx-attr` |
 
 ## Multi-file app template
 
@@ -83,9 +84,11 @@ route /about => pages/AboutPage
 
 **Always OK (core):** state, props, computed, if/for, events, bind, route, layout/slot, link, theme, fetch, form action, context provide/ctx.
 
-**Use when needed:** lazy, portal, errorBoundary, suspense, title/head, store (Svelte), await/snippet (Svelte), Phase D React hooks.
+**Use when needed:** lazy, portal, errorBoundary, suspense, title/head, store (Svelte), await/snippet (Svelte), Phase D React hooks, **presets** (`icon`/`motion`/`chart` after `cordlang preset add`), **foreign** multi-backend widgets.
 
-**Do not claim as done:** SvelteKit file routing, Next RSC, full LSP (see `docs/ROADMAP.md`).
+**Do not claim as done:** remote package registry, WASM playground compile, Flutter/SwiftUI backends (see `docs/ROADMAP.md`). Meta Next/Kit are client wraps only.
+
+**Libraries:** Prefer capabilities + `foreign` maps — never write `import … from 'framer-motion'` in `.cord`. See `docs/LIBRARIES.md`.
 
 ## Self-check
 

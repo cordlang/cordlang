@@ -184,7 +184,9 @@ static const char *html_tag_for(const char *tag) {
   if (strcmp(tag, "link") == 0) return "a";
   if (strcmp(tag, "fragment") == 0) return NULL;
   if (strcmp(tag, "checkbox") == 0 || strcmp(tag, "radio") == 0) return "input";
-  if (strcmp(tag, "icon") == 0) return "span";
+  if (strcmp(tag, "icon") == 0) return "CordIcon";
+  if (strcmp(tag, "motion") == 0 || strcmp(tag, "Motion") == 0) return "CordMotion";
+  if (strcmp(tag, "chart") == 0 || strcmp(tag, "Chart") == 0) return "CordChart";
   return tag;
 }
 
@@ -216,6 +218,9 @@ typedef struct {
   int use_portal;
   int use_error_boundary;
   int use_children;
+  int use_cord_icon;
+  int use_cord_motion;
+  int use_cord_chart;
   int in_component;
   int is_layout;
   char action_pending[64];
@@ -597,6 +602,9 @@ typedef struct {
   int use_outlet;
   int use_children;
   int use_fragment;
+  int use_cord_icon;
+  int use_cord_motion;
+  int use_cord_chart;
   char action_stubs[8][64];
   int n_action_stubs;
   char used[SOLID_MAX_USED][96];
@@ -617,6 +625,8 @@ typedef struct {
   int n_page_nodes;
   IrNode *contexts[32]; /* IR_HOOK "context" */
   int n_contexts;
+  IrNode *foreigns[32];
+  int n_foreigns;
   int has_router;
   char lazy_route_names[16][64];
   int n_lazy_routes;
@@ -689,6 +699,11 @@ static void scan_tree_deps_ir(IrNode *n, SolidUnit *u) {
     if (is_pascal_case(n->name)) unit_add_used(u, n->name);
     if (strcmp(n->name, "link") == 0) u->use_link = 1;
     if (strcmp(n->name, "provide") == 0) u->use_context = 1;
+    if (strcmp(n->name, "icon") == 0) u->use_cord_icon = 1;
+    if (strcmp(n->name, "motion") == 0 || strcmp(n->name, "Motion") == 0)
+      u->use_cord_motion = 1;
+    if (strcmp(n->name, "chart") == 0 || strcmp(n->name, "Chart") == 0)
+      u->use_cord_chart = 1;
     if (strcmp(n->name, "slot") == 0) {
       if (u->kind == RK_LAYOUT) u->use_outlet = 1;
       else u->use_children = 1;
@@ -829,6 +844,9 @@ static void project_partition_from_ir(SolidProject *p, IrProgram *ir) {
       }
     } else if (ir_hook_is(c, "context")) {
       if (p->n_contexts < 32) p->contexts[p->n_contexts++] = c;
+      else p->truncated = 1;
+    } else if (c->kind == IR_FOREIGN) {
+      if (p->n_foreigns < 32) p->foreigns[p->n_foreigns++] = c;
       else p->truncated = 1;
     } else if (!ir_hook_is(c, "theme")) {
       if (p->n_page_nodes < 64) p->page_nodes[p->n_page_nodes++] = c;
@@ -1107,13 +1125,25 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
     }
   }
 
+  if (ctx) {
+    if (strcmp(html_tag, "CordIcon") == 0) ctx->use_cord_icon = 1;
+    if (strcmp(html_tag, "CordMotion") == 0) ctx->use_cord_motion = 1;
+    if (strcmp(html_tag, "CordChart") == 0) ctx->use_cord_chart = 1;
+  }
+
   sb_indent(sb, depth);
   int self_closing =
       (strcmp(html_tag, "img") == 0 || strcmp(html_tag, "input") == 0);
   sb_appendf(sb, "<%s", html_tag);
 
   char classes[2048];
-  collect_classes_ir(classes, sizeof(classes), node, base_class);
+  int skip_style_size = (strcmp(html_tag, "CordIcon") == 0 ||
+                         strcmp(html_tag, "CordMotion") == 0 ||
+                         strcmp(html_tag, "CordChart") == 0);
+  if (!skip_style_size)
+    collect_classes_ir(classes, sizeof(classes), node, base_class);
+  else
+    classes[0] = '\0';
   {
     char *cls = classes;
     while (*cls == ' ') cls++;
@@ -1123,7 +1153,10 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
   for (size_t i = 0; i < node->n_kids; i++) {
     IrNode *child = node->kids[i];
     if (!child || child->kind != IR_ATTR || !child->name) continue;
-    if (is_style_attr_name(child->name)) continue;
+    if (is_style_attr_name(child->name) &&
+        !(skip_style_size &&
+          (strcmp(child->name, "size") == 0 || strcmp(child->name, "fade") == 0)))
+      continue;
     if (is_style_bool_name(child->name) && attr_is_true(child->value)) continue;
     if (strcmp(child->name, "__file__") == 0) continue;
     if (strcmp(child->name, "style") == 0) continue;
@@ -2191,11 +2224,33 @@ static char *gen_unit_module_ir(SolidProject *proj, SolidUnit *u) {
 
   for (int i = 0; i < u->n_used; i++) {
     SolidUnit *dep = project_find_unit(proj, u->used[i]);
-    if (!dep) continue;
-    char ipath[256];
-    import_path_between(u, dep, ipath, sizeof(ipath));
-    sb_appendf(&out, "import %s from '%s';\n", dep->name, ipath);
+    if (dep) {
+      char ipath[256];
+      import_path_between(u, dep, ipath, sizeof(ipath));
+      sb_appendf(&out, "import %s from '%s';\n", dep->name, ipath);
+      continue;
+    }
+    for (int f = 0; f < proj->n_foreigns; f++) {
+      IrNode *fn = proj->foreigns[f];
+      if (!fn || !fn->name || strcmp(fn->name, u->used[i]) != 0) continue;
+      const char *mod = fn->value;
+      for (size_t k = 0; k < fn->n_kids; k++) {
+        IrNode *a = fn->kids[k];
+        if (a && a->kind == IR_ATTR && a->name && a->value &&
+            strcmp(a->name, "solid") == 0)
+          mod = a->value;
+      }
+      if (mod && mod[0])
+        sb_appendf(&out, "import %s from '%s';\n", fn->name, mod);
+      break;
+    }
   }
+  if (u->use_cord_icon || ctx.use_cord_icon)
+    sb_append(&out, "import CordIcon from '../CordIcon';\n");
+  if (u->use_cord_motion || ctx.use_cord_motion)
+    sb_append(&out, "import CordMotion from '../CordMotion';\n");
+  if (u->use_cord_chart || ctx.use_cord_chart)
+    sb_append(&out, "import CordChart from '../CordChart';\n");
 
   if (out.len > 0) sb_append(&out, "\n");
 

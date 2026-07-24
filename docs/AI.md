@@ -91,15 +91,17 @@ HTML/email backends may passthrough as `data-purpose` / `data-importance`. SPA b
 |-------|-----|
 | Emit large JSX/TSX as the primary source | Defeats Cordlang |
 | Invent keywords not in the docs/schema | Parse/check will fail |
-| Use curly braces `{count}` as Cord syntax | Use `#{count}` |
-| Use `className=` / `onClick=` in `.cord` | Use style attrs / `@click` |
+| Use curly braces `{count}` as Cord syntax | Use `#{count}` — `check` code `bad-interp` |
+| Use `className=` / `onClick=` / `onKeyDown=` / `tabIndex=` | Use style attrs / `@click` / `tabindex=` — `jsx-attr` |
+| Use `useState` / `useEffect` / `<Link>` as Cord tags | Use `state` / `effect` / `link` — `jsx-hook` |
+| Use `.map(` or `<div>…</div>` in `.cord` | Use `for … key=` / Cord tags — `jsx-map` / `jsx-tag` |
 | Put `use:action` as form `action=` | Forms: `action=formAction`; elements: `use=name` |
-| Assume SvelteKit file routing or Next RSC | SPA backends only (today) |
+| Assume SvelteKit file routing or Next RSC | SPA backends only (today); meta backends are experimental wraps |
 | Write full TypeScript/JSX types as host language | Only Cord prop types above |
 | Nest 500 lines in `app.cord` | Split files |
 | Hand-edit `dist/**` as source of truth | Regenerated |
 | Put `@ai` / LLM calls in compile path | Workflow only (`cordlang ai`, skills) |
-| Claim features that are roadmap-only as done | Kit/Next, full LSP, Flutter, etc. |
+| Claim features that are roadmap-only as done | WASM playground, remote registry, full native |
 
 ---
 

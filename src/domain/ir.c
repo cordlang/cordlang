@@ -112,6 +112,8 @@ const char *ir_kind_name(IrKind k) {
       return "STORE";
     case IR_RENDER:
       return "RENDER";
+    case IR_FOREIGN:
+      return "FOREIGN";
     default:
       return "UNKNOWN";
   }
@@ -174,6 +176,13 @@ static IrNode *convert_node(const Node *node, const char *file) {
                                   node->col, file);
       convert_children(node, el, file);
       return ir_tag(el, (Node *)node);
+    }
+
+    case NODE_FOREIGN: {
+      IrNode *f = ir_node_create(IR_FOREIGN, node->value, node->value2, NULL,
+                                 node->line, node->col, file);
+      convert_children(node, f, file);
+      return ir_tag(f, (Node *)node);
     }
 
     case NODE_PROPS_DECL: {
@@ -286,10 +295,14 @@ static IrNode *convert_node(const Node *node, const char *file) {
       return ir_tag(n, (Node *)node);
     }
 
-    case NODE_TEXT:
-      return ir_tag(ir_node_create(IR_TEXT, NULL, node->value, node->value2,
-                                   node->line, node->col, file),
-                    (Node *)node);
+    case NODE_TEXT: {
+      IrNode *t = ir_node_create(IR_TEXT, NULL, node->value, node->value2,
+                                 node->line, node->col, file);
+      /* else marker carries else-branch body as children */
+      if (node->value && strcmp(node->value, "__else__") == 0)
+        convert_children(node, t, file);
+      return ir_tag(t, (Node *)node);
+    }
 
     case NODE_STRING:
       return ir_tag(ir_node_create(IR_TEXT, NULL, node->value, NULL, node->line,
@@ -645,6 +658,10 @@ static void dump_node(DumpBuf *b, const IrNode *n, int depth) {
     case IR_MODULE_USE:
       db_printf(b, " %s", n->value ? n->value : "?");
       if (n->name) db_printf(b, " as %s", n->name);
+      break;
+    case IR_FOREIGN:
+      db_printf(b, " %s", n->name ? n->name : "?");
+      if (n->value) db_printf(b, " from %s", n->value);
       break;
     default:
       break;

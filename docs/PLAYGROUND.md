@@ -1,6 +1,6 @@
 # Playground (WASM) — MVP stub
 
-El playground **en el navegador** (compilar `.cord` vía WASM) es un objetivo de ecosistema (ROADMAP F5). Este directorio es el **stub estático**: documenta el camino y deja una página HTML mínima sin binario WASM.
+El playground **en el navegador** (compilar `.cord` vía WASM) es un objetivo de ecosistema (ROADMAP F5). **Aplazado** respecto al loop IA (check / LSP / preview). Este directorio es el **stub estático**: documenta el camino y deja una página HTML mínima sin binario WASM.
 
 ## Estado
 

@@ -1,0 +1,19 @@
+---
+description: Cordlang — write .cord UI, not JSX; validate with cordlang check
+globs: "**/*.cord"
+alwaysApply: false
+---
+
+# Cordlang agent rules
+
+When editing or creating `*.cord` files in this repo:
+
+1. Follow the portable skill: `skills/write-cord/SKILL.md`
+2. Short contracts: `AGENTS.md`, `docs/AI_CONTEXT.md` (full: `docs/AI.md`)
+3. Attrs / traps: `docs/schema/attrs.json`
+4. Prefer `.cord` over raw JSX/Svelte unless the user forbids Cordlang
+5. After edits run: `cordlang check` (or `cordlang check --json` for machine hints)
+6. Optional: `cordlang analyze` · preview with `cordlang run` / `run react` / `run svelte`
+7. If check fails, follow `skills/fix-cord-check/SKILL.md`
+
+Do not invent keywords. Do not hand-edit `dist/**` as source of truth. No LLM in the compile path.

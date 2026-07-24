@@ -281,4 +281,5 @@ Free to use, modify, and redistribute (including commercial use), with attributi
 
 ## Next
 
-See **Fase G** in [docs/ROADMAP.md](./docs/ROADMAP.md): IR residuals (theme + HTML preview), CI polish, then meta-frameworks (SvelteKit / Next) or editor DX.
+**Loop IA (Horizonte A residual):** traps `check` + LSP buffer/hints + preview honest — see [docs/ROADMAP.md](./docs/ROADMAP.md).  
+Default targets: **React / Svelte / HTML preview**. Vue, Solid, email, PDF, Next, Kit = meta/experimental. WASM playground remains a stub.

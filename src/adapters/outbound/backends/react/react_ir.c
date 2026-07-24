@@ -116,6 +116,14 @@ static int looks_like_js_expr(const char *s) {
   return 1;
 }
 
+/* Props that are almost always string literals in Cord UIs (avoid title={theme}). */
+static int is_stringish_prop_name(const char *name) {
+  return name &&
+         (strcmp(name, "title") == 0 || strcmp(name, "text") == 0 ||
+          strcmp(name, "label") == 0 || strcmp(name, "placeholder") == 0 ||
+          strcmp(name, "alt") == 0 || strcmp(name, "name") == 0);
+}
+
 static int needs_js_arrow(const char *handler) {
   if (!handler || !*handler) return 0;
   if (strchr(handler, '(') || strchr(handler, '+') || strchr(handler, '-') ||
@@ -140,6 +148,7 @@ static int is_style_attr_name(const char *name) {
           strcmp(name, "aspect") == 0 || strcmp(name, "lines") == 0 ||
           strcmp(name, "w") == 0 || strcmp(name, "h") == 0 ||
           strcmp(name, "min-h") == 0 || strcmp(name, "border") == 0 ||
+          strcmp(name, "class") == 0 ||
           strcmp(name, "mx") == 0 || strcmp(name, "my") == 0 ||
           strcmp(name, "px") == 0 || strcmp(name, "py") == 0 ||
           strcmp(name, "m") == 0 || strcmp(name, "op") == 0 ||
@@ -184,7 +193,9 @@ static const char *html_tag_for(const char *tag) {
   if (strcmp(tag, "link") == 0) return "a";
   if (strcmp(tag, "fragment") == 0) return NULL;
   if (strcmp(tag, "checkbox") == 0 || strcmp(tag, "radio") == 0) return "input";
-  if (strcmp(tag, "icon") == 0) return "span";
+  if (strcmp(tag, "icon") == 0) return "CordIcon";
+  if (strcmp(tag, "motion") == 0 || strcmp(tag, "Motion") == 0) return "CordMotion";
+  if (strcmp(tag, "chart") == 0 || strcmp(tag, "Chart") == 0) return "CordChart";
   return tag;
 }
 
@@ -216,6 +227,9 @@ typedef struct {
   int use_portal;
   int use_error_boundary;
   int use_children;
+  int use_cord_icon;
+  int use_cord_motion;
+  int use_cord_chart;
   int in_component;
   int is_layout;
   char action_pending[64];
@@ -478,6 +492,10 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
     } else if (strcmp(k, "z") == 0) {
       snprintf(vbuf, sizeof(vbuf), " z-%s", v);
       strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(k, "class") == 0 && v && *v) {
+      /* Arbitrary utility / site.css classes from Cord `class=...` */
+      strncat(classes, " ", classes_sz - strlen(classes) - 1);
+      strncat(classes, v, classes_sz - strlen(classes) - 1);
     }
   }
 }
@@ -568,6 +586,8 @@ typedef struct {
   int n_page_nodes;
   IrNode *contexts[32]; /* IR_HOOK "context" */
   int n_contexts;
+  IrNode *foreigns[32];
+  int n_foreigns;
   int has_router;
   char lazy_route_names[16][64];
   int n_lazy_routes;
@@ -781,6 +801,9 @@ static void project_partition_from_ir(ReactProject *p, IrProgram *ir) {
     } else if (ir_hook_is(c, "context")) {
       if (p->n_contexts < 32) p->contexts[p->n_contexts++] = c;
       else p->truncated = 1;
+    } else if (c->kind == IR_FOREIGN) {
+      if (p->n_foreigns < 32) p->foreigns[p->n_foreigns++] = c;
+      else p->truncated = 1;
     } else if (!ir_hook_is(c, "theme")) {
       if (p->n_page_nodes < 64) p->page_nodes[p->n_page_nodes++] = c;
       else p->truncated = 1;
@@ -966,7 +989,14 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
         } else if (!attr_is_true(child->value) ||
                    (child->value && strcmp(child->value, "true") != 0)) {
           sb_appendf(sb, " %s=", child->name);
-          emit_jsx_value(sb, child->value, 0);
+          if (is_stringish_prop_name(child->name) && child->value &&
+              !interp_has(child->value)) {
+            char *esc = js_escape_dq_dup(child->value);
+            sb_appendf(sb, "\"%s\"", esc ? esc : "");
+            free(esc);
+          } else {
+            emit_jsx_value(sb, child->value, 0);
+          }
         } else if (child->value && strcmp(child->value, "false") == 0) {
           sb_appendf(sb, " %s={false}", child->name);
         }
@@ -1049,8 +1079,14 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
   if (strcmp(tag, "link") == 0) {
     if (ctx && ctx->use_router) {
       use_link = 1;
-      html_tag = "Link";
+      /* NavLink sets aria-current="page" for active-route styling */
+      html_tag = "NavLink";
     }
+  }
+  if (ctx) {
+    if (strcmp(html_tag, "CordIcon") == 0) ctx->use_cord_icon = 1;
+    if (strcmp(html_tag, "CordMotion") == 0) ctx->use_cord_motion = 1;
+    if (strcmp(html_tag, "CordChart") == 0) ctx->use_cord_chart = 1;
   }
 
   sb_indent(sb, depth);
@@ -1059,7 +1095,13 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
   sb_appendf(sb, "<%s", html_tag);
 
   char classes[2048];
-  collect_classes_ir(classes, sizeof(classes), node, base_class);
+  int skip_style_size = (strcmp(html_tag, "CordIcon") == 0 ||
+                         strcmp(html_tag, "CordMotion") == 0 ||
+                         strcmp(html_tag, "CordChart") == 0);
+  if (!skip_style_size)
+    collect_classes_ir(classes, sizeof(classes), node, base_class);
+  else
+    classes[0] = '\0';
   {
     char *cls = classes;
     while (*cls == ' ') cls++;
@@ -1069,7 +1111,10 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
   for (size_t i = 0; i < node->n_kids; i++) {
     IrNode *child = node->kids[i];
     if (!child || child->kind != IR_ATTR || !child->name) continue;
-    if (is_style_attr_name(child->name)) continue;
+    if (is_style_attr_name(child->name) &&
+        !(skip_style_size &&
+          (strcmp(child->name, "size") == 0 || strcmp(child->name, "fade") == 0)))
+      continue;
     if (is_style_bool_name(child->name) && attr_is_true(child->value)) continue;
     if (strcmp(child->name, "__file__") == 0) continue;
     if (strcmp(child->name, "style") == 0) continue;
@@ -1089,6 +1134,8 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
     /* bare identifier content (bool true non-style) skipped for attrs */
     if (attr_is_true(child->value) && !is_style_attr_name(child->name) &&
         !is_style_bool_name(child->name) &&
+        !(skip_style_size &&
+          (strcmp(child->name, "fade") == 0 || strcmp(child->name, "data") == 0)) &&
         strcmp(child->name, "lazy") != 0 &&
         strcmp(child->name, "forwardRef") != 0 &&
         strcmp(child->name, "action") != 0 &&
@@ -1109,6 +1156,9 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
         (strcmp(child->name, "to") == 0 || strcmp(child->name, "href") == 0)) {
       sb_append(sb, " to=");
       emit_jsx_value(sb, child->value ? child->value : "/", 0);
+      /* Exact match for home so "/" does not mark every route active */
+      if (child->value && strcmp(child->value, "/") == 0)
+        sb_append(sb, " end");
       continue;
     }
     if (strcmp(child->name, "to") == 0) {
@@ -1287,7 +1337,9 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
         strcmp(v, "password") == 0 || strcmp(v, "search") == 0 ||
         strcmp(v, "number") == 0 || strcmp(v, "lazy") == 0 ||
         strcmp(v, "forwardRef") == 0 || strcmp(v, "__file__") == 0 ||
-        strcmp(v, "style") == 0)
+        strcmp(v, "style") == 0 ||
+        (skip_style_size &&
+         (strcmp(v, "fade") == 0 || strcmp(v, "data") == 0)))
       continue;
     sb_indent(sb, depth + 1);
     sb_appendf(sb, "{%s}\n", v);
@@ -2081,6 +2133,12 @@ static char *gen_unit_module_ir(ReactProject *proj, ReactUnit *u) {
 
   if (u->use_error_boundary || ctx.use_error_boundary)
     sb_append(&out, "import ErrorBoundary from '../ErrorBoundary';\n");
+  if (ctx.use_cord_icon)
+    sb_append(&out, "import CordIcon from '../CordIcon';\n");
+  if (ctx.use_cord_motion)
+    sb_append(&out, "import CordMotion from '../CordMotion';\n");
+  if (ctx.use_cord_chart)
+    sb_append(&out, "import CordChart from '../CordChart';\n");
 
   for (int i = 0; i < u->n_lazy; i++) {
     char ipath[256];
@@ -2103,7 +2161,7 @@ static char *gen_unit_module_ir(ReactProject *proj, ReactUnit *u) {
     sb_append(&out, "import { ");
     int first = 1;
     if (u->use_link) {
-      sb_append(&out, "Link");
+      sb_append(&out, "NavLink");
       first = 0;
     }
     if (u->use_outlet) {
@@ -2135,10 +2193,27 @@ static char *gen_unit_module_ir(ReactProject *proj, ReactUnit *u) {
 
   for (int i = 0; i < u->n_used; i++) {
     ReactUnit *dep = project_find_unit(proj, u->used[i]);
-    if (!dep) continue;
-    char ipath[256];
-    import_path_between(u, dep, ipath, sizeof(ipath));
-    sb_appendf(&out, "import %s from '%s';\n", dep->name, ipath);
+    if (dep) {
+      char ipath[256];
+      import_path_between(u, dep, ipath, sizeof(ipath));
+      sb_appendf(&out, "import %s from '%s';\n", dep->name, ipath);
+      continue;
+    }
+    /* foreign multi-target: prefer react binding */
+    for (int f = 0; f < proj->n_foreigns; f++) {
+      IrNode *fn = proj->foreigns[f];
+      if (!fn || !fn->name || strcmp(fn->name, u->used[i]) != 0) continue;
+      const char *mod = fn->value; /* default module */
+      for (size_t k = 0; k < fn->n_kids; k++) {
+        IrNode *a = fn->kids[k];
+        if (a && a->kind == IR_ATTR && a->name && a->value &&
+            strcmp(a->name, "react") == 0)
+          mod = a->value;
+      }
+      if (mod && mod[0])
+        sb_appendf(&out, "import %s from '%s';\n", fn->name, mod);
+      break;
+    }
   }
 
   if (out.len > 0) sb_append(&out, "\n");

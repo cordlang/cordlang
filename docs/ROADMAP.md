@@ -33,15 +33,17 @@ IA / skills / cordlang ai  ──escribe──►  .cord
 check / fmt / LSP / analyze ──valida──►  .cord
 ```
 
-**Éxito 12 meses (Horizonte A):** IA escribe `.cord` → `check`/`analyze` atrapan traps → `run react|svelte --check` verde; LSP mínimo usable; paridad SPA documentada; 3+ templates Cord.
+**Éxito 12 meses (Horizonte A):** IA escribe `.cord` → `check`/`analyze` atrapan traps (incl. `jsx-hook`/`jsx-map`/`jsx-tag`) → LSP buffer diags + hints → `run react|svelte --check` verde; preview HTML honest (state/bind/if); paridad SPA documentada; 3+ templates Cord.
 
 **Éxito producto:** el mismo `src/**/*.cord` sin reescribir UI:
 
 ```bash
-cordlang run              # preview instantáneo
-cordlang run react        # app React
-cordlang run svelte       # app Svelte
+cordlang run              # preview limitado (state · setX · #{x} · bind)
+cordlang run react        # app React (default)
+cordlang run svelte       # app Svelte (default)
 ```
+
+Vue / Solid / email / PDF / Next / Kit son **meta / experimental** — no el contrato IA default.
 
 ---
 
@@ -60,7 +62,7 @@ cordlang run svelte       # app Svelte
 | `layout` + `slot` | ✅ |
 | `route` | ✅ |
 | `theme` → CSS vars | ✅ parse + `theme_css` IR (G1) |
-| Preview HTML nativo en el `.exe` | ✅ (state reactivo básico C8) |
+| Preview HTML nativo en el `.exe` | ✅ state + setX + `#{x}` + bind + live if (contrato limitado) |
 | IR canónico + dump `--ir` | ✅ |
 | Expr mini-parser | ✅ |
 | `cordlang check` + diagnostics | ✅ |
@@ -129,7 +131,7 @@ Leyenda: ✅ hecho · 🟡 parcial · ❌ no · ≈ equivalente idiomático · �
 | Transitions UI | ✅ useTransition | ✅ `transition=` / in/out | P2 done |
 | Theme tokens | ✅ CSS vars | ✅ CSS vars | P0 done |
 | Accessibility attrs | ✅ `aria-*`/`data-*` + img alt check | ✅ same | P1 done |
-| Preview = same AST live | 🟡 HTML + state básico | 🟡 HTML + state básico | P1 done-ish |
+| Preview = same AST live | 🟡 state/bind/if (limited) | 🟡 same | P1 honest |
 | Typecheck / diagnostics | ✅ `cordlang check` | ✅ shared | P1 done |
 | Source maps .cord→out | ✅ VLQ from markers | ✅ VLQ from markers | P2 done |
 | Hot reload .cord | ✅ `--watch` | ✅ `--watch` | P1 done |
@@ -213,7 +215,7 @@ Ejemplos: `examples/phase_b_lazy_head.cord`, `examples/fetch_form.cord`, `tests/
 - DX: check, fmt, symbols/goto, preview state, source attribution  
 - Suite: **16/16** (`tests\run_tests.ps1`)  
 - **Post-C IR-1 + IR-2 ✅:** services → IR; React (`react_ir.c`) y Svelte emiten body **solo desde `IrNode`**.  
-Residual: theme.css scaffold puede usar origin; HTML preview no es IR-puro.
+Residual: theme.css scaffold puede usar origin. HTML preview body es IR-first (G2); contrato limitado documentado (state/bind/if).
 
 ```bash
 cordlang compile file.cord --ir
@@ -293,21 +295,24 @@ Mapa completo: [`docs/SVELTE.md`](./SVELTE.md) (basado en [svelte.dev/docs/svelt
 5. **Semántica / AI-score LLM** solo cuando el núcleo sea aburridamente sólido.
 
 ```
-Hecho ──► Fases A–E MVP + IR-1/IR-2 + Fase G (G0–G6) + Fase H (madurez)
-AHORA ──► Horizonte A residual (paridad docs, LSP polish) / Horizon B
-DESPUÉS ► Horizonte B (semántica, marketplace, Vue/Solid, Kit/Next, …)
+Hecho ──► Fases A–E MVP + IR-1/IR-2 + Fase G/H + traps/LSP buffer/preview bind
+AHORA ──► Horizonte A residual (loop IA): polish LSP + preview honest + traps
+DESPUÉS ► Meta backends / WASM playground / registry remoto (no diluir A)
 ```
 
 ### 4.1 Horizonte A — épicas ejecutables
 
 | # | Épica | P | Entregables | Criterio |
 |---|-------|---|-------------|----------|
-| **A1** | DX `.cord` | P0 | Diagnósticos en `check` (attrs, traps JSX); LSP mínimo / snippets; preview `run --watch` documentado; skill al día | Agente edita app con `check` verde sin inventar keywords |
-| **A2** | Contratos anti-alucinación | P0 | `props name: string` + validación; [`schema/attrs.json`](./schema/attrs.json) para LSP/IA | Schema machine-readable + check tipado |
-| **A3** | IR + paridad React/Svelte | P0–P1 | Checklist en SVELTE.md; goldens; IR.md como contrato de backends | Misma app compila React y Svelte con UI equivalente en features soportadas |
-| **A4** | Tooling IA (CLI/skill) | P1 | `cordlang ai` + `ai context`/`doctor` + `check --json` + hints; fixtures IA-fail→fix; `fix-cord-check`; `.cursor/rules` | Sin LLM en `compile` · ✅ |
-| **A5** | Templates Cord | P1–P2 | 3–5 plantillas en `templates/`; docs; `cord add` más adelante | Repo + TEMPLATES.md |
-| **A6** | Analyze determinista | P2 | `cordlang analyze` — score **sin LLM** (+ fetch/pending/purpose heuristics, `--json`) | ✅ |
+| **A1** | DX `.cord` | P0 | Diagnósticos; LSP buffer+completion+hover+fmt; skill al día | Agente edita con `check` verde sin inventar keywords |
+| **A2** | Contratos anti-alucinación | P0 | `jsx-attr`/`jsx-hook`/`jsx-tag`/`jsx-map`/`bad-interp` + schema | Schema + check + fixtures `ia_fail_*` |
+| **A3** | IR + paridad React/Svelte | P0–P1 | Checklist; goldens; IR.md | Misma app → React y Svelte |
+| **A4** | Tooling IA | P1 | `cordlang ai` + skill; traps en LSP hints | Sin LLM en `compile` · ✅ |
+| **A5** | Templates Cord | P1–P2 | templates/; docs | Repo + TEMPLATES.md |
+| **A6** | Analyze determinista | P2 | `cordlang analyze` | Heurísticas sin LLM · ✅ |
+| **A7** | Preview honest | P1 | bind + if live + contrato documentado | No claim SPA parity |
+
+**Nota:** gate syntax 1.0 (SPEC) cerrado; el **loop IA** (A1/A2/A7) es residual activo — no mezclar con amplitud de backends.
 
 ### 4.2 Fase G — hecho (histórico)
 
@@ -315,7 +320,7 @@ DESPUÉS ► Horizonte B (semántica, marketplace, Vue/Solid, Kit/Next, …)
 |---|------|--------|
 | G0–G6 | Repo público, theme/HTML IR, CI, my-app `--check`, docs/AI skill, MIT | ✅ |
 | G7 | Source maps reales | ✅ VLQ from source= markers |
-| G8 | LSP full | parcialmente → `cordlang lsp` (diagnostics/symbols/definition/completion/hover/**codeAction**); rename/format abiertos |
+| G8 | LSP full | ✅ usable: buffer diags + hint/code, completion contextual, hover, formatting, codeAction (`jsx-attr`/`bad-interp`); rename/references abiertos |
 
 ### 4.2b Fase H — Madurez del proyecto ✅ (2026-07-24)
 
@@ -332,19 +337,21 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 
 **DoD H:** ✅ suite de regresión en CI; docs de arquitectura + SPEC; benches locales; passes opt-in sin romper goldens por defecto.
 
-### 4.3 Horizonte B — visión posterior (no diluir A)
+### 4.3 Horizonte B — meta / experimental (no diluir A)
 
 | Tema | Notas |
 |------|--------|
-| Metadata semántica (`purpose`, `importance`) | ✅ vocabulario + check warning si fuera de vocab; templates/`my-app` demos |
-| AI eval harness | ✅ `bench/ai_eval/` (contrato determinista; LLM opcional después) |
-| MCP Cordlang / playground WASM real | ⏳ post-plan (stub playground; sin MCP aún) |
-| Marketplace `cord add` | ✅ MVP local (`cordlang add`); registry remoto pendiente |
-| Email HTML / PDF desde IR | ✅ |
-| Vue / Solid | ✅ |
-| SvelteKit / Next RSC | ✅ MVP meta (client wrap) |
+| Metadata semántica (`purpose`, `importance`) | ✅ vocabulario + check |
+| AI eval harness | ✅ `bench/ai_eval/` |
+| Marketplace `cord add` | 🟡 MVP local; **registry remoto pendiente** |
+| Capabilities / presets multi-backend | ✅ `presets` + adapters React/Svelte/Vue/Solid · [`LIBRARIES.md`](./LIBRARIES.md) |
+| Email HTML / PDF | ✅ **meta** — no contrato IA default |
+| Vue / Solid | ✅ **meta** — secundarios vs React/Svelte |
+| SvelteKit / Next | ✅ **meta** client wrap; no RSC/SSR real |
 | Flutter / SwiftUI / Compose | 🟡 spike [`NATIVE.md`](./NATIVE.md) |
-| `@ai` en fuente | Evitar en build; si existe → preprocesador offline que escribe `.cord` normal |
+| Playground WASM | 🟡 **stub aplazado** (F5 fuera del loop IA) |
+| MCP Cordlang | ⏳ post-plan |
+| `@ai` en fuente | Evitar en build |
 
 ### 4.4 No haremos
 
@@ -378,9 +385,10 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 
 ### HTML preview
 
-1. State básico ✅ (C8)  
-2. **IR-puro** (G2)  
-3. Paridad limitada con events/bind  
+1. State básico ✅ (C8) + IR path (G2)  
+2. `bind` inputs + live `if` + assign handlers ✅  
+3. `for` = lista **estática** explícita (no fingir each)  
+4. Contrato documentado en GUIDE / badge runtime — **no** paridad SPA  
 
 ---
 

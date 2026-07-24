@@ -26,17 +26,36 @@ Install (dev): `cd editor/vscode && npm install`, then open as extension folder.
 
 | Method | Behavior |
 |--------|----------|
-| `initialize` | sync + documentSymbol + definition + **completion** + **hover** + **codeAction** |
-| `textDocument/didOpen\|didChange\|didSave` | `check` → `publishDiagnostics` (includes `code` when set) |
+| `initialize` | sync + documentSymbol + definition + completion + hover + codeAction + **formatting** |
+| `textDocument/didOpen\|didChange\|didSave` | diagnostics from **buffer text** via `check_service_run_source` (no save required); `code` + `data.hint` |
 | `textDocument/documentSymbol` | components from project parse |
 | `textDocument/definition` | goto component under cursor |
-| `textDocument/completion` | tags / attrs / keywords (schema surface) |
+| `textDocument/completion` | **context-aware**: `@` → events; after tag → attrs; line-start → keywords/tags |
 | `textDocument/hover` | tag/attr/keyword docs; prop types when known |
-| `textDocument/codeAction` | quickfix rename for JSX traps (`className`→`class`, `onClick`→`@click`, …) |
+| `textDocument/codeAction` | quickfix: `jsx-attr` rename; `bad-interp` `{x}` → `#{x}` |
+| `textDocument/formatting` | `fmt` normalize (tabs→spaces, trim, blank collapse) |
 | `shutdown` / `exit` | clean shutdown |
+
+## Agent contract
+
+Diagnostics match CLI `cordlang check --json`: each item may include `code` and `data.hint` (same strings as `hint` in JSON check output).
+
+Trap codes: `jsx-attr`, `jsx-hook`, `jsx-tag`, `jsx-map`, `bad-interp`, `semantic-vocab`.
+
+## Manual smoke
+
+```bash
+# From repo root after `make`
+printf '%s' 'Content-Length: 132
+
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{}}}' | ./cordlang lsp
+# Expect capabilities including completionProvider, hoverProvider, documentFormattingProvider
+```
+
+In the editor: open a `.cord`, type `className=` or `{count}` without saving — diagnostics should appear with codes; code actions offer fixes.
 
 ## Roadmap leftovers
 
-- Formatting / rename / references via LSP
-- Schema JSON loaded dynamically (today: embedded lists + `known_attrs.h`)
-- Autofix for `bad-interp` (`{x}` → `#{x}`) beyond attr renames
+- Rename / references via LSP
+- Dynamic load of `docs/schema/attrs.json` at runtime (today: lists synced in `known_attrs.h` + completion tables)
+- Autofix for more trap codes beyond `jsx-attr` / `bad-interp`

@@ -227,6 +227,29 @@ static const char *RUNTIME_JS_CORE =
   "      el.textContent=v==null?'':String(v);\n"
   "    }catch(e){ /* leave existing text */ }\n"
   "  });\n"
+  "  document.querySelectorAll('[data-bind-value]').forEach(function(el){\n"
+  "    var expr=el.getAttribute('data-bind-value');\n"
+  "    if(!expr) return;\n"
+  "    if(document.activeElement===el) return;\n"
+  "    try{\n"
+  "      var v=clEvalExpr(expr);\n"
+  "      el.value=v==null?'':String(v);\n"
+  "    }catch(e){}\n"
+  "  });\n"
+  "  document.querySelectorAll('[data-if]').forEach(function(el){\n"
+  "    var cond=el.getAttribute('data-if');\n"
+  "    try{\n"
+  "      var ok=!!clEvalExpr(cond);\n"
+  "      el.hidden=!ok;\n"
+  "    }catch(e){ el.hidden=true; }\n"
+  "  });\n"
+  "  document.querySelectorAll('[data-else-if]').forEach(function(el){\n"
+  "    var cond=el.getAttribute('data-else-if');\n"
+  "    try{\n"
+  "      var ok=!!clEvalExpr(cond);\n"
+  "      el.hidden=ok;\n"
+  "    }catch(e){ el.hidden=false; }\n"
+  "  });\n"
   "}\n"
   "function clPreviewHandler(name, ev){\n"
   "  if(ev && typeof ev.preventDefault==='function') ev.preventDefault();\n"
@@ -243,6 +266,20 @@ static const char *RUNTIME_JS_CORE =
   "      }\n"
   "    }\n"
   "  }\n"
+  "  /* Simple assignment: count = count + 1 */\n"
+  "  if(name && /^[A-Za-z_][\\w]*\\s*=/.test(name)){\n"
+  "    var am=/^([A-Za-z_][\\w]*)\\s*=\\s*(.+)$/.exec(name);\n"
+  "    if(am){\n"
+  "      try{\n"
+  "        var lhs=am[1], rhs=clEvalExpr(am[2]);\n"
+  "        window[lhs]=rhs;\n"
+  "        clUpdate();\n"
+  "        return;\n"
+  "      }catch(e){\n"
+  "        if(window.console) console.warn('[cordlang preview] assign failed', name, e);\n"
+  "      }\n"
+  "    }\n"
+  "  }\n"
   "  var el=document.getElementById('cl-toast');\n"
   "  if(!el){ el=document.createElement('div'); el.id='cl-toast'; el.className='cl-toast';"
   " document.body.appendChild(el); }\n"
@@ -251,6 +288,12 @@ static const char *RUNTIME_JS_CORE =
   "  clearTimeout(el._t);\n"
   "  el._t=setTimeout(function(){ el.classList.remove('show'); }, 1800);\n"
   "  if(window.console) console.log('[cordlang preview]', name, ev&&ev.type);\n"
+  "}\n"
+  "function clBindInput(el, field){\n"
+  "  if(!el||!field) return;\n"
+  "  var setter='set'+field.charAt(0).toUpperCase()+field.slice(1);\n"
+  "  if(typeof window[setter]==='function') window[setter](el.value);\n"
+  "  else { window[field]=el.value; clUpdate(); }\n"
   "}\n"
   "if(document.readyState==='loading'){\n"
   "  document.addEventListener('DOMContentLoaded', clUpdate);\n"
@@ -372,7 +415,9 @@ static const char *html_tag_for(const char *tag) {
   if (strcmp(tag, "select") == 0) return "select";
   if (strcmp(tag, "checkbox") == 0) return "input";
   if (strcmp(tag, "radio") == 0) return "input";
-  if (strcmp(tag, "icon") == 0) return "span";
+  if (strcmp(tag, "icon") == 0) return "span"; /* stub; see capability note */
+  if (strcmp(tag, "motion") == 0 || strcmp(tag, "Motion") == 0) return "div";
+  if (strcmp(tag, "chart") == 0 || strcmp(tag, "Chart") == 0) return "div";
   if (strcmp(tag, "nav") == 0) return "nav";
   if (strcmp(tag, "header") == 0) return "header";
   if (strcmp(tag, "footer") == 0) return "footer";
@@ -1063,7 +1108,7 @@ static char *html_generate_impl(Node *root) {
     "<body>\n"
     "  <div class=\"cl-runtime-bar\">\n"
     "    <div><strong>Cordlang</strong> <span>native runtime preview</span></div>\n"
-    "    <div class=\"cl-runtime-badge\"><span class=\"cl-runtime-dot\"></span> live · no React/Node</div>\n"
+    "    <div class=\"cl-runtime-badge\"><span class=\"cl-runtime-dot\"></span> state · setX · #{x} · bind — no SPA parity</div>\n"
     "  </div>\n"
     "  <div id=\"app\">\n");
   sb_append(&doc, body.buf ? body.buf : "");
@@ -1374,7 +1419,8 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth) {
     if (child && child->kind == IR_ATTR && child->name &&
         !is_style_attr(child->name) && !ir_attr_is_true(child->value) &&
         strcmp(child->name, "style") != 0 &&
-        strcmp(child->name, "__file__") != 0) {
+        strcmp(child->name, "__file__") != 0 &&
+        strcmp(child->name, "bind") != 0) {
       const char *attr_name = child->name;
       if (strcmp(attr_name, "to") == 0) attr_name = "href";
       if (strcmp(attr_name, "src") == 0 || strcmp(attr_name, "alt") == 0 ||
@@ -1387,6 +1433,44 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth) {
         html_escape_append(sb, child->value ? child->value : "");
         sb_append(sb, "\"");
       }
+    }
+  }
+
+  /* Two-way bind on form controls (preview): value + oninput → setField */
+  {
+    const char *bind_field = NULL;
+    for (size_t i = 0; i < node->n_kids; i++) {
+      IrNode *c = node->kids[i];
+      if (c && c->kind == IR_ATTR && c->name && strcmp(c->name, "bind") == 0 &&
+          c->value && is_safe_js_ident(c->value)) {
+        bind_field = c->value;
+        break;
+      }
+    }
+    if (bind_field &&
+        (strcmp(html_tag, "input") == 0 || strcmp(html_tag, "textarea") == 0 ||
+         strcmp(html_tag, "select") == 0)) {
+      const char *init = state_init_for(bind_field);
+      /* strip quotes from string inits for value attr */
+      sb_append(sb, " value=\"");
+      if (init && init[0] == '"') {
+        size_t n = strlen(init);
+        if (n >= 2)
+          for (size_t k = 1; k + 1 < n; k++) {
+            char c[2] = {init[k], 0};
+            if (init[k] == '"')
+              sb_append(sb, "&quot;");
+            else
+              sb_append(sb, c);
+          }
+      } else {
+        html_escape_append(sb, init ? init : "");
+      }
+      sb_append(sb, "\"");
+      sb_append(sb, " data-bind-value=\"");
+      html_escape_append(sb, bind_field);
+      sb_append(sb, "\"");
+      sb_appendf(sb, " oninput=\"clBindInput(this, '%s')\"", bind_field);
     }
   }
 
@@ -1465,8 +1549,8 @@ static void gen_ir_children(StrBuf *sb, IrNode *node, int depth) {
       sb_append(sb, "<div class=\"cl-loop\">\n");
       sb_indent(sb, depth + 1);
       sb_appendf(sb,
-                 "<div class=\"cl-loop-label\">for %s in %s — preview (2 "
-                 "samples)</div>\n",
+                 "<div class=\"cl-loop-label\">for %s in %s — lista estática "
+                 "(preview; no each dinámico)</div>\n",
                  var, list);
       for (int sample = 0; sample < 2; sample++) {
         for (size_t j = 0; j < child->n_kids; j++)
@@ -1476,21 +1560,50 @@ static void gen_ir_children(StrBuf *sb, IrNode *node, int depth) {
       sb_append(sb, "</div>\n");
     } else if (child->kind == IR_IF) {
       const char *cond = child->value ? child->value : "true";
-      sb_indent(sb, depth);
-      sb_appendf(sb, "<!-- if %s (preview shows true branch) -->\n", cond);
+      /* Collect true-branch kids until __else__ marker */
+      size_t else_at = child->n_kids;
       for (size_t j = 0; j < child->n_kids; j++) {
         IrNode *kc = child->kids[j];
         if (kc && kc->kind == IR_TEXT && kc->value &&
-            strcmp(kc->value, "__else__") == 0)
-          break; /* stop at else marker — true branch only */
-        gen_ir_node(sb, kc, depth);
+            strcmp(kc->value, "__else__") == 0) {
+          else_at = j;
+          break;
+        }
       }
-      /* skip paired else marker sibling if present under parent */
-      if (i + 1 < node->n_kids) {
+      sb_indent(sb, depth);
+      sb_append(sb, "<div data-if=\"");
+      html_escape_append(sb, cond);
+      sb_append(sb, "\">\n");
+      for (size_t j = 0; j < else_at; j++)
+        gen_ir_node(sb, child->kids[j], depth + 1);
+      sb_indent(sb, depth);
+      sb_append(sb, "</div>\n");
+      /* Else branch under sibling marker or remaining kids */
+      int has_else = 0;
+      if (else_at < child->n_kids) {
+        has_else = 1;
+        sb_indent(sb, depth);
+        sb_append(sb, "<div data-else-if=\"");
+        html_escape_append(sb, cond);
+        sb_append(sb, "\" hidden>\n");
+        for (size_t j = else_at + 1; j < child->n_kids; j++)
+          gen_ir_node(sb, child->kids[j], depth + 1);
+        sb_indent(sb, depth);
+        sb_append(sb, "</div>\n");
+      }
+      if (!has_else && i + 1 < node->n_kids) {
         IrNode *next = node->kids[i + 1];
         if (next && next->kind == IR_TEXT && next->value &&
             strcmp(next->value, "__else__") == 0) {
-          i++; /* skip marker; leave else body unrendered */
+          i++; /* consume marker */
+          sb_indent(sb, depth);
+          sb_append(sb, "<div data-else-if=\"");
+          html_escape_append(sb, cond);
+          sb_append(sb, "\" hidden>\n");
+          for (size_t j = 0; j < next->n_kids; j++)
+            gen_ir_node(sb, next->kids[j], depth + 1);
+          sb_indent(sb, depth);
+          sb_append(sb, "</div>\n");
         }
       }
     } else if (child->kind == IR_INTERP) {
@@ -1651,7 +1764,8 @@ static char *html_generate_from_ir_root(IrNode *root) {
             "    <div><strong>Cordlang</strong> <span>native runtime "
             "preview</span></div>\n"
             "    <div class=\"cl-runtime-badge\"><span "
-            "class=\"cl-runtime-dot\"></span> live · no React/Node</div>\n"
+            "class=\"cl-runtime-dot\"></span> state · setX · #{x} · bind — no "
+            "SPA parity</div>\n"
             "  </div>\n"
             "  <div id=\"app\">\n");
   sb_append(&doc, body.buf ? body.buf : "");

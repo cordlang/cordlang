@@ -6,7 +6,11 @@
   "propTypes": ["string", "number", "boolean", "any"],
   "layoutTags": ["col", "row", "stack", "page", "card", "grid", "group", "fragment"],
   "controlTags": ["btn", "button", "link", "input", "textarea", "select", "checkbox", "radio", "form", "label", "img", "icon", "span", "p", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "nav", "header", "footer", "main", "aside", "section", "article", "div", "a", "table", "thead", "tbody", "tr", "td", "th", "code", "pre", "hr", "br", "slot"],
-  "specialTags": ["provide", "portal", "suspense", "loading", "errorBoundary", "empty", "if", "else", "for", "await", "snippet", "render"],
+  "specialTags": ["provide", "portal", "suspense", "loading", "errorBoundary", "empty", "if", "else", "for", "await", "snippet", "render", "motion", "chart", "foreign"],
+  "capabilities": {
+    "presets": ["tailwind", "icons", "motion", "charts"],
+    "notes": "Declare in cordlang.json presets[]; each backend scaffold merges npm. See docs/LIBRARIES.md. Do not import framework libs in .cord."
+  },
   "styleAttrs": [
     "variant", "size", "color", "gap", "cols", "p", "m", "px", "py", "mx", "my",
     "bg", "shadow", "rounded", "max-w", "min-h", "overflow", "w", "h",
@@ -20,7 +24,7 @@
     "step", "pattern", "autocomplete", "tabindex", "class", "style",
     "bind", "key", "use", "transition", "layout", "lazy", "fallback",
     "context", "init", "pending", "deps", "cleanup", "getSnapshot",
-    "getServerSnapshot", "then", "catch", "as", "when", "of",
+    "getServerSnapshot", "then", "catch", "as", "when", "of", "fade", "data",
     "text", "email", "password", "search", "tel", "url", "date", "time",
     "datetime-local", "file", "submit", "reset", "button", "number", "range",
     "color", "hidden",
@@ -40,14 +44,28 @@
   },
   "eventPrefix": "@",
   "forbiddenJsxAttrs": [
-    "className", "onClick", "onChange", "onSubmit", "onInput", "htmlFor",
-    "defaultValue", "dangerouslySetInnerHTML"
+    "className", "onClick", "onChange", "onSubmit", "onInput", "onKeyDown",
+    "onKeyUp", "onFocus", "onBlur", "htmlFor", "defaultValue", "defaultChecked",
+    "tabIndex", "dangerouslySetInnerHTML"
   ],
+  "forbiddenJsxHooks": [
+    "useState", "useEffect", "useMemo", "useCallback", "useRef", "useContext",
+    "useReducer", "useLayoutEffect", "useId", "useTransition", "Link", "Fragment"
+  ],
+  "diagCodes": {
+    "jsx-attr": "Forbidden JSX/React attribute name",
+    "jsx-hook": "React hook / JSX component used as Cord tag — use state/effect/link",
+    "jsx-tag": "Angle-bracket JSX tag in .cord text — use Cord tags (div, col, …)",
+    "jsx-map": "Array .map( in .cord — use for … key=",
+    "bad-interp": "JSX-style {expr} — use #{expr}",
+    "semantic-vocab": "purpose/importance outside documented vocabulary"
+  },
   "notes": [
     "PascalCase tags are components; arbitrary props allowed.",
     "Events are @name=expr (NODE_EVENT), not attrs.",
     "Interpolation is #{expr}; escape literal with \\#{.",
     "aria-* and data-* are always known; check warns on img without alt.",
-    "purpose / importance are optional semantic metadata; prefer the documented vocabulary."
+    "purpose / importance are optional semantic metadata; prefer the documented vocabulary.",
+    "check emits jsx-hook / jsx-tag / jsx-map / jsx-attr / bad-interp for AI traps."
   ]
 }

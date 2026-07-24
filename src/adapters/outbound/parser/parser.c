@@ -91,6 +91,7 @@ static Node *parse_stmt(Parser *p);
 static Node *parse_react_decl(Parser *p);
 static Node *parse_title_or_head(Parser *p);
 static Node *parse_empty(Parser *p);
+static Node *parse_foreign(Parser *p);
 static Node *parse_await(Parser *p);
 static Node *parse_snippet(Parser *p);
 static Node *parse_store(Parser *p);
@@ -2333,7 +2334,128 @@ static Node *parse_render(Parser *p) {
   return rn;
 }
 
-/* empty if=cond ... children shown when empty */
+/* foreign Name [from "mod" for backend]
+     props …
+     react from "…"
+     svelte from "…"
+*/
+static Node *parse_foreign(Parser *p) {
+  Token tok = advance(p); /* foreign */
+  if (peek(p).type != TOKEN_IDENTIFIER) {
+    p->had_error = 1;
+    p->error_msg = "expected component name after foreign";
+    return NULL;
+  }
+  Token name = advance(p);
+  char *nm = token_str(name);
+  Node *fn = node_adopt(NODE_FOREIGN, nm, tok.line, tok.col);
+
+  /* Optional: from "module" [for backend] */
+  if (peek(p).type == TOKEN_IDENTIFIER) {
+    char *kw = token_str(peek(p));
+    if (kw && strcmp(kw, "from") == 0) {
+      advance(p);
+      free(kw);
+      if (peek(p).type == TOKEN_STRING) {
+        Token mod = advance(p);
+        fn->value2 = token_str(mod);
+      }
+      if (peek(p).type == TOKEN_IDENTIFIER) {
+        char *fk = token_str(peek(p));
+        if (fk && strcmp(fk, "for") == 0) {
+          advance(p);
+          free(fk);
+          if (peek(p).type == TOKEN_IDENTIFIER) {
+            Token be = advance(p);
+            char *ben = token_str(be);
+            Node *a = node_create(NODE_ATTR, ben, be.line, be.col);
+            free(ben);
+            if (a && fn->value2) a->value2 = strdup(fn->value2);
+            if (a) node_add_child(fn, a);
+          }
+        } else {
+          free(fk);
+        }
+      }
+    } else {
+      free(kw);
+    }
+  }
+
+  while (peek(p).type == TOKEN_NEWLINE) advance(p);
+  if (peek(p).type == TOKEN_INDENT) {
+    advance(p);
+    while (peek(p).type != TOKEN_DEDENT && peek(p).type != TOKEN_EOF) {
+      while (peek(p).type == TOKEN_NEWLINE) advance(p);
+      if (peek(p).type == TOKEN_DEDENT || peek(p).type == TOKEN_EOF) break;
+      Token id = peek(p);
+      if (id.type != TOKEN_IDENTIFIER) {
+        advance(p);
+        continue;
+      }
+      char *k = token_str(id);
+      if (!k) {
+        advance(p);
+        continue;
+      }
+      if (strcmp(k, "props") == 0) {
+        free(k);
+        Node *props = parse_stmt(p);
+        if (props) node_add_child(fn, props);
+        continue;
+      }
+      /* backend from "module" [as { Export }] — as clause ignored in MVP */
+      if (strcmp(k, "react") == 0 || strcmp(k, "svelte") == 0 ||
+          strcmp(k, "vue") == 0 || strcmp(k, "solid") == 0) {
+        Token be = advance(p);
+        free(k);
+        char *fromkw = NULL;
+        if (peek(p).type == TOKEN_IDENTIFIER) {
+          fromkw = token_str(peek(p));
+          if (fromkw && strcmp(fromkw, "from") == 0) {
+            advance(p);
+          }
+          free(fromkw);
+        }
+        char *mod = NULL;
+        if (peek(p).type == TOKEN_STRING) {
+          Token m = advance(p);
+          mod = token_str(m);
+        }
+        /* skip optional: as { Name } */
+        if (peek(p).type == TOKEN_IDENTIFIER) {
+          char *ask = token_str(peek(p));
+          if (ask && strcmp(ask, "as") == 0) {
+            advance(p);
+            free(ask);
+            while (peek(p).type != TOKEN_NEWLINE && peek(p).type != TOKEN_EOF &&
+                   peek(p).type != TOKEN_DEDENT)
+              advance(p);
+          } else {
+            free(ask);
+          }
+        }
+        char *ben = token_str(be);
+        Node *a = node_adopt(NODE_ATTR, ben, be.line, be.col);
+        if (a) {
+          a->value2 = mod;
+          node_add_child(fn, a);
+        } else {
+          free(ben);
+          free(mod);
+        }
+        while (peek(p).type == TOKEN_NEWLINE) advance(p);
+        continue;
+      }
+      free(k);
+      Node *other = parse_stmt(p);
+      if (other) node_add_child(fn, other);
+    }
+    if (peek(p).type == TOKEN_DEDENT) advance(p);
+  }
+  return fn;
+}
+
 static Node *parse_empty(Parser *p) {
   Token tok = advance(p); /* empty */
   Node *em = node_create(NODE_EMPTY, NULL, tok.line, tok.col);
@@ -2510,6 +2632,9 @@ static Node *parse_stmt(Parser *p) {
   } else if (strcmp(kw, "route") == 0) {
     free(kw);
     return parse_route(p);
+  } else if (strcmp(kw, "foreign") == 0) {
+    free(kw);
+    return parse_foreign(p);
   } else if (strcmp(kw, "slot") == 0) {
     free(kw);
     Token tok = advance(p);

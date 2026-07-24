@@ -1,4 +1,5 @@
 #include "adapters/outbound/backends/solid/solid_backend.h"
+#include "adapters/outbound/backends/preset_registry.h"
 #include "adapters/outbound/backends/theme_css.h"
 #include "adapters/outbound/html_escape.h"
 #include "adapters/outbound/json/json_mini.h"
@@ -453,6 +454,14 @@ int solid_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
     free(out);
     return rc;
   }
+  {
+    char *pj = fs_join(out, "package.json");
+    if (pj) {
+      preset_merge_package_json(pj, project_dir, PRESET_BACKEND_SOLID);
+      free(pj);
+    }
+  }
+  preset_write_bridges(out, project_dir, PRESET_BACKEND_SOLID);
 
   scaffold_public_assets(project_dir, out);
 

@@ -1,4 +1,5 @@
 #include "adapters/outbound/backends/svelte/svelte_backend.h"
+#include "adapters/outbound/backends/preset_registry.h"
 #include "adapters/outbound/backends/theme_css.h"
 #include "adapters/outbound/html_escape.h"
 #include "adapters/outbound/json/json_mini.h"
@@ -329,6 +330,14 @@ int svelte_scaffold_from_ast(const char *project_dir, Node *root) {
     free(out);
     return rc;
   }
+  {
+    char *pj = fs_join(out, "package.json");
+    if (pj) {
+      preset_merge_package_json(pj, project_dir, PRESET_BACKEND_SVELTE);
+      free(pj);
+    }
+  }
+  preset_write_bridges(out, project_dir, PRESET_BACKEND_SVELTE);
 
   scaffold_public_assets(project_dir, out);
 
@@ -408,6 +417,14 @@ int svelte_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
     free(out);
     return rc;
   }
+  {
+    char *pj = fs_join(out, "package.json");
+    if (pj) {
+      preset_merge_package_json(pj, project_dir, PRESET_BACKEND_SVELTE);
+      free(pj);
+    }
+  }
+  preset_write_bridges(out, project_dir, PRESET_BACKEND_SVELTE);
 
   scaffold_public_assets(project_dir, out);
 

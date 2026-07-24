@@ -1,6 +1,6 @@
 // ===== src/pages/HomePage.jsx =====
 /* cordlang: source=src/pages/HomePage.cord */
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 
 export default function HomePage({  }) {
   return (
@@ -12,9 +12,9 @@ export default function HomePage({  }) {
         <p className="text-muted">
           {'Welcome home.'}
         </p>
-        <Link to="/shop">
+        <NavLink to="/shop">
           {'Go to Shop'}
-        </Link>
+        </NavLink>
       </div>
     </>
   );
@@ -22,7 +22,7 @@ export default function HomePage({  }) {
 
 // ===== src/pages/ShopPage.jsx =====
 /* cordlang: source=src/pages/ShopPage.cord */
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 
 export default function ShopPage({  }) {
   return (
@@ -34,9 +34,9 @@ export default function ShopPage({  }) {
         <p className="text-muted">
           {'Browse the shop.'}
         </p>
-        <Link to="/shop/1">
+        <NavLink to="/shop/1">
           {'Product 1'}
-        </Link>
+        </NavLink>
       </div>
     </>
   );
@@ -44,7 +44,7 @@ export default function ShopPage({  }) {
 
 // ===== src/pages/ProductPage.jsx =====
 /* cordlang: source=src/pages/ProductPage.cord */
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 
 export default function ProductPage({ id }) {
   return (
@@ -57,9 +57,9 @@ export default function ProductPage({ id }) {
         <p className="text-muted">
           {'Details for item.'}
         </p>
-        <Link to="/shop">
+        <NavLink to="/shop">
           {'Back to shop'}
-        </Link>
+        </NavLink>
       </div>
     </>
   );
@@ -67,7 +67,7 @@ export default function ProductPage({ id }) {
 
 // ===== src/layouts/DefaultLayout.jsx =====
 /* cordlang: source=src/layouts/default.cord */
-import { Link, Outlet } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 
 export default function DefaultLayout({  }) {
   return (
@@ -79,12 +79,12 @@ export default function DefaultLayout({  }) {
           </h1>
           <nav>
             <div className="flex flex-row gap-16 flex items-center justify-center">
-              <Link to="/">
+              <NavLink to="/" end>
                 {'Home'}
-              </Link>
-              <Link to="/shop">
+              </NavLink>
+              <NavLink to="/shop">
                 {'Shop'}
-              </Link>
+              </NavLink>
             </div>
           </nav>
         </div>
@@ -98,7 +98,7 @@ export default function DefaultLayout({  }) {
 
 // ===== src/layouts/Shop.jsx =====
 /* cordlang: source=src/layouts/Shop.cord */
-import { Link, Outlet } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 
 export default function Shop({  }) {
   return (
@@ -110,12 +110,12 @@ export default function Shop({  }) {
           </h1>
           <nav>
             <div className="flex flex-row gap-16 flex items-center justify-center">
-              <Link to="/shop">
+              <NavLink to="/shop">
                 {'All'}
-              </Link>
-              <Link to="/">
+              </NavLink>
+              <NavLink to="/" end>
                 {'Home'}
-              </Link>
+              </NavLink>
             </div>
           </nav>
         </div>

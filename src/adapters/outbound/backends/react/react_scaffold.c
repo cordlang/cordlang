@@ -1,4 +1,5 @@
 #include "adapters/outbound/backends/react/react_backend.h"
+#include "adapters/outbound/backends/preset_registry.h"
 #include "adapters/outbound/backends/theme_css.h"
 #include "adapters/outbound/html_escape.h"
 #include "adapters/outbound/json/json_mini.h"
@@ -108,7 +109,20 @@ static int write_vite_skeleton(const char *project_dir, const char *out) {
       "  plugins: [react()],\n"
       "})\n";
 
-  char html[1024];
+  char html[2048];
+  int has_site_css = 0, has_site_js = 0;
+  {
+    char *css_p = fs_join(project_dir, "public/site.css");
+    char *js_p = fs_join(project_dir, "public/site.js");
+    if (css_p) {
+      has_site_css = fs_exists(css_p);
+      free(css_p);
+    }
+    if (js_p) {
+      has_site_js = fs_exists(js_p);
+      free(js_p);
+    }
+  }
   snprintf(html, sizeof(html),
            "<!doctype html>\n"
            "<html lang=\"%s\">\n"
@@ -116,13 +130,24 @@ static int write_vite_skeleton(const char *project_dir, const char *out) {
            "    <meta charset=\"UTF-8\" />\n"
            "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
            "    <title>%s</title>\n"
+           "    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n"
+           "    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n"
+           "    <link href=\"https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Syne:wght@600;700;800&display=swap\" rel=\"stylesheet\" />\n"
+           "%s"
            "  </head>\n"
            "  <body>\n"
            "    <div id=\"root\"></div>\n"
            "    <script type=\"module\" src=\"/src/main.jsx\"></script>\n"
+           "%s"
            "  </body>\n"
            "</html>\n",
-           lang_e, title_e);
+           lang_e, title_e,
+           has_site_css
+               ? "    <link rel=\"stylesheet\" href=\"/site.css\" />\n"
+               : "",
+           has_site_js
+               ? "    <script type=\"module\" src=\"/site.js\"></script>\n"
+               : "");
 
   const char *main_jsx =
       "import React from 'react'\n"
@@ -179,8 +204,18 @@ static int write_vite_skeleton(const char *project_dir, const char *out) {
       "  background-color: var(--color-bg, #fafaf9);\n"
       "  color: var(--color-text, #1c1917);\n"
       "  line-height: 1.6;\n"
+      "  font-family: var(--font-sans, \"IBM Plex Sans\", system-ui, sans-serif);\n"
       "  --ui-container: 80rem;\n"
       "  --ui-header-height: 4rem;\n"
+      "}\n"
+      "\n"
+      ".font-display {\n"
+      "  font-family: var(--font-display, Syne, \"IBM Plex Sans\", sans-serif);\n"
+      "}\n"
+      "\n"
+      ".font-mono,\n"
+      ".font-mono * {\n"
+      "  font-family: var(--font-mono, \"IBM Plex Mono\", ui-monospace, monospace);\n"
       "}\n"
       "\n"
       ".text-muted {\n"
@@ -216,6 +251,13 @@ static int write_vite_skeleton(const char *project_dir, const char *out) {
       "}\n"
       "aside a:hover {\n"
       "  background-color: color-mix(in srgb, var(--color-primary, #0f766e) 10%, transparent);\n"
+      "  text-decoration: none;\n"
+      "}\n"
+      "aside a[aria-current=\"page\"],\n"
+      "nav a[aria-current=\"page\"] {\n"
+      "  color: var(--color-primary, #0f766e);\n"
+      "  font-weight: 600;\n"
+      "  background-color: color-mix(in srgb, var(--color-accent, #3DFFB5) 18%, transparent);\n"
       "  text-decoration: none;\n"
       "}\n"
       "header.sticky {\n"
@@ -444,6 +486,13 @@ int react_scaffold(const char *project_dir, const char *app_jsx) {
     return -1;
   }
   int rc = write_vite_skeleton(project_dir, out);
+  {
+    char *pj = fs_join(out, "package.json");
+    if (pj) {
+      preset_merge_package_json(pj, project_dir, PRESET_BACKEND_REACT);
+      free(pj);
+    }
+  }
   rc |= write_path(out, "src/App.jsx",
                    app_jsx ? app_jsx
                            : "export default function App(){return null}\n");
@@ -484,6 +533,14 @@ int react_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
     free(out);
     return rc;
   }
+  {
+    char *pj = fs_join(out, "package.json");
+    if (pj) {
+      preset_merge_package_json(pj, project_dir, PRESET_BACKEND_REACT);
+      free(pj);
+    }
+  }
+  preset_write_bridges(out, project_dir, PRESET_BACKEND_REACT);
 
   scaffold_public_assets(project_dir, out);
 

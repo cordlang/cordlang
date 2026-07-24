@@ -15,9 +15,24 @@ static inline int cord_is_forbidden_jsx_attr(const char *name) {
   return name &&
          (strcmp(name, "className") == 0 || strcmp(name, "onClick") == 0 ||
           strcmp(name, "onChange") == 0 || strcmp(name, "onSubmit") == 0 ||
-          strcmp(name, "onInput") == 0 || strcmp(name, "htmlFor") == 0 ||
+          strcmp(name, "onInput") == 0 || strcmp(name, "onKeyDown") == 0 ||
+          strcmp(name, "onKeyUp") == 0 || strcmp(name, "onFocus") == 0 ||
+          strcmp(name, "onBlur") == 0 || strcmp(name, "htmlFor") == 0 ||
           strcmp(name, "defaultValue") == 0 ||
+          strcmp(name, "defaultChecked") == 0 ||
+          strcmp(name, "tabIndex") == 0 ||
           strcmp(name, "dangerouslySetInnerHTML") == 0);
+}
+
+/* React/JSX hook or component names that must not appear as Cord tags. */
+static inline int cord_is_jsx_hook_name(const char *name) {
+  return name &&
+         (strcmp(name, "useState") == 0 || strcmp(name, "useEffect") == 0 ||
+          strcmp(name, "useMemo") == 0 || strcmp(name, "useCallback") == 0 ||
+          strcmp(name, "useRef") == 0 || strcmp(name, "useContext") == 0 ||
+          strcmp(name, "useReducer") == 0 || strcmp(name, "useLayoutEffect") == 0 ||
+          strcmp(name, "useId") == 0 || strcmp(name, "useTransition") == 0 ||
+          strcmp(name, "Link") == 0 || strcmp(name, "Fragment") == 0);
 }
 
 /* Fix hint for agents when a forbidden JSX attr is used. NULL if unknown. */
@@ -28,9 +43,15 @@ static inline const char *cord_jsx_attr_hint(const char *name) {
   if (strcmp(name, "onClick") == 0) return "use @click=...";
   if (strcmp(name, "onChange") == 0) return "use @change=...";
   if (strcmp(name, "onInput") == 0) return "use @input=...";
+  if (strcmp(name, "onKeyDown") == 0) return "use @keydown=...";
+  if (strcmp(name, "onKeyUp") == 0) return "use @keyup=...";
+  if (strcmp(name, "onFocus") == 0) return "use @focus=...";
+  if (strcmp(name, "onBlur") == 0) return "use @blur=...";
   if (strcmp(name, "onSubmit") == 0) return "use @submit= or form action=";
   if (strcmp(name, "htmlFor") == 0) return "use for=";
   if (strcmp(name, "defaultValue") == 0) return "use value= / bind=";
+  if (strcmp(name, "defaultChecked") == 0) return "use checked= / bind=";
+  if (strcmp(name, "tabIndex") == 0) return "use tabindex=";
   if (strcmp(name, "dangerouslySetInnerHTML") == 0)
     return "not supported in .cord";
   return NULL;
@@ -43,8 +64,13 @@ static inline const char *cord_jsx_attr_replace(const char *name) {
   if (strcmp(name, "onClick") == 0) return "@click";
   if (strcmp(name, "onChange") == 0) return "@change";
   if (strcmp(name, "onInput") == 0) return "@input";
+  if (strcmp(name, "onKeyDown") == 0) return "@keydown";
+  if (strcmp(name, "onKeyUp") == 0) return "@keyup";
+  if (strcmp(name, "onFocus") == 0) return "@focus";
+  if (strcmp(name, "onBlur") == 0) return "@blur";
   if (strcmp(name, "onSubmit") == 0) return "@submit";
   if (strcmp(name, "htmlFor") == 0) return "for";
+  if (strcmp(name, "tabIndex") == 0) return "tabindex";
   return NULL;
 }
 
@@ -107,6 +133,7 @@ static inline int cord_is_dom_attr(const char *name) {
           strcmp(name, "getServerSnapshot") == 0 || strcmp(name, "then") == 0 ||
           strcmp(name, "catch") == 0 || strcmp(name, "as") == 0 ||
           strcmp(name, "when") == 0 || strcmp(name, "of") == 0 ||
+          strcmp(name, "fade") == 0 || strcmp(name, "data") == 0 ||
           /* input type shorthands: input text / input email */
           strcmp(name, "text") == 0 || strcmp(name, "email") == 0 ||
           strcmp(name, "password") == 0 || strcmp(name, "search") == 0 ||
@@ -150,7 +177,8 @@ static inline int cord_is_builtin_tag(const char *tag) {
          strcmp(tag, "hr") == 0 || strcmp(tag, "br") == 0 ||
          strcmp(tag, "slot") == 0 || strcmp(tag, "provide") == 0 ||
          strcmp(tag, "portal") == 0 || strcmp(tag, "suspense") == 0 ||
-         strcmp(tag, "loading") == 0 || strcmp(tag, "errorBoundary") == 0;
+         strcmp(tag, "loading") == 0 || strcmp(tag, "errorBoundary") == 0 ||
+         strcmp(tag, "motion") == 0 || strcmp(tag, "chart") == 0;
 }
 
 static inline int cord_is_known_attr(const char *name) {
