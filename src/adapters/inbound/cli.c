@@ -48,7 +48,7 @@ static void print_usage(void) {
   printf("  cordlang symbols [entry]       List components, routes, layouts\n");
   printf("  cordlang goto <Name> [entry]   Print definition path of a symbol\n");
   printf("  cordlang lsp                   Minimal Language Server (stdio JSON-RPC)\n");
-  printf("  cordlang --version             Print CLI version\n");
+  printf("  cordlang --version, -v, --v   Print CLI version\n");
   printf("  cordlang help                  Show this help\n\n");
   printf("Backends:\n");
   printf("  preview / html                 Built-in runtime preview (default for run)\n");
@@ -637,7 +637,8 @@ int cli_run(int argc, char **argv) {
     return 0;
   }
 
-  if (strcmp(cmd, "--version") == 0 || strcmp(cmd, "-V") == 0 ||
+  if (strcmp(cmd, "--version") == 0 || strcmp(cmd, "-v") == 0 ||
+      strcmp(cmd, "--v") == 0 || strcmp(cmd, "-V") == 0 ||
       strcmp(cmd, "version") == 0) {
     printf("cordlang %s\n", CORDLANG_VERSION);
     return 0;

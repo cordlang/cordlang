@@ -3,6 +3,6 @@
 
 /* CLI / LSP version (semver). Language surface freeze is documented separately
  * in docs/VERSIONING.md and docs/SPEC.md (language 1.0). */
-#define CORDLANG_VERSION "1.0.0"
+#define CORDLANG_VERSION "0.0.010"
 
 #endif
