@@ -12,6 +12,7 @@ Start here for humans and for AI tools.
 | [REACT.md](./REACT.md) | Backend map | Cordlang ↔ React |
 | [SVELTE.md](./SVELTE.md) | Backend map | Cordlang ↔ Svelte 5 |
 | [IR.md](./IR.md) | Compiler | IR pipeline |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Contributors | Parser → AST → IR → codegen |
 | [ROADMAP.md](./ROADMAP.md) | Planning | Phases A–G, next steps |
 
 ## Repo entry points

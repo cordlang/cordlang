@@ -2,6 +2,8 @@
 
 El **IR canónico** es el **contrato de backends**: todo destino nuevo debe consumir `IrProgram` / `IrNode`, no el AST crudo.
 
+Capas del compilador (hexagonal, ownership, cómo extender): [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+
 ```
 .cord source
     │
@@ -11,6 +13,7 @@ El **IR canónico** es el **contrato de backends**: todo destino nuevo debe cons
     ▼
   ir_from_ast()  →  IrProgram  (domain/ir.h)
     │
+    ├── (optional IR passes — Phase H3)
     ├── ir_dump()                 →  cordlang compile --ir
     ├── generate_from_ir()        →  React / Svelte / HTML
     └── scaffold_from_ir()        →  dist/react | dist/svelte | dist/preview

@@ -177,13 +177,17 @@ cordlang/
 │   └── adapters/        # CLI, lexer, parser, backends
 ├── docs/
 │   ├── ROADMAP.md       # phases & next steps
+│   ├── ARCHITECTURE.md  # compiler internals
 │   ├── LANGUAGE.md      # design & syntax reference
 │   ├── REACT.md         # Cordlang ↔ React map
 │   ├── SVELTE.md        # Cordlang ↔ Svelte map
 │   └── IR.md            # IR pipeline
 ├── examples/            # single-file samples
 ├── my-app/              # multi-file demo (source only in git)
-├── tests/               # fixtures + golden codegen
+├── tests/               # fixtures + golden + regression
+│   ├── fixtures/
+│   ├── golden/
+│   ├── regression/
 │   ├── run_tests.ps1
 │   ├── run_tests.sh
 │   └── run_tests.bat
@@ -226,6 +230,7 @@ CI (`.github/workflows/ci.yml`) runs goldens **and** `my-app` `--check` on Windo
 | Doc | Content |
 |------|---------|
 | [docs/ROADMAP.md](./docs/ROADMAP.md) | Phases A–F, IR, next sprint |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Compiler internals (parser → IR → codegen) |
 | [docs/LANGUAGE.md](./docs/LANGUAGE.md) | Language design & syntax |
 | [docs/REACT.md](./docs/REACT.md) | Mapping to React APIs |
 | [docs/SVELTE.md](./docs/SVELTE.md) | Mapping to Svelte 5 |
@@ -242,7 +247,7 @@ CLI (inbound)
             → adapters: lexer, parser, IR, backends (react / svelte / html)
 ```
 
-Domain stays free of I/O. Backends consume the **canonical IR** (IR-2).
+Domain stays free of I/O. Backends consume the **canonical IR** (IR-2). Details: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
 ---
 
