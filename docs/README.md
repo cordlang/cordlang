@@ -12,6 +12,12 @@ Start here for humans and for AI tools.
 | [SPEC.md](./SPEC.md) | Language | Normative syntax & semantics (v0.x) |
 | [REACT.md](./REACT.md) | Backend map | Cordlang ↔ React |
 | [SVELTE.md](./SVELTE.md) | Backend map | Cordlang ↔ Svelte 5 |
+| [VUE.md](./VUE.md) | Backend map | Cordlang ↔ Vue 3 |
+| [SOLID.md](./SOLID.md) | Backend map | Cordlang ↔ Solid |
+| [EMAIL.md](./EMAIL.md) | Backend map | Static email HTML |
+| [PDF.md](./PDF.md) | Backend map | HTML → external PDF |
+| [NEXT.md](./NEXT.md) | Meta backend | Next.js wrap |
+| [SVELTEKIT.md](./SVELTEKIT.md) | Meta backend | SvelteKit wrap |
 | [IR.md](./IR.md) | Compiler | IR pipeline |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Contributors | Parser → AST → IR → codegen |
 | [ROADMAP.md](./ROADMAP.md) | Planning | Phases A–H, next steps |

@@ -23,7 +23,13 @@ if [[ "${1:-}" == "--update" || "${1:-}" == "-UpdateGoldens" ]]; then
 fi
 
 FIXTURES=(basic_counter routes_simple interp if_for nested_routes component_slot string_dotted escape_hash_brace react_phase_d svelte_phase_e)
+# Main matrix: SPA backends with full golden coverage.
+# email/pdf/next/sveltekit use dedicated fixtures + regression/ (see below).
 BACKENDS=(react svelte vue solid)
+EXTRA_GOLDENS=(
+  "email_static:email"
+  "email_static:pdf"
+)
 GOLDEN_DIR="$ROOT/tests/golden"
 mkdir -p "$GOLDEN_DIR"
 
@@ -78,6 +84,46 @@ for name in "${FIXTURES[@]}"; do
   done
 done
 
+# Dedicated goldens for static/meta backends (not in main BACKENDS matrix)
+for pair in "${EXTRA_GOLDENS[@]}"; do
+  name="${pair%%:*}"
+  backend="${pair##*:}"
+  fixture="$ROOT/tests/fixtures/$name.cord"
+  golden="$GOLDEN_DIR/$name.$backend.txt"
+  label="$name ($backend)"
+  if [[ ! -f "$fixture" ]]; then
+    echo "FAIL: missing fixture $fixture"
+    failed=$((failed + 1))
+    continue
+  fi
+  if ! "$CORDLANG" compile "$fixture" --backend "$backend" >/dev/null 2>&1; then
+    echo "FAIL: $label — compile failed"
+    failed=$((failed + 1))
+    continue
+  fi
+  actual="$("$CORDLANG" compile "$fixture" --backend "$backend" 2>/dev/null | normalize)"
+  if [[ "$UPDATE" -eq 1 || ! -f "$golden" ]]; then
+    printf '%s' "$actual" > "$golden"
+    if [[ "$UPDATE" -eq 1 ]]; then
+      echo "UPDATE: $label -> $golden"
+    else
+      echo "CREATE: $label -> $golden (first run)"
+    fi
+    updated=$((updated + 1))
+    passed=$((passed + 1))
+    continue
+  fi
+  expected="$(normalize < "$golden")"
+  if [[ "$actual" == "$expected" ]]; then
+    echo "PASS: $label"
+    passed=$((passed + 1))
+  else
+    echo "FAIL: $label — output differs from golden"
+    echo "  golden: $golden"
+    failed=$((failed + 1))
+  fi
+done
+
 # ── Formatter tests (Phase C6) ─────────────────────────────
 # ── Regression tests (Phase H1) ─────────────────────────────
 echo ""
@@ -122,9 +168,12 @@ if [[ -d "$REG_ROOT" ]]; then
       fi
     fi
 
-    for backend in "${BACKENDS[@]}"; do
-      expected="$reg_dir/expected.$backend.txt"
+    # Any expected.<backend>.txt — including email/pdf/next/sveltekit smokes
+    for expected in "$reg_dir"/expected.*.txt; do
       [[ -f "$expected" ]] || continue
+      base="$(basename "$expected")"
+      backend="${base#expected.}"
+      backend="${backend%.txt}"
       label="regression/$slug ($backend)"
       pass_args=()
       if [[ -f "$reg_dir/passes.txt" ]]; then
@@ -139,7 +188,7 @@ if [[ -d "$REG_ROOT" ]]; then
         failed=$((failed + 1))
         continue
       fi
-      actual="$("$CORDLANG" compile "$input" --backend "$backend" "${pass_args[@]}" | normalize)"
+      actual="$("$CORDLANG" compile "$input" --backend "$backend" "${pass_args[@]}" 2>/dev/null | normalize)"
       if [[ "$UPDATE" -eq 1 ]]; then
         printf '%s' "$actual" > "$expected"
         echo "UPDATE: $label -> $expected"

@@ -15,8 +15,9 @@ Capas del compilador (hexagonal, ownership, cómo extender): [`ARCHITECTURE.md`]
     │
     ├── (optional IR passes — Phase H3, opt-in `--pass` / cordlang.json `passes`)
     ├── ir_dump()                 →  cordlang compile --ir
-    ├── generate_from_ir()        →  React / Svelte / HTML
-    └── scaffold_from_ir()        →  dist/react | dist/svelte | dist/preview
+    ├── generate_from_ir()        →  React / Svelte / Vue / Solid / HTML /
+    │                                email / pdf / next / sveltekit
+    └── scaffold_from_ir()        →  dist/<backend>
 ```
 
 ### IR passes (H3)
@@ -30,7 +31,7 @@ cordlang compile --list-passes
 
 Default path applies **no** passes. Dynamic `dlopen`/WASM plugins are post-H3.
 
-**Regla (Horizonte A/B):** Vue / Solid / email / PDF se añaden **solo** cuando este contrato esté estable y documentado. No special-case el AST en un backend nuevo.
+**Regla (Horizonte A/B):** Vue / Solid / email / PDF / Next / SvelteKit se añaden **solo** sobre este contrato IR. No special-case el AST en un backend nuevo. Meta-backends (`next`, `sveltekit`) reutilizan emit React/Svelte y envuelven scaffolds aparte (no ensuciar SPA).
 
 ## Pipeline en el CLI
 
@@ -113,6 +114,8 @@ Al bajar eventos / computed / if / for, `ir_from_ast` llama `expr_normalize`.
 cordlang compile file.cord --ir          # dump IR
 cordlang compile file.cord --backend react   # IR → React
 cordlang compile file.cord --backend svelte  # IR → Svelte
+cordlang compile file.cord --backend email   # IR → static HTML
+cordlang compile file.cord --backend next    # IR → React wrap (Next meta)
 cordlang run react                       # parse → IR → scaffold_from_ir
 ```
 

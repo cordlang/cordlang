@@ -92,6 +92,9 @@ Orchestration lives in `src/application/compile_service.c` and `run_service.c`:
 | Svelte emit | `backends/svelte/svelte_backend.c`, `svelte_scaffold.c` |
 | Vue emit | `backends/vue/vue_ir.c`, `vue_backend.c`, `vue_scaffold.c` |
 | Solid emit | `backends/solid/solid_ir.c`, `solid_backend.c`, `solid_scaffold.c` |
+| Static HTML (email/pdf) | `backends/static_html/static_html.c` + `email/` + `pdf/` |
+| Next meta | `backends/next/next_backend.c` (wraps React emit) |
+| SvelteKit meta | `backends/sveltekit/sveltekit_backend.c` (wraps Svelte emit) |
 | HTML preview | `backends/html/html_backend.c` + `runtime/preview_server.c` |
 | Theme CSS | `backends/theme_css.c` |
 | Source maps | `backends/source_attr.c` (VLQ from `cordlang: source=` markers) |

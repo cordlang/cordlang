@@ -80,7 +80,7 @@ cordlang run svelte       # app Svelte
 | useActionState + form action | ✅ |
 | Suspense / lazy / portal / errorBoundary | ✅ |
 | bind controlado | ✅ |
-| RSC / Next / Remix | ❌ |
+| RSC / Next / Remix | 🟡 meta-backend `next` (client wrap; no full RSC) |
 | useSyncExternalStore / useInsertionEffect / useEffectEvent | ✅ |
 | useImperativeHandle + forwardRef | ✅ |
 | Tests de snapshot del codegen | ✅ |
@@ -96,7 +96,7 @@ cordlang run svelte       # app Svelte
 | Hash router propio + links `#/…` | ✅ |
 | setContext / getContext | ✅ |
 | Snippets / actions / await / portal | ✅ (Fase E) |
-| SvelteKit (SSR/SSG/file routing) | ❌ (backend `sveltekit` — Horizonte B) |
+| SvelteKit (SSR/SSG/file routing) | 🟡 MVP meta-backend `sveltekit` (wrap SPA emit) |
 | Lazy routes (`import()` + `{#await}`) | ✅ |
 | Transitions / animations (`transition=` / in/out) | ✅ |
 | Stores (`store` / `writable`) | ✅ |
@@ -134,6 +134,7 @@ Leyenda: ✅ hecho · 🟡 parcial · ❌ no · ≈ equivalente idiomático · �
 | Source maps .cord→out | ✅ VLQ from markers | ✅ VLQ from markers | P2 done |
 | Hot reload .cord | ✅ `--watch` | ✅ `--watch` | P1 done |
 | Vue / Solid backends | ✅ Vue 3 + Solid (IR-first) | — | F1/F2 done |
+| email / PDF / Next / Kit | ✅ estáticos + meta | ✅ | F8–F11 |
 
 ---
 
@@ -253,7 +254,7 @@ Mapa completo: [`docs/SVELTE.md`](./SVELTE.md) (basado en [svelte.dev/docs/svelt
 | E3 | Transitions / animations | ✅ | `transition=` / `in=` / `out=` / `animate=` + imports |
 | E4 | `{#await}` async UI | ✅ | `await expr then=v` + `loading` / `error` |
 | E5 | Snippets reutilizables | ✅ | `snippet name(args)` + `render name(...)` |
-| E6 | **SvelteKit** backend | ❌ | roadmap (SSR / file routes) |
+| E6 | **SvelteKit** backend | ✅ MVP | `backends/sveltekit/` + `docs/SVELTEKIT.md` |
 | E7 | Stores (`writable`) | ✅ | `store count = 0` → `writable` + `{$count}` |
 | E8 | Attach/portal DOM | ✅ | `portal to=document.body` → `use:portal` helper |
 
@@ -273,6 +274,10 @@ Mapa completo: [`docs/SVELTE.md`](./SVELTE.md) (basado en [svelte.dev/docs/svelt
 | F5 | Playground web (WASM compile) | |
 | F6 | CI multi-backend | ✅ goldens Win/Linux; demo `--check` = G4 |
 | F7 | Versionado del lenguaje (0.x → 1.0 freeze) | |
+| F8 | Backend **email** HTML estático | ✅ `backends/email/` + `static_html` + `docs/EMAIL.md` |
+| F9 | Backend **pdf** (HTML + conversión externa) | ✅ `backends/pdf/` + `docs/PDF.md` |
+| F10 | Meta **Next** (wrap React) | ✅ `backends/next/` + `docs/NEXT.md` + smoke |
+| F11 | Meta **SvelteKit** (wrap Svelte) | ✅ `backends/sveltekit/` + `docs/SVELTEKIT.md` + smoke |
 
 ---
 
@@ -353,15 +358,20 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 
 1. ~~IR compartido~~ ✅ IR-2 (`react_ir.c`)  
 2. Nested routes más profundos + loaders  
-3. Adapter **Next/RSC** (backend `next`, no ensuciar SPA)  
-4. Más goldens Phase D  
+3. ~~Adapter **Next** (backend `next`, no ensuciar SPA)~~ ✅ MVP client wrap  
+4. Más goldens Phase D / RSC profundo (fuera de MVP)
 
 ### Svelte
 
 1. ~~IR compartido~~ ✅ IR-2  
 2. `$bindable` / `{#key}` / special elements  
-3. Backend **SvelteKit** (SSR + file routing) — post-G  
+3. ~~Backend **SvelteKit**~~ ✅ MVP (`sveltekit` meta)  
 4. Attachments `@attach` (Svelte 5 modern path)  
+
+### Email / PDF
+
+1. ~~HTML estático compartido~~ ✅ `static_html` + backends `email` / `pdf`  
+2. Conversión PDF externa documentada (`run pdf --check` soft)
 
 ### HTML preview
 

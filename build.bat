@@ -39,6 +39,11 @@ gcc -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-function -Wno-format
   src/adapters/outbound/backends/solid/solid_backend.c ^
   src/adapters/outbound/backends/solid/solid_ir.c ^
   src/adapters/outbound/backends/solid/solid_scaffold.c ^
+  src/adapters/outbound/backends/static_html/static_html.c ^
+  src/adapters/outbound/backends/email/email_backend.c ^
+  src/adapters/outbound/backends/pdf/pdf_backend.c ^
+  src/adapters/outbound/backends/next/next_backend.c ^
+  src/adapters/outbound/backends/sveltekit/sveltekit_backend.c ^
   src/adapters/outbound/backends/html/html_backend.c ^
   src/adapters/outbound/runtime/preview_server.c ^
   -lws2_32

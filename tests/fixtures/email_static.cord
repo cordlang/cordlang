@@ -1,0 +1,7 @@
+# Static email card (no state / events)
+
+card p=24
+  h1 "Welcome" size=2xl bold
+  p "Thanks for trying Cordlang email HTML." size=lg muted
+  link "Read the docs" to="https://example.com/docs"
+  img src="https://example.com/logo.png" alt="Logo" width="120"

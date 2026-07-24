@@ -1,0 +1,1 @@
+Email static HTML smoke

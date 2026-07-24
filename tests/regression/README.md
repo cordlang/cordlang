@@ -7,7 +7,7 @@ Each subdirectory under `tests/regression/<slug>/` pins a past bug or trap.
 | File | Role |
 |------|------|
 | `input.cord` | Required source under test |
-| `expected.react.txt` / `expected.svelte.txt` | Optional codegen snapshots |
+| `expected.react.txt` / `expected.svelte.txt` / `expected.<backend>.txt` | Optional codegen snapshots (any registered backend) |
 | `expect_check_nonzero` | Marker: `cordlang check` must exit non-zero |
 | `expect_check_contains.txt` | Optional substring that check output must include |
 | `passes.txt` | Optional: one IR pass name per line (passed as `--pass`) |

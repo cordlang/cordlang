@@ -69,18 +69,25 @@ static int run_vite_check(const char *project_dir, const char *backend_name) {
     printf("--check: node_modules present, skipping npm install\n");
   }
 
-  printf("--check: running npm exec vite build...\n");
+  /* Prefer package.json "build" (Vite / Next / SvelteKit). Fallback: vite. */
+  printf("--check: running npm run build...\n");
   fflush(stdout);
-  /* argv-safe: path is one argument; no shell. cwd=dist so Vite resolves. */
-  char *argv_build[] = {NPM_CMD, "exec", "--", "vite", "build", NULL};
+  char *argv_build[] = {NPM_CMD, "run", "build", NULL};
   rc = process_run(dist, argv_build, 1);
+  if (rc != 0 && strcmp(backend_name, "next") != 0 &&
+      strcmp(backend_name, "sveltekit") != 0) {
+    printf("--check: npm run build failed; trying vite build...\n");
+    fflush(stdout);
+    char *argv_vite[] = {NPM_CMD, "exec", "--", "vite", "build", NULL};
+    rc = process_run(dist, argv_vite, 1);
+  }
 
   free(dist);
   if (rc != 0) {
-    fprintf(stderr, "Error: --check: vite build failed (exit %d)\n", rc);
+    fprintf(stderr, "Error: --check: build failed (exit %d)\n", rc);
     return 1;
   }
-  printf("--check: vite build OK\n");
+  printf("--check: build OK\n");
   return 0;
 }
 
@@ -195,13 +202,37 @@ int run_service_run(const char *backend_name, const char *project_dir,
   if (run_scaffold_once(backend, dir, 0) != 0) return 1;
 
   if (check) {
-    /* Only Node-based scaffolds support vite check; only on first build. */
-    if (!backend->needs_node_check) {
+    /* PDF: soft external-tool hint (no hard failure if converter missing). */
+    if (strcmp(backend->name, "pdf") == 0) {
+      printf("\n--check (pdf): looking for HTML→PDF converters...\n");
+#ifdef _WIN32
+      printf("--check (pdf): convert dist/pdf/index.html externally "
+             "(weasyprint / playwright / wkhtmltopdf). See docs/PDF.md\n");
+#else
+      {
+        char *which_w[] = {"which", "weasyprint", NULL};
+        char *which_n[] = {"which", "npx", NULL};
+        int has_weasy = process_run(NULL, which_w, 1) == 0;
+        int has_npx = process_run(NULL, which_n, 1) == 0;
+        if (has_weasy) {
+          printf("--check (pdf): weasyprint found. Example:\n");
+          printf("  weasyprint dist/pdf/index.html dist/pdf/out.pdf\n");
+        } else if (has_npx) {
+          printf("--check (pdf): npx found. Example:\n");
+          printf("  npx playwright pdf dist/pdf/index.html dist/pdf/out.pdf\n");
+        } else {
+          printf("--check (pdf): no converter on PATH — skip. "
+                 "See dist/pdf/README.md and docs/PDF.md\n");
+        }
+      }
+#endif
+    } else if (!backend->needs_node_check) {
       fprintf(stderr, "Error: --check is not supported for backend '%s'\n",
               backend->name);
       return 1;
+    } else if (run_vite_check(dir, backend->name) != 0) {
+      return 1;
     }
-    if (run_vite_check(dir, backend->name) != 0) return 1;
   }
 
   if (watch) {

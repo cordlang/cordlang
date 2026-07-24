@@ -40,6 +40,10 @@ if (-not (Test-Path -LiteralPath $GoldenDir)) {
 
 $names = "basic_counter", "routes_simple", "interp", "if_for", "nested_routes", "react_phase_d", "component_slot", "string_dotted", "escape_hash_brace", "svelte_phase_e"
 $backends = "react", "svelte", "vue", "solid"
+$extraGoldens = @(
+  @{ Name = "email_static"; Backend = "email" },
+  @{ Name = "email_static"; Backend = "pdf" }
+)
 
 function Get-NormalizedText([string]$text) {
   if ($null -eq $text) { return "" }
@@ -125,6 +129,54 @@ foreach ($name in $names) {
   }
 }
 
+# Dedicated goldens for static backends
+foreach ($pair in $extraGoldens) {
+  $name = $pair.Name
+  $backend = $pair.Backend
+  $fixture = Join-Path $FixturesDir ($name + ".cord")
+  $goldenPath = Join-Path $GoldenDir ($name + "." + $backend + ".txt")
+  $label = $name + " (" + $backend + ")"
+  if (-not (Test-Path -LiteralPath $fixture)) {
+    Write-Host ("FAIL: missing fixture " + $fixture) -ForegroundColor Red
+    $failed = $failed + 1
+    continue
+  }
+  $args = @("compile", $fixture, "--backend", $backend)
+  $stdout = & $Cordlang @args 2>&1
+  $exitCode = $LASTEXITCODE
+  if ($exitCode -ne 0) {
+    Write-Host ("FAIL: " + $label + " - compile exit " + $exitCode) -ForegroundColor Red
+    $failed = $failed + 1
+    continue
+  }
+  if ($stdout -is [System.Array]) {
+    $actualRaw = ($stdout | ForEach-Object { "$_" }) -join "`n"
+  } else {
+    $actualRaw = [string]$stdout
+  }
+  $actual = Get-NormalizedText $actualRaw
+  if ($UpdateGoldens -or -not (Test-Path -LiteralPath $goldenPath)) {
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($goldenPath, $actual, $utf8)
+    if ($UpdateGoldens) {
+      Write-Host ("UPDATE: " + $label) -ForegroundColor Cyan
+    } else {
+      Write-Host ("CREATE: " + $label + " (first run)") -ForegroundColor Yellow
+    }
+    $updated = $updated + 1
+    $passed = $passed + 1
+    continue
+  }
+  $expected = Get-NormalizedText ([System.IO.File]::ReadAllText($goldenPath))
+  if ($actual -eq $expected) {
+    Write-Host ("PASS: " + $label) -ForegroundColor Green
+    $passed = $passed + 1
+  } else {
+    Write-Host ("FAIL: " + $label + " - output differs from golden") -ForegroundColor Red
+    $failed = $failed + 1
+  }
+}
+
 # ── Regression tests (Phase H1) ─────────────────────────────
 Write-Host ""
 Write-Host "Regression tests"
@@ -164,9 +216,10 @@ if (Test-Path -LiteralPath $RegRoot) {
       }
     }
 
-    foreach ($backend in $backends) {
-      $expectedPath = Join-Path $dir.FullName ("expected." + $backend + ".txt")
-      if (-not (Test-Path -LiteralPath $expectedPath)) { continue }
+    # Any expected.<backend>.txt (SPA + email/pdf/next/sveltekit smokes)
+    Get-ChildItem -LiteralPath $dir.FullName -Filter "expected.*.txt" -ErrorAction SilentlyContinue | ForEach-Object {
+      $expectedPath = $_.FullName
+      $backend = $_.BaseName.Substring("expected.".Length)
       $label = "regression/$slug (" + $backend + ")"
       $args = New-Object System.Collections.Generic.List[string]
       [void]$args.Add("compile")
@@ -187,8 +240,8 @@ if (Test-Path -LiteralPath $RegRoot) {
       $exitCode = $LASTEXITCODE
       if ($exitCode -ne 0) {
         Write-Host ("FAIL: " + $label + " - compile exit " + $exitCode) -ForegroundColor Red
-        $failed = $failed + 1
-        continue
+        $script:failed = $script:failed + 1
+        return
       }
       if ($stdout -is [System.Array]) {
         $actualRaw = ($stdout | ForEach-Object { "$_" }) -join "`n"
@@ -204,19 +257,19 @@ if (Test-Path -LiteralPath $RegRoot) {
         $utf8 = New-Object System.Text.UTF8Encoding $false
         [System.IO.File]::WriteAllText($expectedPath, $actual, $utf8)
         Write-Host ("UPDATE: " + $label) -ForegroundColor Cyan
-        $updated = $updated + 1
-        $passed = $passed + 1
-        continue
+        $script:updated = $script:updated + 1
+        $script:passed = $script:passed + 1
+        return
       }
 
       $expected = Get-NormalizedText ([System.IO.File]::ReadAllText($expectedPath))
       if ($actual -eq $expected) {
         Write-Host ("PASS: " + $label) -ForegroundColor Green
-        $passed = $passed + 1
+        $script:passed = $script:passed + 1
       } else {
         Write-Host ("FAIL: " + $label + " - output differs from expected") -ForegroundColor Red
         Write-Host ("  expected: " + $expectedPath)
-        $failed = $failed + 1
+        $script:failed = $script:failed + 1
       }
     }
   }

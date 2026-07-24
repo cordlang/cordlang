@@ -4,6 +4,10 @@
 #include "adapters/outbound/backends/svelte/svelte_backend.h"
 #include "adapters/outbound/backends/vue/vue_backend.h"
 #include "adapters/outbound/backends/solid/solid_backend.h"
+#include "adapters/outbound/backends/email/email_backend.h"
+#include "adapters/outbound/backends/pdf/pdf_backend.h"
+#include "adapters/outbound/backends/next/next_backend.h"
+#include "adapters/outbound/backends/sveltekit/sveltekit_backend.h"
 #include <string.h>
 
 #define MAX_BACKENDS 16
@@ -19,6 +23,10 @@ void backend_register_all(void) {
   backends[backend_count++] = svelte_backend_port();
   backends[backend_count++] = vue_backend_port();
   backends[backend_count++] = solid_backend_port();
+  backends[backend_count++] = email_backend_port();
+  backends[backend_count++] = pdf_backend_port();
+  backends[backend_count++] = next_backend_port();
+  backends[backend_count++] = sveltekit_backend_port();
   registered = 1;
 }
 
