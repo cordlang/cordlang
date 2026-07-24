@@ -573,6 +573,32 @@ CompileResult compiler_parse_project(const char *entry_path) {
   return result;
 }
 
+/* ── single-module resolution (native ESM dev server) ───── */
+
+char *compiler_project_root(const char *entry_path) {
+  if (!entry_path) return NULL;
+  return find_project_root(entry_path);
+}
+
+char *compiler_resolve_module(const char *from_file, const char *mod_path,
+                              const char *project_root) {
+  if (!from_file || !mod_path) return NULL;
+  return resolve_module_file(from_file, mod_path, project_root);
+}
+
+char *compiler_module_export_name(const char *mod_path, const char *alias) {
+  if (!mod_path && !(alias && *alias)) return NULL;
+  return module_export_name(mod_path ? mod_path : "", alias);
+}
+
+int compiler_is_module_ref(const char *s) { return path_is_module_ref(s); }
+
+void compiler_wrap_module_body(Node *root, const char *export_name,
+                               const char *file_path) {
+  ensure_component_wrapper(root, export_name, file_path);
+  tag_components_in_root(root, file_path);
+}
+
 void compiler_result_free(CompileResult *result) {
   if (!result) return;
   if (result->ast) {

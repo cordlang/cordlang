@@ -35,6 +35,7 @@ set(SOURCES
   src/adapters/outbound/backends/registry.c
   src/adapters/outbound/backends/preset_registry.c
   src/adapters/outbound/backends/source_attr.c
+  src/adapters/outbound/backends/cord_class.c
   src/adapters/outbound/backends/theme_css.c
   src/adapters/outbound/backends/react/react_backend.c
   src/adapters/outbound/backends/react/react_ir.c
