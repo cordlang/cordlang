@@ -13,21 +13,35 @@ static inline int irw_is_pascal(const char *s) {
 }
 
 static inline int irw_is_style_attr(const char *name) {
-  return name && (strcmp(name, "variant") == 0 || strcmp(name, "size") == 0 ||
-                  strcmp(name, "color") == 0 || strcmp(name, "gap") == 0 ||
-                  strcmp(name, "cols") == 0 || strcmp(name, "p") == 0 ||
-                  strcmp(name, "bg") == 0 || strcmp(name, "shadow") == 0 ||
-                  strcmp(name, "rounded") == 0 || strcmp(name, "max-w") == 0 ||
-                  strcmp(name, "overflow") == 0 || strcmp(name, "w") == 0 ||
-                  strcmp(name, "h") == 0 || strcmp(name, "mx") == 0 ||
-                  strcmp(name, "my") == 0 || strcmp(name, "px") == 0 ||
-                  strcmp(name, "py") == 0 || strcmp(name, "m") == 0 ||
-                  strcmp(name, "center") == 0 || strcmp(name, "between") == 0 ||
-                  strcmp(name, "bold") == 0 || strcmp(name, "muted") == 0 ||
-                  strcmp(name, "sticky") == 0 || strcmp(name, "primary") == 0 ||
-                  strcmp(name, "outline") == 0 || strcmp(name, "ghost") == 0 ||
-                  strcmp(name, "border") == 0 || strcmp(name, "min-h") == 0 ||
-                  strcmp(name, "flex-1") == 0 || strcmp(name, "font-mono") == 0);
+  if (!name) return 0;
+  /* Responsive prefixes: sm:gap, md:p, lg:cols */
+  if ((strncmp(name, "sm:", 3) == 0 || strncmp(name, "md:", 3) == 0 ||
+       strncmp(name, "lg:", 3) == 0) &&
+      name[3])
+    return irw_is_style_attr(name + 3);
+  return (strcmp(name, "variant") == 0 || strcmp(name, "size") == 0 ||
+          strcmp(name, "color") == 0 || strcmp(name, "gap") == 0 ||
+          strcmp(name, "cols") == 0 || strcmp(name, "p") == 0 ||
+          strcmp(name, "bg") == 0 || strcmp(name, "shadow") == 0 ||
+          strcmp(name, "rounded") == 0 || strcmp(name, "max-w") == 0 ||
+          strcmp(name, "overflow") == 0 || strcmp(name, "w") == 0 ||
+          strcmp(name, "h") == 0 || strcmp(name, "mx") == 0 ||
+          strcmp(name, "my") == 0 || strcmp(name, "px") == 0 ||
+          strcmp(name, "py") == 0 || strcmp(name, "m") == 0 ||
+          strcmp(name, "center") == 0 || strcmp(name, "between") == 0 ||
+          strcmp(name, "bold") == 0 || strcmp(name, "muted") == 0 ||
+          strcmp(name, "sticky") == 0 || strcmp(name, "primary") == 0 ||
+          strcmp(name, "outline") == 0 || strcmp(name, "ghost") == 0 ||
+          strcmp(name, "border") == 0 || strcmp(name, "min-h") == 0 ||
+          strcmp(name, "flex-1") == 0 || strcmp(name, "font-mono") == 0 ||
+          strcmp(name, "leading") == 0 || strcmp(name, "tracking") == 0 ||
+          strcmp(name, "elevate") == 0 || strcmp(name, "density") == 0);
+}
+
+static inline int irw_is_type_scale(const char *v) {
+  return v && (strcmp(v, "display") == 0 || strcmp(v, "title") == 0 ||
+               strcmp(v, "body") == 0 || strcmp(v, "caption") == 0 ||
+               strcmp(v, "code") == 0);
 }
 
 static inline int irw_looks_number(const char *s) {
@@ -54,6 +68,7 @@ static inline const char *irw_html_tag(const char *tag) {
       strcmp(tag, "card") == 0 || strcmp(tag, "grid") == 0 ||
       strcmp(tag, "group") == 0)
     return "div";
+  if (strcmp(tag, "section") == 0) return "section";
   if (strcmp(tag, "btn") == 0 || strcmp(tag, "button") == 0) return "button";
   if (strcmp(tag, "link") == 0) return "a";
   if (strcmp(tag, "fragment") == 0) return NULL;
@@ -85,9 +100,76 @@ static inline const char *irw_base_class(const char *tag) {
   if (strcmp(tag, "row") == 0) return "flex flex-row";
   if (strcmp(tag, "grid") == 0) return "grid";
   if (strcmp(tag, "page") == 0) return "min-h-screen";
+  if (strcmp(tag, "section") == 0) return "cord-section";
   if (strcmp(tag, "btn") == 0) return "btn";
   if (strcmp(tag, "card") == 0) return "card";
   return NULL;
+}
+
+/* Map one style key/value (no responsive prefix) into a class piece. */
+static inline void irw_style_piece(char *piece, size_t psz, const char *k,
+                                  const char *v, int has_between) {
+  piece[0] = '\0';
+  if (!k) return;
+  if (!v) v = "";
+  if (strcmp(k, "gap") == 0) snprintf(piece, psz, " gap-%s", v);
+  else if (strcmp(k, "p") == 0) snprintf(piece, psz, " p-%s", v);
+  else if (strcmp(k, "w") == 0) snprintf(piece, psz, " w-%s", v);
+  else if (strcmp(k, "h") == 0) snprintf(piece, psz, " h-%s", v);
+  else if (strcmp(k, "min-h") == 0) snprintf(piece, psz, " min-h-%s", v);
+  else if (strcmp(k, "size") == 0) {
+    if (strcmp(v, "2xl") == 0) snprintf(piece, psz, " text-2xl");
+    else if (strcmp(v, "4xl") == 0) snprintf(piece, psz, " text-4xl");
+    else if (strcmp(v, "xl") == 0) snprintf(piece, psz, " text-xl");
+    else if (strcmp(v, "lg") == 0) snprintf(piece, psz, " text-lg");
+    else if (strcmp(v, "sm") == 0) snprintf(piece, psz, " text-sm");
+    else snprintf(piece, psz, " text-%s", v);
+  } else if (strcmp(k, "type") == 0 && irw_is_type_scale(v))
+    snprintf(piece, psz, " type-%s", v);
+  else if (strcmp(k, "elevate") == 0)
+    snprintf(piece, psz, " elevate-%s", v);
+  else if (strcmp(k, "density") == 0)
+    snprintf(piece, psz, " density-%s", v);
+  else if (strcmp(k, "leading") == 0)
+    snprintf(piece, psz, " leading-%s", v);
+  else if (strcmp(k, "tracking") == 0)
+    snprintf(piece, psz, " tracking-%s", v);
+  else if (strcmp(k, "bold") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
+    snprintf(piece, psz, " font-bold");
+  else if (strcmp(k, "muted") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
+    snprintf(piece, psz, " text-muted");
+  else if (strcmp(k, "font-mono") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
+    snprintf(piece, psz, " font-mono");
+  else if (strcmp(k, "flex-1") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
+    snprintf(piece, psz, " flex-1");
+  else if (strcmp(k, "border") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
+    snprintf(piece, psz, " border border-gray-200");
+  else if (strcmp(k, "border") == 0)
+    snprintf(piece, psz, " border border-%s", v);
+  else if (strcmp(k, "center") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
+    snprintf(piece, psz,
+             has_between ? " flex items-center" : " flex items-center justify-center");
+  else if (strcmp(k, "between") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
+    snprintf(piece, psz, " flex justify-between");
+  else if (strcmp(k, "sticky") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
+    snprintf(piece, psz, " sticky top-0");
+  else if (strcmp(k, "bg") == 0) snprintf(piece, psz, " bg-%s", v);
+  else if (strcmp(k, "shadow") == 0)
+    snprintf(piece, psz, " shadow-%s", v);
+  else if (strcmp(k, "variant") == 0)
+    snprintf(piece, psz, " btn-%s", v);
+  else if (strcmp(k, "max-w") == 0)
+    snprintf(piece, psz, " max-w-%s", v);
+  else if (strcmp(k, "rounded") == 0)
+    snprintf(piece, psz, " rounded-%s", v);
+  else if (strcmp(k, "mx") == 0) snprintf(piece, psz, " mx-%s", v);
+  else if (strcmp(k, "my") == 0) snprintf(piece, psz, " my-%s", v);
+  else if (strcmp(k, "px") == 0) snprintf(piece, psz, " px-%s", v);
+  else if (strcmp(k, "py") == 0) snprintf(piece, psz, " py-%s", v);
+  else if (strcmp(k, "m") == 0) snprintf(piece, psz, " m-%s", v);
+  else if (strcmp(k, "cols") == 0) snprintf(piece, psz, " grid-cols-%s", v);
+  else if (strcmp(k, "overflow") == 0) snprintf(piece, psz, " overflow-%s", v);
+  else if (strcmp(k, "color") == 0) snprintf(piece, psz, " text-%s", v);
 }
 
 /* Append Tailwind-ish classes from style attrs on IR element. */
@@ -115,53 +197,24 @@ static inline void irw_collect_classes(char *out, size_t outsz, const IrNode *el
     if (!a || a->kind != IR_ATTR || !a->name) continue;
     const char *k = a->name;
     const char *v = a->value ? a->value : "";
-    char piece[128];
+    char piece[160];
     piece[0] = '\0';
-    if (strcmp(k, "gap") == 0) snprintf(piece, sizeof(piece), " gap-%s", v);
-    else if (strcmp(k, "p") == 0) snprintf(piece, sizeof(piece), " p-%s", v);
-    else if (strcmp(k, "w") == 0) snprintf(piece, sizeof(piece), " w-%s", v);
-    else if (strcmp(k, "h") == 0) snprintf(piece, sizeof(piece), " h-%s", v);
-    else if (strcmp(k, "min-h") == 0) snprintf(piece, sizeof(piece), " min-h-%s", v);
-    else if (strcmp(k, "size") == 0) {
-      if (strcmp(v, "2xl") == 0) snprintf(piece, sizeof(piece), " text-2xl");
-      else if (strcmp(v, "4xl") == 0) snprintf(piece, sizeof(piece), " text-4xl");
-      else if (strcmp(v, "xl") == 0) snprintf(piece, sizeof(piece), " text-xl");
-      else if (strcmp(v, "lg") == 0) snprintf(piece, sizeof(piece), " text-lg");
-      else if (strcmp(v, "sm") == 0) snprintf(piece, sizeof(piece), " text-sm");
-      else snprintf(piece, sizeof(piece), " text-%s", v);
-    } else if (strcmp(k, "bold") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
-      snprintf(piece, sizeof(piece), " font-bold");
-    else if (strcmp(k, "muted") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
-      snprintf(piece, sizeof(piece), " text-muted");
-    else if (strcmp(k, "font-mono") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
-      snprintf(piece, sizeof(piece), " font-mono");
-    else if (strcmp(k, "flex-1") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
-      snprintf(piece, sizeof(piece), " flex-1");
-    else if (strcmp(k, "border") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
-      snprintf(piece, sizeof(piece), " border border-gray-200");
-    else if (strcmp(k, "border") == 0)
-      snprintf(piece, sizeof(piece), " border border-%s", v);
-    else if (strcmp(k, "center") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
-      snprintf(piece, sizeof(piece),
-               has_between ? " flex items-center" : " flex items-center justify-center");
-    else if (strcmp(k, "between") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
-      snprintf(piece, sizeof(piece), " flex justify-between");
-    else if (strcmp(k, "sticky") == 0 && (v[0] == '\0' || strcmp(v, "true") == 0))
-      snprintf(piece, sizeof(piece), " sticky top-0");
-    else if (strcmp(k, "bg") == 0) snprintf(piece, sizeof(piece), " bg-%s", v);
-    else if (strcmp(k, "shadow") == 0)
-      snprintf(piece, sizeof(piece), " shadow-%s", v);
-    else if (strcmp(k, "variant") == 0)
-      snprintf(piece, sizeof(piece), " btn-%s", v);
-    else if (strcmp(k, "max-w") == 0)
-      snprintf(piece, sizeof(piece), " max-w-%s", v);
-    else if (strcmp(k, "rounded") == 0)
-      snprintf(piece, sizeof(piece), " rounded-%s", v);
-    else if (strcmp(k, "mx") == 0) snprintf(piece, sizeof(piece), " mx-%s", v);
-    else if (strcmp(k, "my") == 0) snprintf(piece, sizeof(piece), " my-%s", v);
-    else if (strcmp(k, "px") == 0) snprintf(piece, sizeof(piece), " px-%s", v);
-    else if (strcmp(k, "py") == 0) snprintf(piece, sizeof(piece), " py-%s", v);
-    else if (strcmp(k, "m") == 0) snprintf(piece, sizeof(piece), " m-%s", v);
+    /* type=display|title|… even though type is also a DOM attr */
+    if (strcmp(k, "type") == 0 && irw_is_type_scale(v)) {
+      snprintf(piece, sizeof(piece), " type-%s", v);
+    } else if (strncmp(k, "sm:", 3) == 0 || strncmp(k, "md:", 3) == 0 ||
+               strncmp(k, "lg:", 3) == 0) {
+      char inner[128];
+      irw_style_piece(inner, sizeof(inner), k + 3, v, has_between);
+      if (inner[0]) {
+        /* strip leading space from inner, prefix breakpoint */
+        const char *cls = inner;
+        while (*cls == ' ') cls++;
+        snprintf(piece, sizeof(piece), " %.2s:%s", k, cls);
+      }
+    } else if (irw_is_style_attr(k)) {
+      irw_style_piece(piece, sizeof(piece), k, v, has_between);
+    }
     if (piece[0] && n + strlen(piece) + 1 < outsz) {
       memcpy(out + n, piece, strlen(piece) + 1);
       n += strlen(piece);

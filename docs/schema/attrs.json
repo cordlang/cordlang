@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Machine-readable tags/attrs for LSP, check, and AI skills. Keep in sync with src/domain/known_attrs.h",
   "propTypes": ["string", "number", "boolean", "any"],
-  "layoutTags": ["col", "row", "stack", "page", "card", "grid", "group", "fragment"],
+  "layoutTags": ["col", "row", "stack", "page", "card", "grid", "group", "fragment", "section"],
   "controlTags": ["btn", "button", "link", "input", "textarea", "select", "checkbox", "radio", "form", "label", "img", "icon", "span", "p", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "nav", "header", "footer", "main", "aside", "section", "article", "div", "a", "table", "thead", "tbody", "tr", "td", "th", "code", "pre", "hr", "br", "slot"],
   "specialTags": ["provide", "portal", "suspense", "loading", "errorBoundary", "empty", "if", "else", "for", "await", "snippet", "render", "motion", "chart", "foreign"],
   "capabilities": {
@@ -15,8 +15,11 @@
     "variant", "size", "color", "gap", "cols", "p", "m", "px", "py", "mx", "my",
     "bg", "shadow", "rounded", "max-w", "min-h", "overflow", "w", "h",
     "center", "between", "bold", "muted", "sticky", "primary", "outline", "ghost",
-    "border", "flex-1", "font-mono"
+    "border", "flex-1", "font-mono", "leading", "tracking", "elevate", "density"
   ],
+  "typeScale": ["display", "title", "body", "caption", "code"],
+  "responsivePrefixes": ["sm:", "md:", "lg:"],
+  "densityValues": ["compact", "comfortable", "spacious"],
   "domAttrs": [
     "id", "name", "type", "value", "placeholder", "href", "to", "src", "alt",
     "target", "rel", "role", "aria-label", "aria-labelledby", "aria-describedby", "aria-hidden", "aria-expanded", "aria-current", "title", "for", "action", "method", "disabled",

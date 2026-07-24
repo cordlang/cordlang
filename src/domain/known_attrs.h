@@ -88,8 +88,12 @@ static inline int cord_is_importance_vocab(const char *v) {
 }
 
 static inline int cord_is_style_attr(const char *name) {
-  return name &&
-         (strcmp(name, "variant") == 0 || strcmp(name, "size") == 0 ||
+  if (!name) return 0;
+  if ((strncmp(name, "sm:", 3) == 0 || strncmp(name, "md:", 3) == 0 ||
+       strncmp(name, "lg:", 3) == 0) &&
+      name[3])
+    return cord_is_style_attr(name + 3);
+  return (strcmp(name, "variant") == 0 || strcmp(name, "size") == 0 ||
           strcmp(name, "color") == 0 || strcmp(name, "gap") == 0 ||
           strcmp(name, "cols") == 0 || strcmp(name, "p") == 0 ||
           strcmp(name, "bg") == 0 || strcmp(name, "shadow") == 0 ||
@@ -103,7 +107,9 @@ static inline int cord_is_style_attr(const char *name) {
           strcmp(name, "sticky") == 0 || strcmp(name, "primary") == 0 ||
           strcmp(name, "outline") == 0 || strcmp(name, "ghost") == 0 ||
           strcmp(name, "border") == 0 || strcmp(name, "min-h") == 0 ||
-          strcmp(name, "flex-1") == 0 || strcmp(name, "font-mono") == 0);
+          strcmp(name, "flex-1") == 0 || strcmp(name, "font-mono") == 0 ||
+          strcmp(name, "leading") == 0 || strcmp(name, "tracking") == 0 ||
+          strcmp(name, "elevate") == 0 || strcmp(name, "density") == 0);
 }
 
 static inline int cord_is_dom_attr(const char *name) {
@@ -186,6 +192,11 @@ static inline int cord_is_known_attr(const char *name) {
   if (name[0] == '@') return 1;
   if (strncmp(name, "aria-", 5) == 0 || strncmp(name, "data-", 5) == 0)
     return 1;
+  if ((strncmp(name, "sm:", 3) == 0 || strncmp(name, "md:", 3) == 0 ||
+       strncmp(name, "lg:", 3) == 0) &&
+      name[3])
+    return cord_is_style_attr(name + 3);
+  /* type=display|title|body|caption|code is typography (also DOM type=) */
   return cord_is_style_attr(name) || cord_is_dom_attr(name);
 }
 

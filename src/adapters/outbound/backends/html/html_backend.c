@@ -1,4 +1,5 @@
 #include "adapters/outbound/backends/html/html_backend.h"
+#include "adapters/outbound/backends/theme_css.h"
 #include "application/ports/fs_port.h"
 #include "domain/interp.h"
 #include "domain/ir.h"
@@ -1102,6 +1103,14 @@ static char *html_generate_impl(Node *root) {
     "  <title>Cordlang Runtime Preview</title>\n"
     "  <style>\n");
   sb_append(&doc, RUNTIME_CSS);
+  {
+    char *theme = theme_css_generate(root);
+    if (theme) {
+      sb_append(&doc, "\n");
+      sb_append(&doc, theme);
+      free(theme);
+    }
+  }
   sb_append(&doc,
     "  </style>\n"
     "</head>\n"
@@ -1756,6 +1765,17 @@ static char *html_generate_from_ir_root(IrNode *root) {
             "  <title>Cordlang Runtime Preview</title>\n"
             "  <style>\n");
   sb_append(&doc, RUNTIME_CSS);
+  {
+    IrProgram fake;
+    memset(&fake, 0, sizeof(fake));
+    fake.root = root;
+    char *theme = theme_css_generate_from_ir(&fake);
+    if (theme) {
+      sb_append(&doc, "\n");
+      sb_append(&doc, theme);
+      free(theme);
+    }
+  }
   sb_append(&doc,
             "  </style>\n"
             "</head>\n"

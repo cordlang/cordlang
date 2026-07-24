@@ -320,6 +320,30 @@ static Node *parse_attrs(Parser *p, Node *element) {
       Token key = advance(p);
       char *key_str = token_str(key);
 
+      /* Responsive style attrs: sm:gap=8 / md:p=24 / lg:cols=3 */
+      if (key_str &&
+          (strcmp(key_str, "sm") == 0 || strcmp(key_str, "md") == 0 ||
+           strcmp(key_str, "lg") == 0) &&
+          peek(p).type == TOKEN_COLON) {
+        advance(p); /* : */
+        if (peek(p).type == TOKEN_IDENTIFIER) {
+          Token rest = advance(p);
+          char *rest_str = token_str(rest);
+          if (rest_str) {
+            size_t nlen = strlen(key_str) + 1 + strlen(rest_str) + 1;
+            char *combined = malloc(nlen);
+            if (combined) {
+              snprintf(combined, nlen, "%s:%s", key_str, rest_str);
+              free(key_str);
+              free(rest_str);
+              key_str = combined;
+            } else {
+              free(rest_str);
+            }
+          }
+        }
+      }
+
       if (strcmp(key_str, "for") == 0) {
         Node *loop = node_create(NODE_FOR, NULL, key.line, key.col);
         consume(p, TOKEN_IDENTIFIER, "Expected variable name after 'for'");

@@ -138,8 +138,12 @@ static int attr_is_true(const char *v) {
 }
 
 static int is_style_attr_name(const char *name) {
-  return name &&
-         (strcmp(name, "variant") == 0 || strcmp(name, "size") == 0 ||
+  if (!name) return 0;
+  if ((strncmp(name, "sm:", 3) == 0 || strncmp(name, "md:", 3) == 0 ||
+       strncmp(name, "lg:", 3) == 0) &&
+      name[3])
+    return is_style_attr_name(name + 3);
+  return (strcmp(name, "variant") == 0 || strcmp(name, "size") == 0 ||
           strcmp(name, "color") == 0 || strcmp(name, "gap") == 0 ||
           strcmp(name, "cols") == 0 || strcmp(name, "p") == 0 ||
           strcmp(name, "bg") == 0 || strcmp(name, "shadow") == 0 ||
@@ -152,7 +156,9 @@ static int is_style_attr_name(const char *name) {
           strcmp(name, "mx") == 0 || strcmp(name, "my") == 0 ||
           strcmp(name, "px") == 0 || strcmp(name, "py") == 0 ||
           strcmp(name, "m") == 0 || strcmp(name, "op") == 0 ||
-          strcmp(name, "z") == 0);
+          strcmp(name, "z") == 0 || strcmp(name, "leading") == 0 ||
+          strcmp(name, "tracking") == 0 || strcmp(name, "elevate") == 0 ||
+          strcmp(name, "density") == 0);
 }
 
 static int is_style_bool_name(const char *name) {
@@ -177,6 +183,7 @@ static const char *tag_to_div_plus_class(const char *tag) {
   if (strcmp(tag, "stack") == 0) return "flex flex-col";
   if (strcmp(tag, "grid") == 0) return "grid";
   if (strcmp(tag, "page") == 0) return "min-h-screen";
+  if (strcmp(tag, "section") == 0) return "cord-section";
   if (strcmp(tag, "btn") == 0) return "btn";
   if (strcmp(tag, "card") == 0) return "card";
   return NULL;
@@ -496,6 +503,42 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
       /* Arbitrary utility / site.css classes from Cord `class=...` */
       strncat(classes, " ", classes_sz - strlen(classes) - 1);
       strncat(classes, v, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(k, "type") == 0 &&
+               (strcmp(v, "display") == 0 || strcmp(v, "title") == 0 ||
+                strcmp(v, "body") == 0 || strcmp(v, "caption") == 0 ||
+                strcmp(v, "code") == 0)) {
+      snprintf(vbuf, sizeof(vbuf), " type-%s", v);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(k, "elevate") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " elevate-%s", v);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(k, "density") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " density-%s", v);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(k, "leading") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " leading-%s", v);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(k, "tracking") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " tracking-%s", v);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strncmp(k, "sm:", 3) == 0 || strncmp(k, "md:", 3) == 0 ||
+               strncmp(k, "lg:", 3) == 0) {
+      const char *bp = k;
+      const char *rest = k + 3;
+      char inner[96];
+      inner[0] = '\0';
+      if (strcmp(rest, "gap") == 0) snprintf(inner, sizeof(inner), "gap-%s", v);
+      else if (strcmp(rest, "p") == 0) snprintf(inner, sizeof(inner), "p-%s", v);
+      else if (strcmp(rest, "px") == 0) snprintf(inner, sizeof(inner), "px-%s", v);
+      else if (strcmp(rest, "py") == 0) snprintf(inner, sizeof(inner), "py-%s", v);
+      else if (strcmp(rest, "cols") == 0)
+        snprintf(inner, sizeof(inner), "grid-cols-%s", v);
+      else if (strcmp(rest, "m") == 0) snprintf(inner, sizeof(inner), "m-%s", v);
+      else if (strcmp(rest, "w") == 0) snprintf(inner, sizeof(inner), "w-%s", v);
+      if (inner[0]) {
+        snprintf(vbuf, sizeof(vbuf), " %.2s:%s", bp, inner);
+        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+      }
     }
   }
 }
@@ -1192,6 +1235,14 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
                strcmp(child->name, "value") == 0 ||
                strcmp(child->name, "id") == 0 ||
                strcmp(child->name, "key") == 0) {
+      /* type=display|title|… is typography, not HTML type */
+      if (strcmp(child->name, "type") == 0 && child->value &&
+          (strcmp(child->value, "display") == 0 ||
+           strcmp(child->value, "title") == 0 ||
+           strcmp(child->value, "body") == 0 ||
+           strcmp(child->value, "caption") == 0 ||
+           strcmp(child->value, "code") == 0))
+        continue;
       const char *an = child->name;
       if (child->value && interp_has(child->value)) {
         char *body = interp_to_js_template_body(child->value);
