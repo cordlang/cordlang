@@ -1,13 +1,13 @@
-# Cordlang Language Specification (v0.x)
+# Cordlang Language Specification (v1.0)
 
-**Status:** normative draft for the 0.x → 1.0 freeze.  
+**Status:** **1.0 syntax freeze** for the SPA subset (React / Svelte / HTML preview).  
 **Implementation truth:** `src/adapters/outbound/parser/parser.c` + `src/domain/{ast,ir,expr}.*`.  
 **Design / history:** [`LANGUAGE.md`](./LANGUAGE.md) (non-normative).  
 **Attrs catalog:** [`schema/attrs.json`](./schema/attrs.json).
 
 When this document and the parser disagree, **file an issue** and treat the parser as temporary source of truth until the mismatch is resolved here.
 
-Version: **0.1** (Phase H2). Not a syntax freeze.
+Version: **1.0** (Horizonte A gate). Breaking changes require a major bump and ROADMAP note.
 
 ---
 
@@ -148,7 +148,7 @@ Details: [`IR.md`](./IR.md), [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ## 5. Out of scope (this version)
 
-The following are **not** part of the Cordlang 0.x language surface:
+The following are **not** part of the Cordlang **1.0** language surface (may arrive as backends / experimental):
 
 - Vue / Solid / Flutter / SwiftUI backends.
 - SvelteKit file routing / SSR, Next.js RSC as language features.
@@ -179,13 +179,21 @@ Experimental or backend-specific attrs (e.g. Svelte `transition=`, `use=`) may a
 
 ---
 
+## 1.0 frozen subset
+
+**In freeze (stable):** indentation UI, `def`/`props`/`state`/`computed`, `if`/`for`, `#{…}`, modules/`route`/`layout`/`slot`, events `@`, `bind`, theme tokens, typed props (`string|number|boolean|any`), shared hooks lowered to IR (`ref`, context/provide, lazy, portal, effects, fetch/await, snippets/stores where mapped).
+
+**Explicitly out of 1.0 language freeze (backend / experimental):** Vue/Solid/email/PDF/Next/Kit/native backends; `$bindable` / `{#key}` / `class:`/`style:` Svelte-only polish; arbitrary embedded JS/TS; LLM-on-compile.
+
+---
+
 ## 7. Change process
 
 1. Propose syntax in an issue / PR with a fixture under `tests/fixtures` or `tests/regression`.
 2. Update this file and the matching map docs in the same change.
 3. Keep React and Svelte backends in sync when the construct is shared IR.
-4. Bump the version header (`0.x`) on breaking 0.x edits; **1.0** requires ROADMAP syntax freeze checkbox.
+4. After 1.0, breaking syntax changes require a major version bump and an entry in ROADMAP.md.
 
 ---
 
-*Last updated: Phase H2 — SPEC v0.1.*
+*Last updated: Horizonte A gate — SPEC v1.0.*

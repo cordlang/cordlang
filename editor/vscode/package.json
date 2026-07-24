@@ -2,9 +2,10 @@
   "name": "cordlang",
   "displayName": "Cordlang",
   "description": "Cordlang language support (snippets, check tasks, LSP via cordlang lsp)",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "engines": { "vscode": "^1.80.0" },
   "categories": ["Programming Languages"],
+  "main": "./extension.js",
   "activationEvents": ["onLanguage:cordlang"],
   "contributes": {
     "languages": [
@@ -55,5 +56,8 @@
         }
       }
     }
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
   }
 }

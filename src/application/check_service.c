@@ -203,10 +203,12 @@ static void walk_checks(Node *n, const NameSet *defs, CheckCtx *ctx,
   /* Attr traps + unknown attrs on built-in tags */
   if (n->type == NODE_ELEMENT && n->value) {
     int builtin = cord_is_builtin_tag(n->value);
+    int has_alt = 0;
     for (size_t i = 0; i < n->children_len; i++) {
       Node *ch = n->children[i];
       if (!ch) continue;
       if (ch->type == NODE_ATTR && ch->value) {
+        if (strcmp(ch->value, "alt") == 0) has_alt = 1;
         if (cord_is_forbidden_jsx_attr(ch->value)) {
           diag_emit(out, DIAG_ERROR, file, ch->line, ch->col,
                     "JSX attribute '%s' is not Cordlang — use @events / style "
@@ -226,6 +228,11 @@ static void walk_checks(Node *n, const NameSet *defs, CheckCtx *ctx,
                     "unknown attribute '%s' on tag '%s'", ch->value, n->value);
         }
       }
+    }
+    /* a11y: img without alt */
+    if (builtin && strcmp(n->value, "img") == 0 && !has_alt) {
+      diag_emit(out, DIAG_WARN, file, n->line, n->col,
+                "img without alt — add alt=\"...\" (or alt=\"\" if decorative)");
     }
   }
 

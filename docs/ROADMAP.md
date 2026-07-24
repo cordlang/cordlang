@@ -59,14 +59,14 @@ cordlang run svelte       # app Svelte
 | Módulos `use` / `import` / rutas por path | ✅ |
 | `layout` + `slot` | ✅ |
 | `route` | ✅ |
-| `theme` (parse parcial) | 🟡 parse; codegen incompleto |
+| `theme` → CSS vars | ✅ parse + `theme_css` IR (G1) |
 | Preview HTML nativo en el `.exe` | ✅ (state reactivo básico C8) |
 | IR canónico + dump `--ir` | ✅ |
 | Expr mini-parser | ✅ |
 | `cordlang check` + diagnostics | ✅ |
 | `cordlang fmt` / `fmt --check` | ✅ |
 | `cordlang symbols` / `goto` | ✅ |
-| Source attribution + `.map` stub | ✅ |
+| Source maps VLQ + attribution | ✅ (G7) |
 
 ### 1.2 Backend React
 
@@ -94,12 +94,12 @@ cordlang run svelte       # app Svelte
 | `$state` / `$props` / `$derived` / `$effect` | ✅ |
 | if / each / interpolación / eventos / bind | ✅ |
 | Hash router propio + links `#/…` | ✅ |
-| setContext / getContext | ❌ |
-| Snippets avanzados / actions | ❌ |
-| SvelteKit (SSR/SSG/file routing) | ❌ |
-| Paridad con Suspense/lazy/portal/EB de React | 🟡 parcial o N/A |
-| Transitions / animations nativas | ❌ |
-| Stores / runes extras | 🟡 parcial via state |
+| setContext / getContext | ✅ |
+| Snippets / actions / await / portal | ✅ (Fase E) |
+| SvelteKit (SSR/SSG/file routing) | ❌ (backend `sveltekit` — Horizonte B) |
+| Lazy routes (`import()` + `{#await}`) | ✅ |
+| Transitions / animations (`transition=` / in/out) | ✅ |
+| Stores (`store` / `writable`) | ✅ |
 
 ---
 
@@ -121,19 +121,19 @@ Leyenda: ✅ hecho · 🟡 parcial · ❌ no · ≈ equivalente idiomático · �
 | Refs / DOM | ✅ useRef | ✅ bind:this | P0 done |
 | Context | ✅ createContext/Provider | ✅ setContext/getContext | P0 done |
 | Routes + layout | ✅ React Router | ✅ hash router | P0 done |
-| Nested routes / params | 🟡 params OK, nested 🟡 | ✅ path params, nested 🟡 | **P1** nested |
-| Lazy / code-split | ✅ lazy+Suspense | ❌ import() dinámico | **P1** |
-| Portals | ✅ createPortal | ≈ `teleport` pattern / attach | **P2** |
-| Error boundaries | ✅ class EB | ≈ +boundary o onerror | **P2** |
-| Forms / actions | ✅ useActionState | ≈ enhance / form actions | **P1** |
-| Transitions UI | 🟡 useTransition | ❌ transition: | **P2** |
+| Nested routes / params | ✅ params + nested layouts | ✅ path params + nested | P1 done |
+| Lazy / code-split | ✅ lazy+Suspense | ✅ import() + `{#await}` | P1 done |
+| Portals | ✅ createPortal | ✅ `portal` / `use:portal` | P2 done |
+| Error boundaries | ✅ class EB | ≈ onerror / boundary | P2 ≈ |
+| Forms / actions | ✅ useActionState | ✅ formAction helper | P1 done |
+| Transitions UI | ✅ useTransition | ✅ `transition=` / in/out | P2 done |
 | Theme tokens | ✅ CSS vars | ✅ CSS vars | P0 done |
-| Accessibility attrs | 🟡 passthrough | 🟡 passthrough | **P1** |
-| Preview = same AST live | 🟡 HTML + state básico | 🟡 HTML + state básico | **P1** done-ish |
-| Typecheck / diagnostics | ✅ `cordlang check` | ✅ shared | **P1** done |
-| Source maps .cord→out | 🟡 comment + stub `.map` | 🟡 comment + stub `.map` | **P2** partial |
-| Hot reload .cord | ✅ `--watch` | ✅ `--watch` | **P1** done |
-| Vue / Solid backends | ❌ | — | P3 |
+| Accessibility attrs | ✅ `aria-*`/`data-*` + img alt check | ✅ same | P1 done |
+| Preview = same AST live | 🟡 HTML + state básico | 🟡 HTML + state básico | P1 done-ish |
+| Typecheck / diagnostics | ✅ `cordlang check` | ✅ shared | P1 done |
+| Source maps .cord→out | ✅ VLQ from markers | ✅ VLQ from markers | P2 done |
+| Hot reload .cord | ✅ `--watch` | ✅ `--watch` | P1 done |
+| Vue / Solid backends | ❌ → M9 expansion | — | P3 |
 
 ---
 
@@ -378,9 +378,9 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 - [x] Preview nativo con state básico  
 - [x] CI build + goldens Win/Linux (G3)  
 - [x] Un solo proyecto demo pasa React + Svelte build en **CI** (G4)  
-- [ ] Paridad documentada ≥ 90% de la matriz P0/P1  
-- [ ] `docs/REACT.md` + `docs/SVELTE.md` 100% al día con codegen  
-- [ ] Syntax freeze del subset 1.0 ([`docs/SPEC.md`](./SPEC.md) v0.x → 1.0)  
+- [x] Paridad documentada ≥ 90% de la matriz P0/P1  
+- [x] `docs/REACT.md` + `docs/SVELTE.md` al día con codegen (gaps residuales explícitos)  
+- [x] Syntax freeze del subset 1.0 ([`docs/SPEC.md`](./SPEC.md) **1.0**)  
 - [x] Theme + HTML sin residual AST en path IR (G1–G2)  
 - [x] LICENSE publicada (MIT)  
 
@@ -408,9 +408,9 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 | **M4 — Deep Svelte** | E* selecto | 🟡 MVP (sin Kit) |
 | **M5 — IR platform** | IR-1 + IR-2 | ✅ |
 | **M6 — Public + polish** | Fase G (G0–G6 ✅) | ✅ |
-| **M7 — Horizonte A** | A1–A6 (DX, contratos, paridad, IA workflow, templates, analyze) | 🟡 en curso |
+| **M7 — Horizonte A** | A1–A6 (DX, contratos, paridad, IA workflow, templates, analyze) | ✅ gate 1.0 |
 | **M8 — Madurez** | Fase H (regresión, ARCHITECTURE, SPEC, bench, IR passes) | ✅ |
-| **M9 — Horizonte B / meta** | Kit/Next, F*, semántica, marketplace | después |
+| **M9 — Horizonte B / meta** | Platform → Vue → Solid → email/PDF → Next/Kit → ecosystem → native | en curso |
 
 Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `ir`, `dx`, `ci`, `docs`.
 

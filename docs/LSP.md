@@ -1,6 +1,6 @@
-# Cordlang editor / LSP mínimo (A1)
+# Cordlang editor / LSP (A1 + G8)
 
-Full Language Server Protocol is still **G8 / ongoing**. Today agents and editors get DX from the **CLI** plus a thin VS Code/Cursor package.
+Editors get DX from the **CLI** plus the VS Code/Cursor package under `editor/vscode/`.
 
 ## CLI surfaces (LSP building blocks)
 
@@ -11,44 +11,30 @@ Full Language Server Protocol is still **G8 / ongoing**. Today agents and editor
 | `cordlang symbols [entry]` | document symbols (components, routes, layouts) |
 | `cordlang goto <Name>` | go-to-definition |
 | `cordlang fmt` | format |
-
-Problem matcher example (check output):
-
-```text
-path/to/file.cord:12:3: error: unknown component 'Foo'
-path/to/file.cord:8:5: warning: unknown attribute 'fooBar' on tag 'col'
-```
+| `cordlang lsp` | stdio Language Server |
 
 ## Package: `editor/vscode/`
 
-Contents:
-
 - Language id `cordlang` for `*.cord`
-- Snippets (def, state/props, route, if/for, fetch/form)
-- `language-configuration.json` (comments, brackets, auto-indent hints)
-- Tasks that run `cordlang check`
+- Snippets + `language-configuration.json`
+- Tasks: `cordlang check`
+- **LanguageClient** (`extension.js`) → `cordlang lsp` via `cordlang.lsp.path`
 
-Install (dev): open `editor/vscode` as extension folder, or copy snippets into Cursor.
+Install (dev): `cd editor/vscode && npm install`, then open as extension folder.
 
-## Minimal LSP (`cordlang lsp`)
-
-Stdio JSON-RPC server (Content-Length framing):
+## LSP methods (`cordlang lsp`)
 
 | Method | Behavior |
 |--------|----------|
-| `initialize` | sync + documentSymbol + definition |
-| `textDocument/didOpen\|didChange\|didSave` | `check` → `publishDiagnostics` (file on disk) |
+| `initialize` | sync + documentSymbol + definition + **completion** + **hover** |
+| `textDocument/didOpen\|didChange\|didSave` | `check` → `publishDiagnostics` |
 | `textDocument/documentSymbol` | components from project parse |
 | `textDocument/definition` | goto component under cursor |
+| `textDocument/completion` | tags / attrs / keywords (schema surface) |
+| `textDocument/hover` | tag/attr/keyword docs; prop types when known |
 | `shutdown` / `exit` | clean shutdown |
 
-Point the editor at the `cordlang` binary with args `["lsp"]`.
+## Roadmap leftovers
 
-## Roadmap to full LSP
-
-1. ~~Wrap `check` + `symbols` + `goto` in stdio JSON-RPC.~~ ✅ `cordlang lsp`
-2. Completion: tags/attrs from [`schema/attrs.json`](./schema/attrs.json).
-3. Hover: show prop types + schema docs.
-4. Source maps (G7) for stack traces from generated JS.
-
-Until then: **snippets + `check` in watch/tasks + `cordlang lsp`** is the supported minimum.
+- Formatting / rename / references via LSP
+- Schema JSON loaded dynamically (today: embedded lists + `known_attrs.h`)

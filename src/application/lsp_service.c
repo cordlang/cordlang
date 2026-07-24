@@ -4,6 +4,7 @@
 #include "application/ports/fs_port.h"
 #include "domain/ast.h"
 #include "domain/diag.h"
+#include "domain/known_attrs.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -536,6 +537,142 @@ static void handle_definition(const char *id, const char *msg) {
   respond_ok(id, "null");
 }
 
+/* Completion items from known_attrs / schema surface (no JSON file I/O). */
+static void handle_completion(const char *id, const char *msg) {
+  (void)msg;
+  static const char *tags[] = {
+      "col",     "row",     "stack",  "page",   "card",    "grid",
+      "btn",     "button",  "link",   "input",  "textarea","form",
+      "label",   "img",     "span",   "p",      "h1",      "h2",
+      "h3",      "div",     "nav",    "header", "footer",  "main",
+      "section", "slot",    "if",     "for",    "provide", "portal",
+      NULL};
+  static const char *attrs[] = {
+      "gap",    "p",      "m",       "px",     "py",      "mx",
+      "my",     "w",      "h",       "color",  "variant", "size",
+      "bg",     "bold",   "muted",   "center", "to",      "href",
+      "src",    "alt",    "bind",    "key",    "class",   "role",
+      "aria-label", "disabled", "placeholder", "type", "value",
+      NULL};
+  static const char *kw[] = {"def", "state", "props", "computed", "route",
+                             "layout", "theme", "use", "effect", "ref",
+                             "ctx", "provide", "params", "fetch", "lazy",
+                             NULL};
+  size_t cap = 16384, len = 0;
+  char *out = malloc(cap);
+  if (!out) {
+    respond_ok(id, "[]");
+    return;
+  }
+  strcpy(out, "[");
+  len = 1;
+  int first = 1;
+  const char **lists[] = {tags, attrs, kw};
+  int kinds[] = {14, 10, 14}; /* Keyword / Property / Keyword */
+  for (int li = 0; li < 3; li++) {
+    for (int i = 0; lists[li][i]; i++) {
+      char item[256];
+      snprintf(item, sizeof(item),
+               "%s{\"label\":\"%s\",\"kind\":%d}", first ? "" : ",",
+               lists[li][i], kinds[li]);
+      first = 0;
+      size_t il = strlen(item);
+      if (len + il + 2 >= cap) {
+        cap *= 2;
+        char *n = realloc(out, cap);
+        if (!n) break;
+        out = n;
+      }
+      memcpy(out + len, item, il);
+      len += il;
+    }
+  }
+  out[len++] = ']';
+  out[len] = '\0';
+  respond_ok(id, out);
+  free(out);
+}
+
+static void handle_hover(const char *id, const char *msg) {
+  char uri[1024];
+  int line = 0, character = 0;
+  const char *td = strstr(msg, "\"textDocument\"");
+  if (td) json_get_str(td, "uri", uri, sizeof(uri));
+  const char *pos = strstr(msg, "\"position\"");
+  if (pos) {
+    json_get_int(pos, "line", &line);
+    json_get_int(pos, "character", &character);
+  }
+  LspDoc *d = doc_find(uri);
+  char name[128];
+  ident_at(d ? d->text : NULL, line, character, name, sizeof(name));
+  if (!name[0]) {
+    respond_ok(id, "null");
+    return;
+  }
+
+  char md[1024];
+  md[0] = '\0';
+  if (cord_is_builtin_tag(name)) {
+    snprintf(md, sizeof(md),
+             "**`%s`** — built-in Cordlang tag\\n\\nSee `docs/schema/attrs.json`.",
+             name);
+  } else if (cord_is_style_attr(name) || cord_is_dom_attr(name) ||
+             strncmp(name, "aria-", 5) == 0) {
+    snprintf(md, sizeof(md),
+             "**`%s`** — known attribute\\n\\nStyle/DOM attr (schema v1.0).",
+             name);
+  } else if (strcmp(name, "state") == 0 || strcmp(name, "props") == 0 ||
+             strcmp(name, "computed") == 0 || strcmp(name, "def") == 0 ||
+             strcmp(name, "route") == 0 || strcmp(name, "layout") == 0) {
+    snprintf(md, sizeof(md),
+             "**`%s`** — Cordlang keyword\\n\\nSee `docs/SPEC.md` (v1.0).",
+             name);
+  } else if (d && d->path) {
+    /* Try prop type from component under cursor via check surface */
+    CompileResult r = compiler_parse_project(d->path);
+    if (r.ok && r.ast && r.ast->root) {
+      Node *root = r.ast->root;
+      for (size_t i = 0; i < root->children_len; i++) {
+        Node *c = root->children[i];
+        if (!c || c->type != NODE_COMPONENT_DEF) continue;
+        for (size_t j = 0; j < c->children_len; j++) {
+          Node *props = c->children[j];
+          if (!props || props->type != NODE_PROPS_DECL) continue;
+          for (size_t pi = 0; pi < props->children_len; pi++) {
+            Node *ch = props->children[pi];
+            if (!ch || !ch->value) continue;
+            if (strcmp(ch->value, name) != 0) continue;
+            const char *ty = "any";
+            for (size_t k = 0; k < ch->children_len; k++) {
+              Node *a = ch->children[k];
+              if (a && a->type == NODE_ATTR && a->value &&
+                  strcmp(a->value, "type") == 0 && a->value2)
+                ty = a->value2;
+            }
+            snprintf(md, sizeof(md),
+                     "**props `%s`**: `%s`\\n\\nValidated by `cordlang check`.",
+                     name, ty);
+            break;
+          }
+          if (md[0]) break;
+        }
+      }
+    }
+    compiler_result_free(&r);
+  }
+  if (!md[0]) {
+    snprintf(md, sizeof(md), "`%s`", name);
+  }
+  char *esc = json_escape_dup(md);
+  char result[2048];
+  snprintf(result, sizeof(result),
+           "{\"contents\":{\"kind\":\"markdown\",\"value\":\"%s\"}}",
+           esc ? esc : "");
+  free(esc);
+  respond_ok(id, result);
+}
+
 static void handle_message(const char *msg) {
   const char *method = json_method(msg);
   char id[64];
@@ -548,8 +685,10 @@ static void handle_message(const char *msg) {
                "{\"capabilities\":{"
                "\"textDocumentSync\":1,"
                "\"documentSymbolProvider\":true,"
-               "\"definitionProvider\":true"
-               "},\"serverInfo\":{\"name\":\"cordlang\",\"version\":\"0.1.0\"}}");
+               "\"definitionProvider\":true,"
+               "\"completionProvider\":{\"triggerCharacters\":[\" \",\"=\",\"@\"]},"
+               "\"hoverProvider\":true"
+               "},\"serverInfo\":{\"name\":\"cordlang\",\"version\":\"1.0.0\"}}");
     return;
   }
   if (strcmp(method, "initialized") == 0) return;
@@ -583,6 +722,14 @@ static void handle_message(const char *msg) {
   }
   if (strcmp(method, "textDocument/definition") == 0 && has_id) {
     handle_definition(id, msg);
+    return;
+  }
+  if (strcmp(method, "textDocument/completion") == 0 && has_id) {
+    handle_completion(id, msg);
+    return;
+  }
+  if (strcmp(method, "textDocument/hover") == 0 && has_id) {
+    handle_hover(id, msg);
     return;
   }
   if (has_id) respond_ok(id, "null");

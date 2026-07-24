@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Cordlang official surface",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Machine-readable tags/attrs for LSP, check, and AI skills. Keep in sync with src/domain/known_attrs.h",
   "propTypes": ["string", "number", "boolean", "any"],
   "layoutTags": ["col", "row", "stack", "page", "card", "grid", "group", "fragment"],
@@ -15,7 +15,7 @@
   ],
   "domAttrs": [
     "id", "name", "type", "value", "placeholder", "href", "to", "src", "alt",
-    "target", "rel", "role", "title", "for", "action", "method", "disabled",
+    "target", "rel", "role", "aria-label", "aria-labelledby", "aria-describedby", "aria-hidden", "aria-expanded", "aria-current", "title", "for", "action", "method", "disabled",
     "checked", "readonly", "required", "multiple", "maxlength", "min", "max",
     "step", "pattern", "autocomplete", "tabindex", "class", "style",
     "bind", "key", "use", "transition", "layout", "lazy", "fallback",
@@ -33,6 +33,7 @@
   "notes": [
     "PascalCase tags are components; arbitrary props allowed.",
     "Events are @name=expr (NODE_EVENT), not attrs.",
-    "Interpolation is #{expr}; escape literal with \\#{."
+    "Interpolation is #{expr}; escape literal with \\#{.",
+    "aria-* and data-* are always known; check warns on img without alt."
   ]
 }

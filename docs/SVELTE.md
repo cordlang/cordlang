@@ -465,7 +465,7 @@ Objetivo: la misma app (`my-app` / `doc`) compila a ambos backends con UI equiva
 | fetch | ✅ | ✅ | |
 | context / provide / ctx | ✅ | ✅ | |
 | theme → CSS vars | ✅ | ✅ | |
-| lazy / suspense-ish | ✅ | 🟡 | ver SVELTE gaps |
+| lazy / suspense-ish | ✅ | ✅ | import() + await UI |
 | stores / writable | — | ✅ | React: state/context |
 | await / snippet | — | ✅ | React: fetch/if |
 | String props `title="…"` | ✅ | ✅ | |
