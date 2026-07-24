@@ -99,6 +99,15 @@ static int looks_like_bool(const char *s) {
   return s && (strcmp(s, "true") == 0 || strcmp(s, "false") == 0);
 }
 
+/* DOM a11y / data attrs must never become implicit {name} children */
+static int is_dom_a11y_or_data_attr(const char *name) {
+  if (!name || !*name) return 0;
+  if (strcmp(name, "role") == 0) return 1;
+  if (strncmp(name, "aria-", 5) == 0) return 1;
+  if (strncmp(name, "data-", 5) == 0) return 1;
+  return 0;
+}
+
 static int looks_like_js_expr(const char *s) {
   if (!s || !*s) return 0;
   if (!(isalpha((unsigned char)s[0]) || s[0] == '_' || s[0] == '$')) return 0;
@@ -1176,6 +1185,7 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
     /* bare identifier content (bool true non-style) skipped for attrs */
     if (attr_is_true(child->value) && !is_style_attr_name(child->name) &&
         !is_style_bool_name(child->name) &&
+        !is_dom_a11y_or_data_attr(child->name) &&
         strcmp(child->name, "lazy") != 0 &&
         strcmp(child->name, "forwardRef") != 0 &&
         strcmp(child->name, "action") != 0 &&
@@ -1263,6 +1273,10 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
       }
     } else if (strcmp(child->name, "ref") == 0 && child->value) {
       sb_appendf(sb, " ref={%s}", child->value);
+    } else if (is_dom_a11y_or_data_attr(child->name)) {
+      char *esc = js_escape_dq_dup(child->value ? child->value : "");
+      sb_appendf(sb, " %s=\"%s\"", child->name, esc ? esc : "");
+      free(esc);
     } else {
       sb_appendf(sb, " %s=", child->name);
       emit_jsx_value(sb, child->value, 0);
@@ -1375,6 +1389,7 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
     if (!attr_is_true(child->value)) continue;
     const char *v = child->name;
     if (is_style_bool_name(v) || is_style_attr_name(v) ||
+        is_dom_a11y_or_data_attr(v) ||
         strcmp(v, "required") == 0 || strcmp(v, "disabled") == 0 ||
         strcmp(v, "readonly") == 0 || strcmp(v, "checked") == 0 ||
         strcmp(v, "text") == 0 || strcmp(v, "email") == 0 ||
@@ -1632,9 +1647,8 @@ static void gen_ir_node(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
             fb_node = c;
         }
         sb_indent(sb, depth);
-        sb_append(sb, "<ErrorBoundary fallback={");
         if (fb_node) {
-          sb_append(sb, "(\n");
+          sb_append(sb, "<ErrorBoundary fallback={(\n");
           sb_indent(sb, depth + 1);
           sb_append(sb, "<>\n");
           for (size_t i = 0; i < fb_node->n_kids; i++)
@@ -1642,11 +1656,10 @@ static void gen_ir_node(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
           sb_indent(sb, depth + 1);
           sb_append(sb, "</>\n");
           sb_indent(sb, depth);
-          sb_append(sb, ")");
+          sb_append(sb, ")}>\n");
         } else {
-          sb_append(sb, "<div>Something went wrong.</div>");
+          sb_append(sb, "<ErrorBoundary>\n");
         }
-        sb_append(sb, "}>\n");
         for (size_t i = 0; i < node->n_kids; i++) {
           IrNode *c = node->kids[i];
           if (c->kind == IR_ELEMENT && c->name &&

@@ -1,0 +1,4 @@
+# Golden: aria-*/role/data-* with =true must emit as DOM attrs, not {aria-hidden}
+
+col class=frame aria-hidden=true role=group data-preview=true
+  p "preview slot"

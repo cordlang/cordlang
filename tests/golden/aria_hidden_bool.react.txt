@@ -1,0 +1,12 @@
+// ===== src/App.jsx =====
+/* cordlang: source=src/app.cord */
+
+export default function App() {
+  return (
+    <div className="flex flex-col frame" aria-hidden="true" role="group" data-preview="true">
+      <p>
+        {'preview slot'}
+      </p>
+    </div>
+  );
+}
