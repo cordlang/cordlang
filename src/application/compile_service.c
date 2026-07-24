@@ -3,7 +3,9 @@
 #include "application/ports/compiler_port.h"
 #include "application/ports/fs_port.h"
 #include "adapters/outbound/backends/source_attr.h"
+#include "adapters/outbound/json/json_mini.h"
 #include "domain/ir.h"
+#include "domain/ir_pass.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,12 +36,58 @@ static void collect_sources_for_map(const char *cord_path,
   }
 }
 
+/* Load comma-separated "passes" from nearest cordlang.json (best-effort). */
+static void load_passes_from_config(const char *cord_path, char ***names,
+                                    int *n_names) {
+  *names = NULL;
+  *n_names = 0;
+  if (!cord_path) return;
+
+  char *dir = fs_dirname(cord_path);
+  if (!dir) return;
+
+  char *cfg = fs_join(dir, "cordlang.json");
+  free(dir);
+  if (!cfg) return;
+  if (!fs_exists(cfg)) {
+    /* try parent (entry often in src/) */
+    char *parent = fs_dirname(cfg);
+    free(cfg);
+    if (!parent) return;
+    cfg = fs_join(parent, "cordlang.json");
+    free(parent);
+    if (!cfg || !fs_exists(cfg)) {
+      free(cfg);
+      return;
+    }
+  }
+
+  char *json = fs_read_file(cfg, NULL);
+  free(cfg);
+  if (!json) return;
+  char *passes = json_object_get_string(json, "passes");
+  free(json);
+  if (!passes) return;
+  *names = ir_pass_parse_list(passes, n_names);
+  free(passes);
+}
+
 char *compile_service_file(const char *cord_path, const char *backend_name) {
   return compile_service_file_ex(cord_path, backend_name, 0, NULL);
 }
 
 char *compile_service_file_ex(const char *cord_path, const char *backend_name,
                               int write_sourcemap, const char *map_out_path) {
+  return compile_service_file_with_passes(cord_path, backend_name,
+                                          write_sourcemap, map_out_path, NULL,
+                                          0);
+}
+
+char *compile_service_file_with_passes(const char *cord_path,
+                                       const char *backend_name,
+                                       int write_sourcemap,
+                                       const char *map_out_path,
+                                       const char *const *passes, int n_passes) {
   backend_register_all();
   const BackendPort *backend = backend_find(backend_name);
   if (!backend) {
@@ -56,8 +104,33 @@ char *compile_service_file_ex(const char *cord_path, const char *backend_name,
     return NULL;
   }
 
-  /* IR-first: AST → IR → backend */
+  /* Merge config passes + CLI passes (CLI last). */
+  char **cfg_names = NULL;
+  int n_cfg = 0;
+  load_passes_from_config(cord_path, &cfg_names, &n_cfg);
+
+  const char **all = NULL;
+  int n_all = 0;
+  if (n_cfg + n_passes > 0) {
+    all = calloc((size_t)(n_cfg + n_passes), sizeof(char *));
+    for (int i = 0; i < n_cfg; i++) all[n_all++] = cfg_names[i];
+    for (int i = 0; i < n_passes; i++) all[n_all++] = passes[i];
+  }
+
+  /* IR-first: AST → IR → optional passes → backend */
   IrProgram *ir = ir_from_ast(result.ast->root, cord_path);
+  if (ir && n_all > 0) {
+    ir = ir_pass_apply(ir, all, n_all);
+    if (!ir) {
+      free(all);
+      ir_pass_names_free(cfg_names, n_cfg);
+      compiler_result_free(&result);
+      return NULL;
+    }
+  }
+  free(all);
+  ir_pass_names_free(cfg_names, n_cfg);
+
   char *out = NULL;
   if (ir && backend->generate_from_ir) {
     out = backend->generate_from_ir(ir);
@@ -127,8 +200,16 @@ int compile_service_to_file(const char *cord_path, const char *backend_name,
 
 int compile_service_to_file_ex(const char *cord_path, const char *backend_name,
                                const char *out_path, int write_sourcemap) {
-  char *code =
-      compile_service_file_ex(cord_path, backend_name, 0, NULL);
+  return compile_service_to_file_with_passes(cord_path, backend_name, out_path,
+                                             write_sourcemap, NULL, 0);
+}
+
+int compile_service_to_file_with_passes(const char *cord_path,
+                                        const char *backend_name,
+                                        const char *out_path, int write_sourcemap,
+                                        const char *const *passes, int n_passes) {
+  char *code = compile_service_file_with_passes(
+      cord_path, backend_name, 0, NULL, passes, n_passes);
   if (!code) return 1;
   int rc = fs_write_file(out_path, code);
   free(code);

@@ -168,8 +168,22 @@ if (Test-Path -LiteralPath $RegRoot) {
       $expectedPath = Join-Path $dir.FullName ("expected." + $backend + ".txt")
       if (-not (Test-Path -LiteralPath $expectedPath)) { continue }
       $label = "regression/$slug (" + $backend + ")"
-      $args = @("compile", $input, "--backend", $backend)
-      $stdout = & $Cordlang @args 2>&1
+      $args = New-Object System.Collections.Generic.List[string]
+      [void]$args.Add("compile")
+      [void]$args.Add($input)
+      [void]$args.Add("--backend")
+      [void]$args.Add($backend)
+      $passesPath = Join-Path $dir.FullName "passes.txt"
+      if (Test-Path -LiteralPath $passesPath) {
+        Get-Content -LiteralPath $passesPath | ForEach-Object {
+          $pname = $_.Trim()
+          if ($pname -and -not $pname.StartsWith("#")) {
+            [void]$args.Add("--pass")
+            [void]$args.Add($pname)
+          }
+        }
+      }
+      $stdout = & $Cordlang @($args.ToArray()) 2>&1
       $exitCode = $LASTEXITCODE
       if ($exitCode -ne 0) {
         Write-Host ("FAIL: " + $label + " - compile exit " + $exitCode) -ForegroundColor Red

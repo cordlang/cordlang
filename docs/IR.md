@@ -13,11 +13,22 @@ Capas del compilador (hexagonal, ownership, cómo extender): [`ARCHITECTURE.md`]
     ▼
   ir_from_ast()  →  IrProgram  (domain/ir.h)
     │
-    ├── (optional IR passes — Phase H3)
+    ├── (optional IR passes — Phase H3, opt-in `--pass` / cordlang.json `passes`)
     ├── ir_dump()                 →  cordlang compile --ir
     ├── generate_from_ir()        →  React / Svelte / HTML
     └── scaffold_from_ir()        →  dist/react | dist/svelte | dist/preview
 ```
+
+### IR passes (H3)
+
+In-tree transforms in `domain/ir_pass.{c,h}`. Example: `strip-debug` removes `debug` / `data-debug*` attrs.
+
+```bash
+cordlang compile app.cord --backend react --pass strip-debug
+cordlang compile --list-passes
+```
+
+Default path applies **no** passes. Dynamic `dlopen`/WASM plugins are post-H3.
 
 **Regla (Horizonte A/B):** Vue / Solid / email / PDF se añaden **solo** cuando este contrato esté estable y documentado. No special-case el AST en un backend nuevo.
 

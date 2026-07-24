@@ -143,12 +143,18 @@ See [`IR.md`](./IR.md) § “Contrato para un backend nuevo”.
 
 ## How to add an IR transform (Phase H3)
 
-Passes are **in-tree**, opt-in (`--pass` / `cordlang.json`). They run after `ir_from_ast` and before codegen.
+Passes are **in-tree**, opt-in (`--pass` / `cordlang.json` `"passes"`). They run after `ir_from_ast` and before codegen.
 
-1. Implement `IrProgram *my_pass(IrProgram *ir)` (may mutate or replace; document ownership).
-2. Register the pass name in the pass registry.
-3. Add a regression or golden that enables the pass.
+1. Implement `IrProgram *my_pass(IrProgram *ir)` in `src/domain/ir_pass.c` (may mutate; free dropped nodes with `ir_free_node`).
+2. Register the pass in the `k_passes[]` table (`name`, fn, description).
+3. Add a regression under `tests/regression/<slug>/` with `passes.txt` listing the pass name(s).
 4. Default compile path must stay identical when no passes are requested.
+
+```bash
+cordlang compile file.cord --backend react --pass strip-debug
+cordlang compile --list-passes
+# cordlang.json: { "passes": "strip-debug" }
+```
 
 Dynamic plugins (`dlopen` / WASM) are **out of scope** for H3.
 

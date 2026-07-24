@@ -126,12 +126,20 @@ if [[ -d "$REG_ROOT" ]]; then
       expected="$reg_dir/expected.$backend.txt"
       [[ -f "$expected" ]] || continue
       label="regression/$slug ($backend)"
-      if ! "$CORDLANG" compile "$input" --backend "$backend" >/dev/null 2>&1; then
+      pass_args=()
+      if [[ -f "$reg_dir/passes.txt" ]]; then
+        while IFS= read -r pname || [[ -n "$pname" ]]; do
+          pname="${pname//$'\r'/}"
+          [[ -z "$pname" || "$pname" == \#* ]] && continue
+          pass_args+=(--pass "$pname")
+        done < "$reg_dir/passes.txt"
+      fi
+      if ! "$CORDLANG" compile "$input" --backend "$backend" "${pass_args[@]}" >/dev/null 2>&1; then
         echo "FAIL: $label — compile failed"
         failed=$((failed + 1))
         continue
       fi
-      actual="$("$CORDLANG" compile "$input" --backend "$backend" | normalize)"
+      actual="$("$CORDLANG" compile "$input" --backend "$backend" "${pass_args[@]}" | normalize)"
       if [[ "$UPDATE" -eq 1 ]]; then
         printf '%s' "$actual" > "$expected"
         echo "UPDATE: $label -> $expected"

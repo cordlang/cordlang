@@ -12,4 +12,15 @@ int compile_service_to_file_ex(const char *cord_path, const char *backend_name,
 char *compile_service_file_ex(const char *cord_path, const char *backend_name,
                               int write_sourcemap, const char *map_out_path);
 
+/* Compile with optional IR passes (names may be NULL / n=0). */
+char *compile_service_file_with_passes(const char *cord_path,
+                                       const char *backend_name,
+                                       int write_sourcemap,
+                                       const char *map_out_path,
+                                       const char *const *passes, int n_passes);
+int compile_service_to_file_with_passes(const char *cord_path,
+                                        const char *backend_name,
+                                        const char *out_path, int write_sourcemap,
+                                        const char *const *passes, int n_passes);
+
 #endif

@@ -11,6 +11,7 @@ SRC = \
   src/domain/diag.c \
   src/domain/interp.c \
   src/domain/ir.c \
+  src/domain/ir_pass.c \
   src/domain/expr.c \
   src/application/init_service.c \
   src/application/compile_service.c \

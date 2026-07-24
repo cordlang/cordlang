@@ -94,4 +94,7 @@ Node *ir_origin(const IrNode *n);
 /* Project root origin (NODE_ROOT), or NULL. */
 Node *ir_project_origin(const IrProgram *p);
 
+/* Free a single IR subtree (used by IR passes when dropping nodes). */
+void ir_free_node(IrNode *n);
+
 #endif

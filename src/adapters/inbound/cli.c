@@ -15,6 +15,7 @@
 #include "domain/ast.h"
 #include "domain/diag.h"
 #include "domain/ir.h"
+#include "domain/ir_pass.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -53,6 +54,8 @@ static void print_usage(void) {
   printf("  --backend <name>               Target backend (default: react)\n");
   printf("  -o <file>                      Write output to file\n");
   printf("  --sourcemap                    Write Source Map v3 stub (.map)\n");
+  printf("  --pass <name>                  Apply in-tree IR pass (repeatable; opt-in)\n");
+  printf("  --list-passes                  List IR passes and exit\n");
   printf("  --ast / --tokens / --ir        Debug parse / IR output\n\n");
   printf("Examples:\n");
   printf("  cordlang init my-app\n");
@@ -288,6 +291,8 @@ static int cmd_compile(int argc, char **argv) {
   int show_ir = 0;
   int do_check = 0;
   int sourcemap = 0;
+  const char *pass_buf[32];
+  int n_passes = 0;
 
   for (int i = 0; i < argc; i++) {
     if (strcmp(argv[i], "--backend") == 0 && i + 1 < argc)
@@ -304,16 +309,28 @@ static int cmd_compile(int argc, char **argv) {
       do_check = 1;
     else if (strcmp(argv[i], "--sourcemap") == 0)
       sourcemap = 1;
-    else if (argv[i][0] != '-')
+    else if (strcmp(argv[i], "--list-passes") == 0) {
+      ir_pass_list();
+      return 0;
+    } else if (strcmp(argv[i], "--pass") == 0 && i + 1 < argc) {
+      if (n_passes < 32) pass_buf[n_passes++] = argv[++i];
+      else
+        ++i;
+    } else if (argv[i][0] != '-')
       file = argv[i];
   }
 
-  if (!file) {
+  if (!file && !show_tokens) {
+    /* allow --list-passes already returned */
     fprintf(stderr, "Error: missing .cord file\n");
     return 1;
   }
 
   if (show_tokens) {
+    if (!file) {
+      fprintf(stderr, "Error: missing .cord file\n");
+      return 1;
+    }
     print_tokens_from_file(file);
     return 0;
   }
@@ -343,6 +360,13 @@ static int cmd_compile(int argc, char **argv) {
       compiler_result_free(&r);
       return 1;
     }
+    if (n_passes > 0) {
+      ir = ir_pass_apply(ir, pass_buf, n_passes);
+      if (!ir) {
+        compiler_result_free(&r);
+        return 1;
+      }
+    }
     char *dump = ir_dump(ir);
     if (dump) {
       printf("%s", dump);
@@ -366,9 +390,12 @@ static int cmd_compile(int argc, char **argv) {
     }
   }
 
-  if (out) return compile_service_to_file_ex(file, backend, out, sourcemap);
+  if (out)
+    return compile_service_to_file_with_passes(file, backend, out, sourcemap,
+                                               pass_buf, n_passes);
 
-  char *code = compile_service_file_ex(file, backend, sourcemap, NULL);
+  char *code = compile_service_file_with_passes(file, backend, sourcemap, NULL,
+                                                pass_buf, n_passes);
   if (!code) return 1;
   printf("%s", code);
   free(code);

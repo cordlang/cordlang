@@ -62,6 +62,8 @@ static void ir_node_free(IrNode *n) {
   free(n);
 }
 
+void ir_free_node(IrNode *n) { ir_node_free(n); }
+
 const char *ir_kind_name(IrKind k) {
   switch (k) {
     case IR_PROJECT:
