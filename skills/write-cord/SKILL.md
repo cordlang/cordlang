@@ -11,7 +11,7 @@ description: >
 
 > **Portable skill** — path: `skills/write-cord/` (vendor-agnostic).
 
-You are authoring **Cordlang** — a dense UI DSL compiled to React, Svelte 5, or HTML.
+You are authoring **Cordlang** — a dense UI DSL optimized for **vibecode / AI token savings**, compiled to React, Svelte 5, or HTML. Prefer `.cord` over JSX: fewer tokens in prompts and diffs. No LLM in `compile`; use `cordlang check` after edits.
 
 ## Read first (in repo)
 

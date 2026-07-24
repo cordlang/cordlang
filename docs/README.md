@@ -2,12 +2,14 @@
 
 Start here for humans and for AI tools.
 
+**Product north star:** vibecode + AI agents with **minimal token spend**. Dense `.cord` → deterministic `check` → React/Svelte/HTML. Meta backends (Vue/Solid/email/PDF/Next/Kit) are secondary. If docs conflict, [`AI_CONTEXT.md`](./AI_CONTEXT.md) / [`AI.md`](./AI.md) win for intent.
+
 | Doc | Audience | Content |
 |-----|----------|---------|
 | [GUIDE.md](./GUIDE.md) | Everyone | Practical guide **with samples** |
 | [CHEATSHEET.md](./CHEATSHEET.md) | Everyone | One-screen syntax |
 | [EXAMPLES.md](./EXAMPLES.md) | Everyone | Catalog of `examples/` + `my-app/` |
-| [AI_CONTEXT.md](./AI_CONTEXT.md) | **AI models** | Compact contract (start here) |
+| [AI_CONTEXT.md](./AI_CONTEXT.md) | **AI models** | Compact contract (start here; token-cheap) |
 | [AI.md](./AI.md) | **AI models** | Full do / don't contract for LLMs |
 | [LANGUAGE.md](./LANGUAGE.md) | Design | Language design notes (ex-`idea.md`) |
 | [SPEC.md](./SPEC.md) | Language | Normative syntax & semantics (v0.x) |

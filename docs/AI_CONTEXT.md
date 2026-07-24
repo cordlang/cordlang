@@ -2,10 +2,12 @@
 
 Read this first. Full contract: [`AI.md`](./AI.md) · attrs: [`schema/attrs.json`](./schema/attrs.json) · workflow: [`AI_WORKFLOW.md`](./AI_WORKFLOW.md).
 
+**Product north star:** vibecode + AI agents with **minimal token spend**. Dense `.cord` beats JSX ceremony. Deterministic `check` — **no LLM in `compile`**. If other docs prioritize framework breadth over this loop, prefer this file.
+
 ## Mission
 
 1. Write **`.cord`**, not raw JSX/Svelte (unless the user forbids Cordlang).
-2. Keep sources dense and valid for the compiler.
+2. Keep sources dense and valid — every ceremonial line costs tokens.
 3. Multi-page: `app.cord` + `pages/` + `components/` + `layouts/`.
 4. After edits: `cordlang check` (prefer `--json` for agents).
 

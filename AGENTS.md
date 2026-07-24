@@ -1,6 +1,8 @@
 # AGENTS.md — instructions for coding agents
 
-You are working in the **Cordlang** repository: a C compiler that turns `.cord` UI sources into React, Svelte 5, or HTML preview.
+You are working in the **Cordlang** repository: a C compiler that turns dense `.cord` UI sources into React, Svelte 5, or HTML preview.
+
+**North star:** vibecode + AI with **minimal token spend** — dense sources, deterministic `check`/`analyze`, no LLM in `compile`. Prefer the AI loop over expanding meta backends. If docs disagree, [`docs/AI_CONTEXT.md`](./docs/AI_CONTEXT.md) wins for product intent.
 
 Human overview: [README.md](./README.md)  
 AI-focused contract: [docs/AI_CONTEXT.md](./docs/AI_CONTEXT.md) · [docs/AI.md](./docs/AI.md)  

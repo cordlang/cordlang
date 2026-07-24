@@ -1,8 +1,8 @@
 # Cordlang
 
-**La forma más rápida de construir UI con IA** — escribe `.cord`, el compilador baja a un **IR canónico** y emite **React**, **Svelte 5** o un **preview HTML** nativo.
+**La forma más rápida de construir UI con IA / vibecode** — escribe `.cord` denso (**menos tokens** que JSX), el compilador baja a un **IR canónico** y emite **React**, **Svelte 5** o un **preview HTML** nativo.
 
-Cordlang **no** es otro framework JS (sin Vite/Next/router propios). Es un **lenguaje intermedio** denso para humanos y modelos: vibecode → `check` → backends reales.
+Cordlang **no** es otro framework JS (sin Vite/Next/router propios). Es un **lenguaje intermedio optimizado para agentes y ahorro de tokens**: vibecode → `check` → backends reales. Sin LLM en `compile`. Si docs antiguas suenan a “otro React”, ignóralas: el contrato IA manda.
 
 ```cord
 def Counter
@@ -34,9 +34,10 @@ Same multi-file `src/**/*.cord` for every backend.
 
 | Goal | How Cordlang helps |
 |------|---------------------|
+| **Token cost / vibecode** | Dense `.cord` → cheaper prompts, context, and diffs vs JSX |
 | Less boilerplate for UI | Indent + attrs + `#{expr}` instead of JSX/Svelte ceremony |
-| AI-friendly surface | Fewer tokens; schema + `check` atrapan traps comunes |
-| One source, many targets | IR → React / Svelte / HTML (more backends when IR is boring) |
+| AI-friendly surface | Schema + deterministic `check` / `analyze` (no LLM in compile) |
+| One source, many targets | IR → React / Svelte / HTML (meta backends after the AI loop) |
 | Real apps | Routes, layouts, state, forms, lazy, context, fetch… |
 
 **No somos “JSX más corto”.** Somos el IR + DX alrededor para que la IA escriba UI válida.

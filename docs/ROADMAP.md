@@ -1,10 +1,10 @@
 # Cordlang Super Roadmap — IR para IA (no otro React)
 
-> **Posicionamiento (no negociable):** Cordlang es un **lenguaje intermedio** optimizado para vibecode/IA que describe UI y compila a destinos reales. **No** es otro framework (router/estado/bundler/Vite/Next propios): reutiliza ecosistemas (Vite, React Router, Svelte runes).
+> **Posicionamiento (no negociable):** Cordlang es un **lenguaje intermedio** optimizado para **vibecode/IA y ahorro de tokens** que describe UI y compila a destinos reales. **No** es otro framework (router/estado/bundler/Vite/Next propios): reutiliza ecosistemas (Vite, React Router, Svelte runes). Si otras docs priorizan amplitud de backends, **gana este contrato**.
 
 Mensaje público:
 
-> La forma más rápida de construir UI con IA — un `.cord` → IR → React / Svelte / HTML (y más después).
+> La forma más rápida de construir UI con IA — un `.cord` denso (pocos tokens) → IR → React / Svelte / HTML (y más después).
 
 Documentos relacionados:
 

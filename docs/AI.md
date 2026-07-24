@@ -1,6 +1,6 @@
 # Cordlang for AI models
 
-Cordlang is an **intermediate UI language for vibecode**: models write dense `.cord`, a **deterministic compiler** expands it to React or Svelte. There is **no LLM in `compile`**.
+Cordlang is an **intermediate UI language optimized for vibecode and AI agents**: models write dense `.cord` (**fewer tokens** than JSX), a **deterministic compiler** expands it to React or Svelte. There is **no LLM in `compile`**. Product north star = **token-efficient agent loops**, not “another React.” If other docs contradict this, prefer this contract.
 
 This page is the contract for **any** model (Grok, Claude, GPT, Copilot, Cursor, …).
 
