@@ -14,7 +14,7 @@ Start here for humans and for AI tools.
 | [SVELTE.md](./SVELTE.md) | Backend map | Cordlang ↔ Svelte 5 |
 | [IR.md](./IR.md) | Compiler | IR pipeline |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Contributors | Parser → AST → IR → codegen |
-| [ROADMAP.md](./ROADMAP.md) | Planning | Phases A–G, next steps |
+| [ROADMAP.md](./ROADMAP.md) | Planning | Phases A–H, next steps |
 
 ## Repo entry points
 

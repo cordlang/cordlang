@@ -287,8 +287,8 @@ Mapa completo: [`docs/SVELTE.md`](./SVELTE.md) (basado en [svelte.dev/docs/svelt
 5. **Semántica / AI-score LLM** solo cuando el núcleo sea aburridamente sólido.
 
 ```
-Hecho ──► Fases A–E MVP + IR-1/IR-2 + Fase G (G0–G6)
-AHORA ──► Horizonte A (épicas A1–A6 abajo)
+Hecho ──► Fases A–E MVP + IR-1/IR-2 + Fase G (G0–G6) + Fase H (madurez)
+AHORA ──► Horizonte A residual (paridad docs, LSP polish) / Horizon B
 DESPUÉS ► Horizonte B (semántica, marketplace, Vue/Solid, Kit/Next, …)
 ```
 
@@ -310,6 +310,21 @@ DESPUÉS ► Horizonte B (semántica, marketplace, Vue/Solid, Kit/Next, …)
 | G0–G6 | Repo público, theme/HTML IR, CI, my-app `--check`, docs/AI skill, MIT | ✅ |
 | G7 | Source maps reales | ✅ VLQ from source= markers |
 | G8 | LSP full | parcialmente → `cordlang lsp` (diagnostics/symbols/definition); completion/hover abiertos |
+
+### 4.2b Fase H — Madurez del proyecto ✅ (2026-07-24)
+
+Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza → evidencia → extensibilidad).
+
+| # | Item | Estado | Notas |
+|---|------|--------|-------|
+| H1.1 | Tests de regresión por bug | ✅ | `tests/regression/` + runners; política en CONTRIBUTING/AGENTS |
+| H1.2 | Arquitectura interna | ✅ | [`ARCHITECTURE.md`](./ARCHITECTURE.md) |
+| H2.1 | Spec formal v0.x | ✅ | [`SPEC.md`](./SPEC.md) |
+| H2.2 | Benchmarks de compile | ✅ | `make bench` / `bench/run_bench.sh`; CI opcional `bench.yml` |
+| H2.3 | Comparación Cord vs JSX/Svelte | ✅ | `bench/compare/` + `RESULTS.md` (tamaño / compile, no FPS) |
+| H3 | IR passes (plugins v1) | ✅ | `domain/ir_pass` + `--pass` / `passes` en json; `strip-debug` |
+
+**DoD H:** ✅ suite de regresión en CI; docs de arquitectura + SPEC; benches locales; passes opt-in sin romper goldens por defecto.
 
 ### 4.3 Horizonte B — visión posterior (no diluir A)
 
@@ -365,7 +380,7 @@ DESPUÉS ► Horizonte B (semántica, marketplace, Vue/Solid, Kit/Next, …)
 - [x] Un solo proyecto demo pasa React + Svelte build en **CI** (G4)  
 - [ ] Paridad documentada ≥ 90% de la matriz P0/P1  
 - [ ] `docs/REACT.md` + `docs/SVELTE.md` 100% al día con codegen  
-- [ ] Syntax freeze del subset 1.0 (`docs/LANGUAGE.md`)  
+- [ ] Syntax freeze del subset 1.0 ([`docs/SPEC.md`](./SPEC.md) v0.x → 1.0)  
 - [x] Theme + HTML sin residual AST en path IR (G1–G2)  
 - [x] LICENSE publicada (MIT)  
 
@@ -394,7 +409,8 @@ DESPUÉS ► Horizonte B (semántica, marketplace, Vue/Solid, Kit/Next, …)
 | **M5 — IR platform** | IR-1 + IR-2 | ✅ |
 | **M6 — Public + polish** | Fase G (G0–G6 ✅) | ✅ |
 | **M7 — Horizonte A** | A1–A6 (DX, contratos, paridad, IA workflow, templates, analyze) | 🟡 en curso |
-| **M8 — Horizonte B / meta** | Kit/Next, F*, semántica, marketplace | después |
+| **M8 — Madurez** | Fase H (regresión, ARCHITECTURE, SPEC, bench, IR passes) | ✅ |
+| **M9 — Horizonte B / meta** | Kit/Next, F*, semántica, marketplace | después |
 
 Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `ir`, `dx`, `ci`, `docs`.
 
@@ -409,4 +425,4 @@ Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `ir`, `dx`, `ci`
 
 ---
 
-*Última actualización: posicionamiento IR+IA; prioridades = Horizonte A (A1–A6) / B.*
+*Última actualización: Fase H (madurez) ✅; prioridades = Horizonte A residual / B.*
