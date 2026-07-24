@@ -1,10 +1,11 @@
 {
   "name": "cordlang",
   "displayName": "Cordlang",
-  "description": "Minimal Cordlang language support (snippets + check tasks)",
-  "version": "0.1.0",
+  "description": "Cordlang language support (snippets, check tasks, LSP via cordlang lsp)",
+  "version": "0.1.1",
   "engines": { "vscode": "^1.80.0" },
   "categories": ["Programming Languages"],
+  "activationEvents": ["onLanguage:cordlang"],
   "contributes": {
     "languages": [
       {
@@ -43,6 +44,16 @@
         "problemMatcher": ["$cordlang-check"],
         "group": "build"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Cordlang",
+      "properties": {
+        "cordlang.lsp.path": {
+          "type": "string",
+          "default": "cordlang",
+          "description": "Path to cordlang binary (run with args: lsp)"
+        }
+      }
+    }
   }
 }

@@ -30,11 +30,25 @@ Contents:
 
 Install (dev): open `editor/vscode` as extension folder, or copy snippets into Cursor.
 
+## Minimal LSP (`cordlang lsp`)
+
+Stdio JSON-RPC server (Content-Length framing):
+
+| Method | Behavior |
+|--------|----------|
+| `initialize` | sync + documentSymbol + definition |
+| `textDocument/didOpen\|didChange\|didSave` | `check` → `publishDiagnostics` (file on disk) |
+| `textDocument/documentSymbol` | components from project parse |
+| `textDocument/definition` | goto component under cursor |
+| `shutdown` / `exit` | clean shutdown |
+
+Point the editor at the `cordlang` binary with args `["lsp"]`.
+
 ## Roadmap to full LSP
 
-1. Wrap `check` + `symbols` + `goto` in stdio JSON-RPC.
+1. ~~Wrap `check` + `symbols` + `goto` in stdio JSON-RPC.~~ ✅ `cordlang lsp`
 2. Completion: tags/attrs from [`schema/attrs.json`](./schema/attrs.json).
 3. Hover: show prop types + schema docs.
 4. Source maps (G7) for stack traces from generated JS.
 
-Until then: **snippets + `check` in watch/tasks** is the supported minimum.
+Until then: **snippets + `check` in watch/tasks + `cordlang lsp`** is the supported minimum.

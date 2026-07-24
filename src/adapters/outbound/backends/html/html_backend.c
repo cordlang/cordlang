@@ -177,25 +177,65 @@ static const char *RUNTIME_CSS =
   "font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}\n"
   "@media (max-width:768px){.grid-cols-3,.grid-cols-4{grid-template-columns:1fr}}\n";
 
-/* Base runtime: toast for unknown handlers; setX(...) is eval'd when state exists.
- * State decls + setters are prepended by html_generate when present. */
+/* Safe preview runtime: no eval. Expressions via clEvalExpr whitelist parser. */
 static const char *RUNTIME_JS_CORE =
+  "function clEvalExpr(src){\n"
+  "  src=String(src==null?'':src);\n"
+  "  var i=0,n=src.length;\n"
+  "  function peek(){return src.charAt(i);}\n"
+  "  function get(){return src.charAt(i++);}\n"
+  "  function skip(){while(i<n&&/\\s/.test(peek()))i++;}\n"
+  "  function parsePrimary(){\n"
+  "    skip();\n"
+  "    var c=peek();\n"
+  "    if(c==='('){get();var v=parseOr();skip();if(peek()===')')get();return v;}\n"
+  "    if(c==='\"'||c===\"'\"){var q=get(),s='';while(i<n&&peek()!==q){if(peek()==='\\\\'){get();s+=get();}else s+=get();}if(peek()===q)get();return s;}\n"
+  "    if(c==='-'||c==='+'){var u=get();var pv=parsePrimary();return u==='-'?-pv:+pv;}\n"
+  "    if(/[0-9]/.test(c)||(c==='.'&&/[0-9]/.test(src.charAt(i+1)))){\n"
+  "      var num='';while(i<n&&/[0-9.]/.test(peek()))num+=get();return Number(num);\n"
+  "    }\n"
+  "    if(/[A-Za-z_]/.test(c)){\n"
+  "      var id='';while(i<n&&/[A-Za-z0-9_]/.test(peek()))id+=get();\n"
+  "      if(id==='true')return true;if(id==='false')return false;\n"
+  "      if(id==='null'||id==='undefined')return null;\n"
+  "      if(typeof window[id]==='undefined')throw new Error('unknown '+id);\n"
+  "      return window[id];\n"
+  "    }\n"
+  "    throw new Error('bad token');\n"
+  "  }\n"
+  "  function parseMul(){var v=parsePrimary();for(;;){skip();var op=peek();if(op!=='*'&&op!=='/'&&op!=='%')break;get();var r=parsePrimary();if(op==='*')v=v*r;else if(op==='/')v=v/r;else v=v%r;}return v;}\n"
+  "  function parseAdd(){var v=parseMul();for(;;){skip();var op=peek();if(op!=='+'&&op!=='-')break;get();var r=parseMul();v=op==='+'?v+r:v-r;}return v;}\n"
+  "  function parseCmp(){var v=parseAdd();for(;;){skip();var op=src.slice(i,i+2);var one=peek();\n"
+  "    if(op==='=='||op==='!='||op==='<='||op==='>='){i+=2;var r=parseAdd();if(op==='==')v=v==r;else if(op==='!=')v=v!=r;else if(op==='<=')v=v<=r;else v=v>=r;}\n"
+  "    else if(one==='<'||one==='>'){get();var r2=parseAdd();v=one==='<'?v<r2:v>r2;}else break;}return v;}\n"
+  "  function parseAnd(){var v=parseCmp();for(;;){skip();if(src.slice(i,i+2)!=='&&')break;i+=2;var r=parseCmp();v=v&&r;}return v;}\n"
+  "  function parseOr(){var v=parseAnd();for(;;){skip();if(src.slice(i,i+2)!=='||')break;i+=2;var r=parseAnd();v=v||r;}return v;}\n"
+  "  var out=parseOr();skip();if(i<n)throw new Error('trailing');\n"
+  "  return out;\n"
+  "}\n"
   "function clUpdate(){\n"
   "  document.querySelectorAll('[data-bind]').forEach(function(el){\n"
   "    var expr=el.getAttribute('data-bind');\n"
   "    if(!expr) return;\n"
   "    try{\n"
-  "      var v=(0,eval)(expr);\n"
+  "      var v=clEvalExpr(expr);\n"
   "      el.textContent=v==null?'':String(v);\n"
   "    }catch(e){ /* leave existing text */ }\n"
   "  });\n"
   "}\n"
   "function clPreviewHandler(name, ev){\n"
   "  if(ev && typeof ev.preventDefault==='function') ev.preventDefault();\n"
-  "  /* C8: evaluate setCount(...)-style handlers against preview state */\n"
   "  if(name && /^set[A-Za-z_][\\w]*\\s*\\(/.test(name)){\n"
-  "    try{ (0,eval)(name); return; }catch(e){\n"
-  "      if(window.console) console.warn('[cordlang preview] handler failed', name, e);\n"
+  "    var m=/^(set[A-Za-z_][\\w]*)\\s*\\((.*)\\)\\s*$/.exec(name);\n"
+  "    if(m && typeof window[m[1]]==='function'){\n"
+  "      try{\n"
+  "        var argSrc=(m[2]||'').trim();\n"
+  "        var arg=argSrc===''?undefined:clEvalExpr(argSrc);\n"
+  "        window[m[1]](arg);\n"
+  "        return;\n"
+  "      }catch(e){\n"
+  "        if(window.console) console.warn('[cordlang preview] handler failed', name, e);\n"
+  "      }\n"
   "    }\n"
   "  }\n"
   "  var el=document.getElementById('cl-toast');\n"
@@ -417,7 +457,7 @@ static void emit_state_runtime_js(StrBuf *sb) {
     const char *init = g_state_inits[i] ? g_state_inits[i] : "0";
     char setter[128];
     make_setter_name(setter, sizeof(setter), name);
-    /* Use var so eval() handlers resolve state on the global object.
+    /* Use var so clEvalExpr/handlers resolve state on the global object.
      * Init comes from the parser (number / true / "string" / expr). */
     sb_appendf(sb, "var %s = %s;\n", name, init);
     sb_appendf(sb,

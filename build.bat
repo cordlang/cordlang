@@ -16,6 +16,7 @@ gcc -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-function -Wno-format
   src/application/run_service.c ^
   src/application/watch_service.c ^
   src/application/preview_service.c ^
+  src/application/lsp_service.c ^
   src/adapters/inbound/cli.c ^
   src/adapters/outbound/fs/fs.c ^
   src/adapters/outbound/process/process_spawn.c ^

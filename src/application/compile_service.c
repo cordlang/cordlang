@@ -85,7 +85,9 @@ char *compile_service_file_ex(const char *cord_path, const char *backend_name,
                bl + 1);
       }
     }
-    char *json = cord_sourcemap_stub(base ? base : "App.jsx", sources, n_sources);
+    char *json = cord_sourcemap_build(base ? base : "App.jsx", out);
+    if (!json)
+      json = cord_sourcemap_stub(base ? base : "App.jsx", sources, n_sources);
     free(base);
 
     if (json) {

@@ -202,7 +202,7 @@ Ejemplos: `examples/phase_b_lazy_head.cord`, `examples/fetch_form.cord`, `tests/
 | C2 | Expr language | ✅ | `domain/expr.{c,h}` normalize/validate; usado al bajar expr al IR |
 | C3 | Type checker liviano | ✅ | `check_service`: unknown components, routes, dups, use vacío |
 | C4 | Diagnostics con span | ✅ | `domain/diag` → `file:line:col: error\|warning: …` |
-| C5 | Source maps | 🟡 | comments `cordlang: source=…` + stub Source Map v3 `--sourcemap` |
+| C5 | Source maps | ✅ | VLQ mappings from `cordlang: source=` markers (`--sourcemap`) |
 | C6 | Formatter `cordlang fmt` | ✅ | in-place + `--check`; whitespace/tabs/blanks |
 | C7 | Symbols / goto | ✅ | CLI `symbols` + `goto <Name>` (LSP full = post-C) |
 | C8 | Preview con state | ✅ | HTML runtime: `var count` + `setCount` + `data-bind` + `clUpdate` |
@@ -308,8 +308,8 @@ DESPUÉS ► Horizonte B (semántica, marketplace, Vue/Solid, Kit/Next, …)
 | # | Item | Estado |
 |---|------|--------|
 | G0–G6 | Repo público, theme/HTML IR, CI, my-app `--check`, docs/AI skill, MIT | ✅ |
-| G7 | Source maps reales | pendiente (P2) |
-| G8 | LSP full | parcialmente → A1 (mínimo); full sigue abierto |
+| G7 | Source maps reales | ✅ VLQ from source= markers |
+| G8 | LSP full | parcialmente → `cordlang lsp` (diagnostics/symbols/definition); completion/hover abiertos |
 
 ### 4.3 Horizonte B — visión posterior (no diluir A)
 

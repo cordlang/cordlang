@@ -6,6 +6,7 @@
 #include "application/run_service.h"
 #include "application/preview_service.h"
 #include "application/symbols_service.h"
+#include "application/lsp_service.h"
 #include "application/ports/backend_port.h"
 #include "application/ports/compiler_port.h"
 #include "application/ports/fs_port.h"
@@ -37,6 +38,7 @@ static void print_usage(void) {
   printf("  cordlang fmt --check [path]    Exit 1 if formatting would change files\n");
   printf("  cordlang symbols [entry]       List components, routes, layouts\n");
   printf("  cordlang goto <Name> [entry]   Print definition path of a symbol\n");
+  printf("  cordlang lsp                   Minimal Language Server (stdio JSON-RPC)\n");
   printf("  cordlang help                  Show this help\n\n");
   printf("Backends:\n");
   printf("  preview / html                 Built-in runtime preview (default for run)\n");
@@ -518,6 +520,10 @@ int cli_run(int argc, char **argv) {
     const char *name = argv[2];
     const char *entry = argc > 3 ? argv[3] : NULL;
     return symbols_service_goto(".", name, entry);
+  }
+
+  if (strcmp(cmd, "lsp") == 0) {
+    return lsp_service_run();
   }
 
   /* Back-compat: cordlang file.cord */
