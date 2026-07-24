@@ -2,11 +2,16 @@
 #include "application/ports/fs_port.h"
 #include "domain/interp.h"
 #include "domain/ir.h"
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include <stdarg.h>
+#ifdef _WIN32
+#define strcasecmp _stricmp
+#else
+#include <strings.h>
+#endif
 
 typedef struct {
   char *buf;
@@ -326,7 +331,31 @@ static const char *tag_to_div_plus_class(const char *tag) {
   return NULL;
 }
 
+/* Deny-list for raw HTML tags that must never reach the preview DOM. */
+static int html_tag_is_forbidden(const char *tag) {
+  static const char *bad[] = {
+      "script", "iframe",   "object", "embed",  "applet", "frame",
+      "frameset", "meta",   "base",   "link",   "style",  "html",
+      "head",   "body",     "template", "foreignobject", "svg",
+      "math",   "noscript", NULL};
+  if (!tag) return 1;
+  for (int i = 0; bad[i]; i++) {
+    if (strcasecmp(tag, bad[i]) == 0) return 1;
+  }
+  return 0;
+}
+
+static int html_tag_is_safe_name(const char *tag) {
+  if (!tag || !*tag) return 0;
+  if (!isalpha((unsigned char)tag[0])) return 0;
+  for (const char *p = tag + 1; *p; p++) {
+    if (!(isalnum((unsigned char)*p) || *p == '-')) return 0;
+  }
+  return 1;
+}
+
 static const char *html_tag_for(const char *tag) {
+  if (!tag) return "div";
   if (strcmp(tag, "col") == 0) return "div";
   if (strcmp(tag, "row") == 0) return "div";
   if (strcmp(tag, "stack") == 0) return "div";
@@ -356,6 +385,8 @@ static const char *html_tag_for(const char *tag) {
   if (strcmp(tag, "h2") == 0) return "h2";
   if (strcmp(tag, "h3") == 0) return "h3";
   if (strcmp(tag, "p") == 0) return "p";
+  /* Unknown Cord tags: only emit if safe; never script/iframe/etc. */
+  if (html_tag_is_forbidden(tag) || !html_tag_is_safe_name(tag)) return "div";
   return tag;
 }
 
@@ -449,12 +480,65 @@ static void make_setter_name(char *out, size_t out_sz, const char *name) {
            name + 1);
 }
 
+static int is_safe_js_ident(const char *s) {
+  if (!s || !*s) return 0;
+  if (!(isalpha((unsigned char)s[0]) || s[0] == '_')) return 0;
+  for (const char *p = s + 1; *p; p++) {
+    if (!(isalnum((unsigned char)*p) || *p == '_')) return 0;
+  }
+  return 1;
+}
+
+/* Allow only number / bool / null / double-quoted string as state init JS. */
+static int is_safe_js_init(const char *s) {
+  if (!s || !*s) return 0;
+  if (strcmp(s, "true") == 0 || strcmp(s, "false") == 0 ||
+      strcmp(s, "null") == 0)
+    return 1;
+  const char *p = s;
+  if (*p == '-' || *p == '+') p++;
+  int digits = 0;
+  while (*p) {
+    if (isdigit((unsigned char)*p))
+      digits++;
+    else if (*p != '.')
+      return 0;
+    p++;
+  }
+  if (digits > 0) return 1;
+  /* "..." with no unescaped quotes/backslashes beyond simple content */
+  if (s[0] == '"') {
+    size_t n = strlen(s);
+    if (n >= 2 && s[n - 1] == '"') {
+      for (size_t i = 1; i + 1 < n; i++) {
+        if (s[i] == '"' || s[i] == '\\' || s[i] == '\n' || s[i] == '\r')
+          return 0;
+      }
+      return 1;
+    }
+  }
+  return 0;
+}
+
+static int href_is_safe(const char *href) {
+  if (!href) return 1;
+  while (*href && isspace((unsigned char)*href)) href++;
+  if (!*href) return 1;
+  /* Block javascript:/data:/vbscript: scheme URLs */
+  if (strncasecmp(href, "javascript:", 11) == 0) return 0;
+  if (strncasecmp(href, "data:", 5) == 0) return 0;
+  if (strncasecmp(href, "vbscript:", 9) == 0) return 0;
+  return 1;
+}
+
 static void emit_state_runtime_js(StrBuf *sb) {
   if (g_state_count == 0) return;
   sb_append(sb, "/* Cordlang preview reactive state (C8) */\n");
   for (int i = 0; i < g_state_count; i++) {
     const char *name = g_state_names[i];
     const char *init = g_state_inits[i] ? g_state_inits[i] : "0";
+    if (!is_safe_js_ident(name)) continue;
+    if (!is_safe_js_init(init)) init = "null";
     char setter[128];
     make_setter_name(setter, sizeof(setter), name);
     /* Use var so clEvalExpr/handlers resolve state on the global object.
@@ -761,8 +845,11 @@ static void gen_element(StrBuf *sb, Node *node, int depth) {
           strcmp(attr_name, "type") == 0 || strcmp(attr_name, "rows") == 0 ||
           strcmp(attr_name, "name") == 0 || strcmp(attr_name, "value") == 0 ||
           strcmp(attr_name, "id") == 0) {
+        const char *aval = child->value2 ? child->value2 : "";
+        if (strcmp(attr_name, "href") == 0 && !href_is_safe(aval))
+          aval = "#";
         sb_appendf(sb, " %s=\"", attr_name);
-        html_escape_append(sb, child->value2 ? child->value2 : "");
+        html_escape_append(sb, aval);
         sb_append(sb, "\"");
       }
     }
@@ -806,6 +893,8 @@ static void gen_element(StrBuf *sb, Node *node, int depth) {
     if (child->type == NODE_EVENT && child->value && child->value2) {
       const char *event = child->value;
       const char *handler = child->value2;
+      /* only [A-Za-z][A-Za-z0-9_]* event names (onclick → click via parser) */
+      if (!is_safe_js_ident(event)) continue;
       /* escape single quotes in handler name for JS string */
       sb_appendf(sb, " on%s=\"clPreviewHandler('", event);
       for (const char *p = handler; *p; p++) {
@@ -1341,6 +1430,7 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth) {
     if (child && child->kind == IR_EVENT && child->name && child->value) {
       const char *event = child->name;
       const char *handler = child->value;
+      if (!is_safe_js_ident(event)) continue;
       sb_appendf(sb, " on%s=\"clPreviewHandler('", event);
       for (const char *p = handler; *p; p++) {
         if (*p == '\'' || *p == '\\') sb_append(sb, "\\");
