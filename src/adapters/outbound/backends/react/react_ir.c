@@ -973,7 +973,7 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
 
   sb_indent(sb, depth);
   int self_closing =
-      (strcmp(html_tag, "img") == 0 || strcmp(html_tag, "input") == 0);
+      irw_is_void_html(html_tag);
   sb_appendf(sb, "<%s", html_tag);
 
   char classes[2048];

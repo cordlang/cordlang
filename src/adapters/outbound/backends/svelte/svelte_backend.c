@@ -218,8 +218,8 @@ static void collect_classes_ir(char *classes, size_t sz, const IrNode *node,
     const char *k = c->name;
     const char *v = c->value ? c->value : "";
 
-    /* Bool-like attrs (name is the flag / size token) */
-    if (attr_is_true(c) || (!c->value || !c->value[0])) {
+    /* Bool / flag attrs → Tailwind utility classes */
+    if (attr_is_true(c) || !c->value || !c->value[0]) {
       if (strcmp(k, "between") == 0)
         strncat(classes, " justify-between", sz - strlen(classes) - 1);
       else if (strcmp(k, "center") == 0)
@@ -237,22 +237,33 @@ static void collect_classes_ir(char *classes, size_t sz, const IrNode *node,
         strncat(classes, " btn-outline", sz - strlen(classes) - 1);
       else if (strcmp(k, "ghost") == 0)
         strncat(classes, " btn-ghost", sz - strlen(classes) - 1);
+      else if (strcmp(k, "wrap") == 0)
+        strncat(classes, " flex-wrap", sz - strlen(classes) - 1);
+      else if (strcmp(k, "col") == 0)
+        strncat(classes, " flex flex-col", sz - strlen(classes) - 1);
       else if (strcmp(k, "xl") == 0)
         strncat(classes, " text-xl", sz - strlen(classes) - 1);
       else if (strcmp(k, "2xl") == 0)
         strncat(classes, " text-2xl", sz - strlen(classes) - 1);
+      else if (strcmp(k, "3xl") == 0)
+        strncat(classes, " text-3xl", sz - strlen(classes) - 1);
       else if (strcmp(k, "4xl") == 0)
         strncat(classes, " text-4xl", sz - strlen(classes) - 1);
       else if (strcmp(k, "lg") == 0)
         strncat(classes, " text-lg", sz - strlen(classes) - 1);
-      if (attr_is_true(c) || !c->value || !c->value[0]) {
-        /* valued style keys with "true" already handled above for flags */
-        if (strcmp(k, "variant") && strcmp(k, "size") && strcmp(k, "color") &&
-            strcmp(k, "gap") && strcmp(k, "cols") && strcmp(k, "p") &&
-            strcmp(k, "bg") && strcmp(k, "shadow") && strcmp(k, "rounded") &&
-            strcmp(k, "max-w"))
-          continue;
+      else if (strcmp(k, "sm") == 0)
+        strncat(classes, " text-sm", sz - strlen(classes) - 1);
+      else if (strcmp(k, "xs") == 0)
+        strncat(classes, " text-xs", sz - strlen(classes) - 1);
+      else if (strchr(k, '-') != NULL ||
+               /* bare utility tokens: h-screen, flex-1, etc. already have - */
+               strcmp(k, "grow") == 0 || strcmp(k, "shrink") == 0) {
+        /* Tailwind-like flag: h-screen, overflow-y-auto, flex-1, w-full… */
+        snprintf(vbuf, sizeof(vbuf), " %s", k);
+        strncat(classes, vbuf, sz - strlen(classes) - 1);
       }
+      /* skip valued keys when value is empty/true */
+      continue;
     }
 
     if (!c->value) continue;
@@ -281,6 +292,21 @@ static void collect_classes_ir(char *classes, size_t sz, const IrNode *node,
       strncat(classes, vbuf, sz - strlen(classes) - 1);
     } else if (strcmp(k, "p") == 0) {
       snprintf(vbuf, sizeof(vbuf), " p-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "w") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " w-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "h") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " h-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "flex") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " flex-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "opacity") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " opacity-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "overflow") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " overflow-%s", v);
       strncat(classes, vbuf, sz - strlen(classes) - 1);
     } else if (strcmp(k, "bg") == 0) {
       if (theme_is_color_token(v)) {
@@ -574,8 +600,81 @@ static void project_partition_from_ir(SvelteProject *p, IrNode *root) {
 
 /* ── markup generation (pure IR) ───────────────────────── */
 
-static void gen_node_ir(StrBuf *sb, IrNode *node, int depth, int is_layout);
-static void gen_children_ir(StrBuf *sb, IrNode *node, int depth, int is_layout);
+static void gen_node_ir(StrBuf *sb, IrNode *node, int depth, int is_layout,
+                        IrNode *scope);
+static void gen_children_ir(StrBuf *sb, IrNode *node, int depth, int is_layout,
+                            IrNode *scope);
+
+/* Names declared in this component (state/props/computed/store/fetch/ctx) */
+static int is_binding_name(IrNode *scope, const char *name) {
+  if (!scope || !name || !*name) return 0;
+  for (size_t i = 0; i < scope->n_kids; i++) {
+    IrNode *c = scope->kids[i];
+    if (!c) continue;
+    if (c->kind == IR_STATE || c->kind == IR_PROP || c->kind == IR_COMPUTED ||
+        c->kind == IR_STORE || c->kind == IR_FETCH) {
+      if (c->name && strcmp(c->name, "__states__") == 0) {
+        for (size_t j = 0; j < c->n_kids; j++)
+          if (c->kids[j] && c->kids[j]->name &&
+              strcmp(c->kids[j]->name, name) == 0)
+            return 1;
+      } else if (c->name && strcmp(c->name, "__props__") == 0) {
+        for (size_t j = 0; j < c->n_kids; j++)
+          if (c->kids[j] && c->kids[j]->name &&
+              strcmp(c->kids[j]->name, name) == 0)
+            return 1;
+      } else if (c->name && strcmp(c->name, name) == 0)
+        return 1;
+    }
+    if (c->kind == IR_HOOK && c->name) {
+      /* ctx theme = Theme → binding "theme"; params id → "id" */
+      if ((strcmp(c->name, "ctx") == 0 || strcmp(c->name, "params") == 0 ||
+           strcmp(c->name, "ref") == 0 || strcmp(c->name, "id") == 0 ||
+           strcmp(c->name, "navigate") == 0) &&
+          c->value && strcmp(c->value, name) == 0)
+        return 1;
+      if (strcmp(c->name, "params") == 0 && c->value) {
+        /* "id,slug" list */
+        const char *p = c->value;
+        while (*p) {
+          while (*p == ' ' || *p == ',') p++;
+          char buf[64];
+          size_t n = 0;
+          while (*p && *p != ',' && *p != ' ' && n + 1 < sizeof(buf))
+            buf[n++] = *p++;
+          buf[n] = '\0';
+          if (n && strcmp(buf, name) == 0) return 1;
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+/*
+ * Component props: default to STRING (title="Revenue", role="Admin",
+ * email="a@b.com", value="+12.5%"). Only emit {expr} when clearly dynamic.
+ */
+static int component_prop_is_expr(IrNode *scope, const char *val) {
+  if (!val || !*val) return 0;
+  if (irw_looks_bool(val)) return 1;
+  if (irw_looks_number(val)) return 1;
+  /* Human / format strings — never JS expressions */
+  if (strchr(val, '@') || strchr(val, '%') || strchr(val, '$') ||
+      strchr(val, ',') || strchr(val, ' ') || strchr(val, '#') ||
+      strchr(val, ':'))
+    return 0;
+  /* +12.5 or -3 as display text (not unary expr) */
+  if ((val[0] == '+' || val[0] == '-') &&
+      !is_binding_name(scope, val))
+    return 0;
+  if (strchr(val, '(') || strchr(val, '[')) return 1;
+  /* user.name / items[0] style */
+  if (strchr(val, '.') && looks_like_js_expr(val)) return 1;
+  /* bare identifier only if declared in this component (state/props/…) */
+  if (looks_like_js_expr(val) && is_binding_name(scope, val)) return 1;
+  return 0;
+}
 
 static void emit_interp_expr(StrBuf *sb, const char *expr) {
   if (!expr) {
@@ -656,7 +755,8 @@ static int is_markup_child_kind(IrKind k) {
          k == IR_RENDER;
 }
 
-static void gen_element_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
+static void gen_element_ir(StrBuf *sb, IrNode *node, int depth, int is_layout,
+                           IrNode *scope) {
   const char *tag = node->name ? node->name : "div";
 
   if (strcmp(tag, "slot") == 0 || node->kind == IR_SLOT) {
@@ -666,23 +766,37 @@ static void gen_element_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
   }
 
   if (strcmp(tag, "provide") == 0) {
-    gen_children_ir(sb, node, depth, is_layout);
+    gen_children_ir(sb, node, depth, is_layout, scope);
     return;
   }
 
   if (irw_is_pascal(tag)) {
+    /* Custom components: pass ALL attrs as props (incl. color=…), not as
+     * HTML style filters. String by default so title="Revenue" works. */
     sb_indent(sb, depth);
     sb_appendf(sb, "<%s", tag);
     int has_kids = 0;
     for (size_t i = 0; i < node->n_kids; i++) {
       IrNode *c = node->kids[i];
-      if (c->kind == IR_ATTR && c->name && !is_style_attr(c->name) &&
+      if (c->kind == IR_ATTR && c->name &&
           !(c->name[0] == '_' && c->name[1] == '_')) {
-        if (c->value && (irw_looks_number(c->value) || irw_looks_bool(c->value) ||
-                         looks_like_js_expr(c->value)))
+        if (c->value && component_prop_is_expr(scope, c->value))
           sb_appendf(sb, " %s={%s}", c->name, c->value);
-        else
-          sb_appendf(sb, " %s=\"%s\"", c->name, c->value ? c->value : "");
+        else {
+          /* Escape quotes in string props */
+          sb_appendf(sb, " %s=\"", c->name);
+          if (c->value) {
+            for (const char *p = c->value; *p; p++) {
+              if (*p == '"')
+                sb_append(sb, "&quot;");
+              else {
+                char ch[2] = {*p, 0};
+                sb_append(sb, ch);
+              }
+            }
+          }
+          sb_append(sb, "\"");
+        }
       } else if (c->kind == IR_EVENT && c->name && c->value) {
         int needs_arrow = strchr(c->value, '(') || strchr(c->value, '+') ||
                           strchr(c->value, '-') || strchr(c->value, ' ');
@@ -698,7 +812,7 @@ static void gen_element_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
       return;
     }
     sb_append(sb, ">\n");
-    gen_children_ir(sb, node, depth + 1, is_layout);
+    gen_children_ir(sb, node, depth + 1, is_layout, scope);
     sb_indent(sb, depth);
     sb_appendf(sb, "</%s>\n", tag);
     return;
@@ -706,11 +820,12 @@ static void gen_element_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
 
   const char *html = irw_html_tag(tag);
   if (!html) {
-    gen_children_ir(sb, node, depth, is_layout);
+    gen_children_ir(sb, node, depth, is_layout, scope);
     return;
   }
 
-  int self_close = (strcmp(html, "img") == 0 || strcmp(html, "input") == 0);
+  /* hr/br/img/input/… — Svelte forbids </hr> (void_element_invalid_content) */
+  int self_close = irw_is_void_html(html);
   sb_indent(sb, depth);
   sb_appendf(sb, "<%s", html);
 
@@ -836,30 +951,11 @@ static void gen_element_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
 
   if (self_close) {
     sb_append(sb, " />\n");
-    return;
+    return; /* never emit children or </hr> etc. */
   }
   sb_append(sb, ">\n");
 
-  /* implicit expr children from unknown bool attrs (legacy parity) */
-  for (size_t i = 0; i < node->n_kids; i++) {
-    IrNode *c = node->kids[i];
-    if (c->kind == IR_ATTR && c->name && attr_is_true(c)) {
-      const char *v = c->name;
-      if (strcmp(v, "between") && strcmp(v, "center") && strcmp(v, "bold") &&
-          strcmp(v, "muted") && strcmp(v, "sticky") && strcmp(v, "primary") &&
-          strcmp(v, "outline") && strcmp(v, "ghost") && strcmp(v, "required") &&
-          strcmp(v, "disabled") && strcmp(v, "text") && strcmp(v, "email") &&
-          strcmp(v, "search") && strcmp(v, "password") && strcmp(v, "xl") &&
-          strcmp(v, "2xl") && strcmp(v, "3xl") && strcmp(v, "4xl") &&
-          strcmp(v, "lg") && strcmp(v, "sm") && strcmp(v, "xs") &&
-          !(v[0] == '_' && v[1] == '_')) {
-        sb_indent(sb, depth + 1);
-        sb_appendf(sb, "{%s}\n", v);
-      }
-    }
-  }
-
-  gen_children_ir(sb, node, depth + 1, is_layout);
+  gen_children_ir(sb, node, depth + 1, is_layout, scope);
   sb_indent(sb, depth);
   sb_appendf(sb, "</%s>\n", html);
 }
@@ -882,7 +978,8 @@ static int is_ir_script_decl(const IrNode *n) {
   return 0;
 }
 
-static void gen_children_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
+static void gen_children_ir(StrBuf *sb, IrNode *node, int depth, int is_layout,
+                            IrNode *scope) {
   for (size_t i = 0; i < node->n_kids; i++) {
     IrNode *child = node->kids[i];
     if (!child) continue;
@@ -898,7 +995,7 @@ static void gen_children_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) 
       for (size_t j = 0; j < child->n_kids; j++) {
         IrNode *ch = child->kids[j];
         if (ch->kind == IR_ATTR || ch->kind == IR_EVENT) continue;
-        gen_node_ir(sb, ch, depth + 1, is_layout);
+        gen_node_ir(sb, ch, depth + 1, is_layout, scope);
       }
       sb_indent(sb, depth);
       sb_append(sb, "{/each}\n");
@@ -917,13 +1014,13 @@ static void gen_children_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) 
       sb_indent(sb, depth);
       sb_appendf(sb, "{#if %s}\n", cond);
       for (size_t j = 0; j < child->n_kids; j++)
-        gen_node_ir(sb, child->kids[j], depth + 1, is_layout);
+        gen_node_ir(sb, child->kids[j], depth + 1, is_layout, scope);
       if (has_else) {
         sb_indent(sb, depth);
         sb_append(sb, "{:else}\n");
         IrNode *en = node->kids[else_idx];
         for (size_t j = 0; j < en->n_kids; j++)
-          gen_node_ir(sb, en->kids[j], depth + 1, is_layout);
+          gen_node_ir(sb, en->kids[j], depth + 1, is_layout, scope);
         i = else_idx;
       }
       sb_indent(sb, depth);
@@ -938,7 +1035,7 @@ static void gen_children_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) 
       sb_indent(sb, depth);
       sb_appendf(sb, "{#if %s}\n", cond);
       for (size_t j = 0; j < child->n_kids; j++)
-        gen_node_ir(sb, child->kids[j], depth + 1, is_layout);
+        gen_node_ir(sb, child->kids[j], depth + 1, is_layout, scope);
       sb_indent(sb, depth);
       sb_append(sb, "{/if}\n");
     } else if (irw_hook_is(child, "loading") || irw_hook_is(child, "suspense")) {
@@ -948,7 +1045,7 @@ static void gen_children_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) 
         if (ch->kind == IR_ELEMENT && ch->name &&
             strcmp(ch->name, "__fallback__") == 0)
           continue;
-        gen_node_ir(sb, ch, depth, is_layout);
+        gen_node_ir(sb, ch, depth, is_layout, scope);
       }
     } else if (irw_hook_is(child, "head")) {
       if (child->value) {
@@ -961,22 +1058,23 @@ static void gen_children_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) 
       }
     } else if (child->kind == IR_AWAIT || child->kind == IR_SNIPPET ||
                child->kind == IR_RENDER || irw_hook_is(child, "portal")) {
-      gen_node_ir(sb, child, depth, is_layout);
+      gen_node_ir(sb, child, depth, is_layout, scope);
     } else if (!is_ir_script_decl(child) && child->kind != IR_COMPONENT &&
                child->kind != IR_LAYOUT && child->kind != IR_ROUTE) {
-      gen_node_ir(sb, child, depth, is_layout);
+      gen_node_ir(sb, child, depth, is_layout, scope);
     }
   }
 }
 
-static void gen_node_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
+static void gen_node_ir(StrBuf *sb, IrNode *node, int depth, int is_layout,
+                        IrNode *scope) {
   if (!node) return;
   switch (node->kind) {
     case IR_PROJECT:
-      gen_children_ir(sb, node, depth, is_layout);
+      gen_children_ir(sb, node, depth, is_layout, scope);
       break;
     case IR_ELEMENT:
-      gen_element_ir(sb, node, depth, is_layout);
+      gen_element_ir(sb, node, depth, is_layout, scope);
       break;
     case IR_SLOT:
       sb_indent(sb, depth);
@@ -992,7 +1090,7 @@ static void gen_node_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
         sb_indent(sb, depth);
         sb_appendf(sb, "{#if %s}\n", cond);
         for (size_t i = 0; i < node->n_kids; i++)
-          gen_node_ir(sb, node->kids[i], depth + 1, is_layout);
+          gen_node_ir(sb, node->kids[i], depth + 1, is_layout, scope);
         sb_indent(sb, depth);
         sb_append(sb, "{/if}\n");
       } else if (node->name && (strcmp(node->name, "loading") == 0 ||
@@ -1003,7 +1101,7 @@ static void gen_node_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
           if (ch->kind == IR_ELEMENT && ch->name &&
               strcmp(ch->name, "__fallback__") == 0)
             continue;
-          gen_node_ir(sb, ch, depth, is_layout);
+          gen_node_ir(sb, ch, depth, is_layout, scope);
         }
       } else if (node->name && strcmp(node->name, "head") == 0) {
         if (node->value) {
@@ -1021,12 +1119,12 @@ static void gen_node_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
         for (size_t i = 0; i < node->n_kids; i++) {
           IrNode *ch = node->kids[i];
           if (ch->kind == IR_ATTR || ch->kind == IR_EVENT) continue;
-          gen_node_ir(sb, ch, depth + 1, is_layout);
+          gen_node_ir(sb, ch, depth + 1, is_layout, scope);
         }
         sb_indent(sb, depth);
         sb_append(sb, "</div>\n");
       } else {
-        gen_children_ir(sb, node, depth, is_layout);
+        gen_children_ir(sb, node, depth, is_layout, scope);
       }
       break;
     case IR_AWAIT: {
@@ -1048,7 +1146,7 @@ static void gen_node_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
       sb_appendf(sb, "{#await %s}\n", prom);
       if (loading) {
         for (size_t i = 0; i < loading->n_kids; i++)
-          gen_node_ir(sb, loading->kids[i], depth + 1, is_layout);
+          gen_node_ir(sb, loading->kids[i], depth + 1, is_layout, scope);
       }
       sb_indent(sb, depth);
       sb_appendf(sb, "{:then %s}\n", then_n);
@@ -1059,13 +1157,13 @@ static void gen_node_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
             (strcmp(ch->name, "__loading__") == 0 ||
              strcmp(ch->name, "__error__") == 0))
           continue;
-        gen_node_ir(sb, ch, depth + 1, is_layout);
+        gen_node_ir(sb, ch, depth + 1, is_layout, scope);
       }
       if (err_block) {
         sb_indent(sb, depth);
         sb_appendf(sb, "{:catch %s}\n", catch_n);
         for (size_t i = 0; i < err_block->n_kids; i++)
-          gen_node_ir(sb, err_block->kids[i], depth + 1, is_layout);
+          gen_node_ir(sb, err_block->kids[i], depth + 1, is_layout, scope);
       }
       sb_indent(sb, depth);
       sb_append(sb, "{/await}\n");
@@ -1082,7 +1180,7 @@ static void gen_node_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
       for (size_t i = 0; i < node->n_kids; i++) {
         IrNode *ch = node->kids[i];
         if (ch->kind == IR_ATTR || ch->kind == IR_EVENT) continue;
-        gen_node_ir(sb, ch, depth + 1, is_layout);
+        gen_node_ir(sb, ch, depth + 1, is_layout, scope);
       }
       sb_indent(sb, depth);
       sb_append(sb, "{/snippet}\n");
@@ -1109,7 +1207,7 @@ static void gen_node_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
       break;
     }
     default:
-      gen_children_ir(sb, node, depth, is_layout);
+      gen_children_ir(sb, node, depth, is_layout, scope);
       break;
   }
 }
@@ -1615,11 +1713,12 @@ static char *gen_svelte_module_ir(SvelteProject *proj, SvelteUnit *u) {
   for (size_t i = 0; i < def->n_kids; i++) {
     IrNode *c = def->kids[i];
     if (is_ir_script_decl(c)) continue;
-    gen_node_ir(&markup, c, 0, is_layout);
+    gen_node_ir(&markup, c, 0, is_layout, def);
   }
 
   StrBuf out;
   sb_init(&out);
+  /* First line: HTML comment (user preference + source map hint) */
   if (u->source_path[0])
     sb_appendf(&out, "<!-- cordlang: source=%s -->\n", u->source_path);
   sb_append(&out, "<script>\n");

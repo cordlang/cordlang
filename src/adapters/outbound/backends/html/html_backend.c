@@ -1,4 +1,6 @@
 #include "adapters/outbound/backends/html/html_backend.h"
+#include "adapters/outbound/backends/ir_walk.h"
+#include "adapters/outbound/backends/theme_css.h"
 #include "application/ports/fs_port.h"
 #include "domain/interp.h"
 #include "domain/ir.h"
@@ -73,15 +75,20 @@ static void html_escape_append(StrBuf *sb, const char *s) {
   }
 }
 
-/* Runtime CSS: enough utilities to preview Cordlang layouts without Tailwind/Node */
+/* Runtime CSS: Tailwind-ish utilities so preview matches cord attrs without Node */
 static const char *RUNTIME_CSS =
   "*,*::before,*::after{box-sizing:border-box}\n"
   "html,body{margin:0;padding:0;min-height:100%;"
   "font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;"
-  "background:#f9fafb;color:#111827;-webkit-font-smoothing:antialiased}\n"
+  "background:var(--color-bg,#f8fafc);color:var(--color-text,#0f172a);-webkit-font-smoothing:antialiased}\n"
   "a{color:inherit;text-decoration:none}\n"
+  "a:hover{opacity:.9}\n"
   "img{max-width:100%;display:block}\n"
   "button,input,textarea,select{font:inherit}\n"
+  "hr{border:0;border-top:1px solid currentColor;opacity:.2;margin:.5rem 0}\n"
+  "aside a{display:block;padding:.5rem .75rem;border-radius:.5rem;color:#e2e8f0;"
+  "font-size:.9rem}\n"
+  "aside a:hover{background:rgba(255,255,255,.08)}\n"
   "/* Cordlang runtime chrome */\n"
   ".cl-runtime-bar{position:sticky;top:0;z-index:9999;display:flex;align-items:center;"
   "justify-content:space-between;gap:12px;padding:8px 16px;background:#0f172a;color:#e2e8f0;"
@@ -95,34 +102,51 @@ static const char *RUNTIME_CSS =
   "box-shadow:0 0 0 3px rgba(34,197,94,.25)}\n"
   "/* Layout */\n"
   ".flex{display:flex}.flex-col{flex-direction:column}.flex-row{flex-direction:row}\n"
+  ".flex-wrap{flex-wrap:wrap}.flex-1{flex:1 1 0%}.flex-2{flex:2 1 0%}\n"
   ".grid{display:grid}\n"
-  ".items-center{align-items:center}.justify-center{justify-content:center}\n"
-  ".justify-between{justify-content:space-between}.justify-around{justify-content:space-around}\n"
-  ".justify-evenly{justify-content:space-evenly}\n"
-  ".min-h-screen{min-height:100vh}\n"
+  ".items-center{align-items:center}.items-start{align-items:flex-start}\n"
+  ".justify-center{justify-content:center}.justify-between{justify-content:space-between}\n"
+  ".justify-around{justify-content:space-around}.justify-evenly{justify-content:space-evenly}\n"
+  ".min-h-screen{min-height:100vh}.h-screen{height:100vh}\n"
   ".sticky{position:sticky}.top-0{top:0}\n"
-  ".overflow-hidden{overflow:hidden}\n"
-  "/* Spacing */\n"
-  ".p-4{padding:1rem}.p-6{padding:1.5rem}.p-8{padding:2rem}.p-16{padding:4rem}.p-24{padding:6rem}\n"
-  ".px-4{padding-left:1rem;padding-right:1rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}\n"
-  ".gap-2{gap:.5rem}.gap-4{gap:1rem}.gap-8{gap:2rem}.gap-16{gap:4rem}\n"
+  ".overflow-hidden{overflow:hidden}.overflow-y-auto{overflow-y:auto}\n"
+  "/* Spacing — denser than stock Tailwind so cord numbers (p=20,gap=24) look sane */\n"
+  ".p-0{padding:0}.p-2{padding:.25rem}.p-4{padding:.5rem}.p-6{padding:.75rem}\n"
+  ".p-8{padding:.5rem}.p-12{padding:.75rem}.p-16{padding:1rem}.p-20{padding:1.25rem}.p-24{padding:1.5rem}\n"
+  ".px-2{padding-left:.5rem;padding-right:.5rem}.px-4{padding-left:1rem;padding-right:1rem}\n"
+  ".py-2{padding-top:.5rem;padding-bottom:.5rem}.py-4{padding-top:1rem;padding-bottom:1rem}\n"
+  ".gap-0{gap:0}.gap-2{gap:.25rem}.gap-4{gap:.5rem}.gap-8{gap:.5rem}\n"
+  ".gap-12{gap:.75rem}.gap-16{gap:1rem}.gap-20{gap:1.25rem}.gap-24{gap:1.5rem}\n"
   ".m-0{margin:0}\n"
-  "/* Size helpers used by Cordlang attrs (raw numbers) */\n"
-  ".p-8{padding:2rem}.p-12{padding:3rem}.p-16{padding:1rem}.p-24{padding:1.5rem}\n"
-  ".gap-8{gap:.5rem}.gap-16{gap:1rem}\n"
+  "/* Sizes: icon boxes ~px; sidebar w-64 stays wide */\n"
+  ".w-8{width:0.5rem;min-width:0.5rem}.w-12{width:3rem}.w-16{width:4rem}.w-24{width:6rem}\n"
+  ".w-32{width:8rem}.w-48{width:3rem;min-width:3rem}.w-56{width:14rem}.w-64{width:16rem;min-width:14rem}\n"
+  ".h-8{height:0.5rem;min-height:0.5rem}.h-12{height:3rem}.h-16{height:4rem}.h-24{height:6rem}\n"
+  ".h-32{height:8rem}.h-48{height:3rem;min-height:3rem}.h-64{height:16rem}\n"
+  ".min-w-0{min-width:0}.w-full{width:100%}\n"
   "/* Text */\n"
-  ".font-bold{font-weight:700}.text-gray-500{color:#6b7280}.text-gray-700{color:#374151}\n"
+  ".font-bold{font-weight:700}.font-medium{font-weight:500}\n"
+  ".text-gray-500{color:#6b7280}.text-gray-700{color:#374151}.text-slate-200{color:#e2e8f0}\n"
   ".text-xs{font-size:.75rem}.text-sm{font-size:.875rem}.text-base{font-size:1rem}\n"
   ".text-lg{font-size:1.125rem}.text-xl{font-size:1.25rem}.text-2xl{font-size:1.5rem}\n"
   ".text-3xl{font-size:1.875rem}.text-4xl{font-size:2.25rem}\n"
-  ".text-primary,.text-blue-600{color:#2563eb}\n"
+  ".text-white{color:#fff}.text-primary{color:var(--color-primary,#2563eb)}\n"
+  ".text-success{color:var(--color-success,#22c55e)}.text-warning{color:var(--color-warning,#f59e0b)}\n"
+  ".text-muted{color:var(--color-muted,#94a3b8)}.text-status{color:var(--color-primary,#2563eb)}\n"
   "/* Colors / surfaces */\n"
   ".bg-white{background:#fff}.bg-gray-50{background:#f9fafb}.bg-gray-100{background:#f3f4f6}\n"
-  ".bg-blue-600{background:#2563eb}.text-white{color:#fff}\n"
-  "/* Radius / shadow */\n"
+  ".bg-blue-600{background:#2563eb}.bg-primary{background:var(--color-primary,#6366f1)}\n"
+  ".bg-success{background:var(--color-success,#22c55e)}.bg-warning{background:var(--color-warning,#f59e0b)}\n"
+  ".bg-sidebar{background:var(--color-sidebar,#1e293b)}.bg-card{background:var(--color-card,#fff)}\n"
+  ".bg-muted{background:var(--color-muted,#94a3b8)}\n"
+  "/* Radius / shadow / border */\n"
   ".rounded-lg{border-radius:.5rem}.rounded-xl{border-radius:.75rem}.rounded-12{border-radius:12px}\n"
+  ".rounded-full{border-radius:9999px}.rounded-theme{border-radius:var(--radius,12px)}\n"
   ".shadow-sm{box-shadow:0 1px 2px 0 rgba(0,0,0,.05)}\n"
   ".shadow-md{box-shadow:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1)}\n"
+  ".border{border:1px solid #e2e8f0}.border-b{border-bottom:1px solid #e2e8f0}\n"
+  ".border-slate-200{border-color:#e2e8f0}.border-t{border-top:1px solid #e2e8f0}\n"
+  ".opacity-20{opacity:.2}.opacity-50{opacity:.5}.opacity-80{opacity:.8}\n"
   "/* Grid cols */\n"
   ".grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}\n"
   ".grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}\n"
@@ -135,12 +159,12 @@ static const char *RUNTIME_CSS =
   "padding:.5rem 1rem;font-weight:500;border:1px solid transparent;cursor:pointer;"
   "transition:background .15s,border-color .15s,color .15s,transform .05s;user-select:none}\n"
   ".btn:active{transform:translateY(1px)}\n"
-  ".btn-primary{background:#2563eb;color:#fff}.btn-primary:hover{background:#1d4ed8}\n"
+  ".btn-primary{background:var(--color-primary,#2563eb);color:#fff}.btn-primary:hover{filter:brightness(.92)}\n"
   ".btn-outline{background:#fff;color:#111827;border-color:#d1d5db}.btn-outline:hover{background:#f9fafb}\n"
   ".btn-ghost{background:transparent;color:#374151}.btn-ghost:hover{background:#f3f4f6}\n"
   ".btn-secondary{background:#1f2937;color:#fff}.btn-secondary:hover{background:#111827}\n"
-  ".card{border-radius:.75rem;background:#fff;box-shadow:0 4px 6px -1px rgba(0,0,0,.1);"
-  "overflow:hidden}\n"
+  ".card{border-radius:var(--radius,.75rem);background:var(--color-card,#fff);"
+  "box-shadow:0 1px 3px rgba(15,23,42,.08),0 4px 12px rgba(15,23,42,.04);overflow:hidden}\n"
   "input,textarea,select{border:1px solid #d1d5db;border-radius:.5rem;padding:.5rem .75rem;"
   "background:#fff;min-width:12rem}\n"
   "input:focus,textarea:focus,select:focus{outline:2px solid #93c5fd;outline-offset:1px;"
@@ -156,7 +180,9 @@ static const char *RUNTIME_CSS =
   ".cl-toast.show{opacity:1;transform:translateY(0)}\n"
   ".cl-interp{color:#0369a1;background:#e0f2fe;padding:0 .2em;border-radius:4px;"
   "font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}\n"
-  "@media (max-width:768px){.grid-cols-3,.grid-cols-4{grid-template-columns:1fr}}\n";
+  "#app{min-height:calc(100vh - 40px)}\n"
+  "@media (max-width:768px){.grid-cols-3,.grid-cols-4{grid-template-columns:1fr}"
+  ".w-64{width:100%}.h-screen{height:auto;min-height:100vh}.flex-row{flex-wrap:wrap}}\n";
 
 /* Base runtime: toast for unknown handlers; setX(...) is eval'd when state exists.
  * State decls + setters are prepended by html_generate when present. */
@@ -257,47 +283,11 @@ static void gen_style_classes(StrBuf *sb, Node *style_map) {
 }
 
 static const char *tag_to_div_plus_class(const char *tag) {
-  if (strcmp(tag, "col") == 0) return "flex flex-col";
-  if (strcmp(tag, "row") == 0) return "flex flex-row";
-  if (strcmp(tag, "stack") == 0) return "flex flex-col";
-  if (strcmp(tag, "grid") == 0) return "grid";
-  if (strcmp(tag, "page") == 0) return "min-h-screen";
-  if (strcmp(tag, "btn") == 0) return "btn";
-  if (strcmp(tag, "card") == 0) return "card";
-  return NULL;
+  return irw_base_class(tag);
 }
 
 static const char *html_tag_for(const char *tag) {
-  if (strcmp(tag, "col") == 0) return "div";
-  if (strcmp(tag, "row") == 0) return "div";
-  if (strcmp(tag, "stack") == 0) return "div";
-  if (strcmp(tag, "page") == 0) return "div";
-  if (strcmp(tag, "btn") == 0) return "button";
-  if (strcmp(tag, "card") == 0) return "div";
-  if (strcmp(tag, "grid") == 0) return "div";
-  if (strcmp(tag, "group") == 0) return "div";
-  if (strcmp(tag, "fragment") == 0) return NULL;
-  if (strcmp(tag, "link") == 0) return "a";
-  if (strcmp(tag, "img") == 0) return "img";
-  if (strcmp(tag, "input") == 0) return "input";
-  if (strcmp(tag, "textarea") == 0) return "textarea";
-  if (strcmp(tag, "select") == 0) return "select";
-  if (strcmp(tag, "checkbox") == 0) return "input";
-  if (strcmp(tag, "radio") == 0) return "input";
-  if (strcmp(tag, "icon") == 0) return "span";
-  if (strcmp(tag, "nav") == 0) return "nav";
-  if (strcmp(tag, "header") == 0) return "header";
-  if (strcmp(tag, "footer") == 0) return "footer";
-  if (strcmp(tag, "main") == 0) return "main";
-  if (strcmp(tag, "section") == 0) return "section";
-  if (strcmp(tag, "article") == 0) return "article";
-  if (strcmp(tag, "aside") == 0) return "aside";
-  if (strcmp(tag, "span") == 0) return "span";
-  if (strcmp(tag, "h1") == 0) return "h1";
-  if (strcmp(tag, "h2") == 0) return "h2";
-  if (strcmp(tag, "h3") == 0) return "h3";
-  if (strcmp(tag, "p") == 0) return "p";
-  return tag;
+  return irw_html_tag(tag);
 }
 
 static void gen_node(StrBuf *sb, Node *node, int depth);
@@ -308,6 +298,118 @@ static void gen_children(StrBuf *sb, Node *node, int depth);
 static char *g_state_names[CL_MAX_STATE];
 static char *g_state_inits[CL_MAX_STATE];
 static int g_state_count;
+
+/* Component prop scope stack (HTML preview expands PascalCase components). */
+#define CL_MAX_PROPS 32
+#define CL_MAX_PROP_DEPTH 16
+#define CL_MAX_COMPS 64
+typedef struct {
+  char names[CL_MAX_PROPS][64];
+  char values[CL_MAX_PROPS][256];
+  int n;
+} PropScope;
+static PropScope g_prop_stack[CL_MAX_PROP_DEPTH];
+static int g_prop_depth;
+static IrNode *g_ir_comps[CL_MAX_COMPS];
+static int g_n_ir_comps;
+static IrNode *g_ir_layouts[16];
+static int g_n_ir_layouts;
+static IrNode *g_ir_routes[32];
+static int g_n_ir_routes;
+static IrNode *g_slot_content; /* page body injected into layout slot */
+static int g_expand_depth;
+
+static void prop_reset(void) {
+  g_prop_depth = 0;
+  g_slot_content = NULL;
+  g_expand_depth = 0;
+  g_n_ir_comps = g_n_ir_layouts = g_n_ir_routes = 0;
+}
+
+static const char *prop_lookup(const char *name) {
+  if (!name || !*name || g_prop_depth <= 0) return NULL;
+  for (int d = g_prop_depth - 1; d >= 0; d--) {
+    PropScope *s = &g_prop_stack[d];
+    for (int i = 0; i < s->n; i++) {
+      if (strcmp(s->names[i], name) == 0) return s->values[i];
+    }
+  }
+  return NULL;
+}
+
+/* Resolve attr value: if it names a prop in scope, use the prop value. */
+static const char *resolve_attr_val(const char *val) {
+  if (!val || !*val) return val;
+  const char *p = prop_lookup(val);
+  return p ? p : val;
+}
+
+static void prop_push_from_usage(IrNode *usage) {
+  if (g_prop_depth >= CL_MAX_PROP_DEPTH || !usage) return;
+  PropScope *s = &g_prop_stack[g_prop_depth++];
+  s->n = 0;
+  for (size_t i = 0; i < usage->n_kids; i++) {
+    IrNode *c = usage->kids[i];
+    if (!c || c->kind != IR_ATTR || !c->name) continue;
+    if (c->name[0] == '_' && c->name[1] == '_') continue;
+    if (s->n >= CL_MAX_PROPS) break;
+    snprintf(s->names[s->n], sizeof(s->names[0]), "%s", c->name);
+    snprintf(s->values[s->n], sizeof(s->values[0]), "%s",
+             c->value ? c->value : "");
+    s->n++;
+  }
+}
+
+static void prop_pop(void) {
+  if (g_prop_depth > 0) g_prop_depth--;
+}
+
+static void index_ir_project(IrNode *root) {
+  g_n_ir_comps = g_n_ir_layouts = g_n_ir_routes = 0;
+  if (!root) return;
+  for (size_t i = 0; i < root->n_kids; i++) {
+    IrNode *c = root->kids[i];
+    if (!c) continue;
+    if (c->kind == IR_COMPONENT && g_n_ir_comps < CL_MAX_COMPS)
+      g_ir_comps[g_n_ir_comps++] = c;
+    else if (c->kind == IR_LAYOUT && g_n_ir_layouts < 16)
+      g_ir_layouts[g_n_ir_layouts++] = c;
+    else if (c->kind == IR_ROUTE && g_n_ir_routes < 32)
+      g_ir_routes[g_n_ir_routes++] = c;
+  }
+}
+
+static IrNode *find_ir_component(const char *name) {
+  if (!name) return NULL;
+  for (int i = 0; i < g_n_ir_comps; i++) {
+    if (g_ir_comps[i]->name && strcmp(g_ir_comps[i]->name, name) == 0)
+      return g_ir_comps[i];
+  }
+  for (int i = 0; i < g_n_ir_layouts; i++) {
+    if (g_ir_layouts[i]->name && strcmp(g_ir_layouts[i]->name, name) == 0)
+      return g_ir_layouts[i];
+  }
+  return NULL;
+}
+
+static int name_is_page_like(const char *n) {
+  if (!n) return 0;
+  size_t len = strlen(n);
+  if (len >= 4 && strcmp(n + len - 4, "Page") == 0) return 1;
+  if (strcmp(n, "Dashboard") == 0 || strcmp(n, "Home") == 0 ||
+      strcmp(n, "Settings") == 0 || strcmp(n, "App") == 0)
+    return 1;
+  return 0;
+}
+
+static int is_route_target(const char *name) {
+  if (!name) return 0;
+  for (int i = 0; i < g_n_ir_routes; i++) {
+    if (g_ir_routes[i]->value && strcmp(g_ir_routes[i]->value, name) == 0)
+      return 1;
+  }
+  return 0;
+}
 
 static void state_reset(void) {
   for (int i = 0; i < g_state_count; i++) {
@@ -410,23 +512,30 @@ static void emit_state_runtime_js(StrBuf *sb) {
 }
 
 static void emit_bound_interp(StrBuf *sb, const char *expr) {
+  /* Component prop (expanded usage): emit real value, no placeholder chrome */
+  if (expr) {
+    const char *pv = prop_lookup(expr);
+    if (pv) {
+      html_escape_append(sb, pv);
+      return;
+    }
+  }
   /* data-bind live text for state vars; static placeholder otherwise */
-  sb_append(sb, "<span class=\"cl-interp\"");
   if (expr && is_simple_state_expr(expr)) {
-    sb_append(sb, " data-bind=\"");
+    sb_append(sb, "<span class=\"cl-interp\" data-bind=\"");
     html_escape_append(sb, expr);
     sb_append(sb, "\"");
-    /* seed with initial state value for first paint before JS */
     const char *init = state_init_for(expr);
     sb_append(sb, ">");
     html_escape_append(sb, init);
-  } else {
-    sb_append(sb, " title=\"");
-    html_escape_append(sb, expr ? expr : "");
-    sb_append(sb, "\">${");
-    html_escape_append(sb, expr ? expr : "");
-    sb_append(sb, "}");
+    sb_append(sb, "</span>");
+    return;
   }
+  /* Unknown binding: still show readable placeholder, not raw ${} as only content */
+  sb_append(sb, "<span class=\"cl-interp\" title=\"");
+  html_escape_append(sb, expr ? expr : "");
+  sb_append(sb, "\">");
+  html_escape_append(sb, expr ? expr : "?");
   sb_append(sb, "</span>");
 }
 
@@ -976,12 +1085,16 @@ static void gen_style_classes_ir(StrBuf *sb, IrNode *style_map) {
   }
 }
 
+static void cl_cat(char *classes, size_t classes_sz, const char *piece) {
+  if (!piece || !*piece) return;
+  size_t room = classes_sz - strlen(classes) - 1;
+  if (room > 0) strncat(classes, piece, room);
+}
+
 static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
                                const char *base_class) {
   classes[0] = '\0';
-  if (base_class) {
-    strncat(classes, base_class, classes_sz - 1);
-  }
+  if (base_class) cl_cat(classes, classes_sz, base_class);
 
   for (size_t i = 0; i < node->n_kids; i++) {
     IrNode *child = node->kids[i];
@@ -993,103 +1106,175 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
       style_sb.len = 0;
       style_sb.buf[0] = '\0';
       gen_style_classes_ir(&style_sb, child);
-      if (style_sb.len > 0) {
-        size_t room = classes_sz - strlen(classes) - 1;
-        strncat(classes, style_sb.buf, room);
-      }
+      if (style_sb.len > 0) cl_cat(classes, classes_sz, style_sb.buf);
       free(style_sb.buf);
     }
   }
 
   for (size_t i = 0; i < node->n_kids; i++) {
     IrNode *child = node->kids[i];
-    char vbuf[96];
+    char vbuf[128];
     if (!child || child->kind != IR_ATTR || !child->name) continue;
+    if (child->name[0] == '_' && child->name[1] == '_') continue;
 
-    /* Bool-like attrs: IR_ATTR name with value "true" */
-    if (ir_attr_is_true(child->value)) {
-      if (strcmp(child->name, "between") == 0)
-        strncat(classes, " justify-between", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->name, "center") == 0)
-        strncat(classes, " items-center justify-center",
-                classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->name, "around") == 0)
-        strncat(classes, " justify-around", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->name, "evenly") == 0)
-        strncat(classes, " justify-evenly", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->name, "bold") == 0)
-        strncat(classes, " font-bold", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->name, "muted") == 0)
-        strncat(classes, " text-gray-500", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->name, "sticky") == 0)
-        strncat(classes, " sticky top-0", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->name, "primary") == 0)
-        strncat(classes, " btn-primary", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->name, "outline") == 0)
-        strncat(classes, " btn-outline", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->name, "ghost") == 0)
-        strncat(classes, " btn-ghost", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->name, "secondary") == 0)
-        strncat(classes, " btn-secondary", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->name, "xs") == 0)
-        strncat(classes, " text-xs", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->name, "sm") == 0)
-        strncat(classes, " text-sm", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->name, "lg") == 0)
-        strncat(classes, " text-lg", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->name, "xl") == 0)
-        strncat(classes, " text-xl", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->name, "2xl") == 0)
-        strncat(classes, " text-2xl", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->name, "3xl") == 0)
-        strncat(classes, " text-3xl", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->name, "4xl") == 0)
-        strncat(classes, " text-4xl", classes_sz - strlen(classes) - 1);
+    const char *k = child->name;
+    const char *raw = child->value ? child->value : "";
+    const char *v = resolve_attr_val(raw);
+
+    /* Bool-like attrs: IR_ATTR name with value "true" (or empty) */
+    if (ir_attr_is_true(raw) || raw[0] == '\0') {
+      if (strcmp(k, "between") == 0)
+        cl_cat(classes, classes_sz, " justify-between");
+      else if (strcmp(k, "center") == 0)
+        cl_cat(classes, classes_sz, " items-center justify-center");
+      else if (strcmp(k, "around") == 0)
+        cl_cat(classes, classes_sz, " justify-around");
+      else if (strcmp(k, "evenly") == 0)
+        cl_cat(classes, classes_sz, " justify-evenly");
+      else if (strcmp(k, "bold") == 0)
+        cl_cat(classes, classes_sz, " font-bold");
+      else if (strcmp(k, "muted") == 0)
+        cl_cat(classes, classes_sz, " text-gray-500");
+      else if (strcmp(k, "sticky") == 0)
+        cl_cat(classes, classes_sz, " sticky top-0");
+      else if (strcmp(k, "wrap") == 0)
+        cl_cat(classes, classes_sz, " flex-wrap");
+      else if (strcmp(k, "col") == 0)
+        cl_cat(classes, classes_sz, " flex flex-col");
+      else if (strcmp(k, "row") == 0)
+        cl_cat(classes, classes_sz, " flex flex-row");
+      else if (strcmp(k, "h-screen") == 0)
+        cl_cat(classes, classes_sz, " h-screen");
+      else if (strcmp(k, "min-h-screen") == 0)
+        cl_cat(classes, classes_sz, " min-h-screen");
+      else if (strcmp(k, "primary") == 0)
+        cl_cat(classes, classes_sz, " btn-primary");
+      else if (strcmp(k, "outline") == 0)
+        cl_cat(classes, classes_sz, " btn-outline");
+      else if (strcmp(k, "ghost") == 0)
+        cl_cat(classes, classes_sz, " btn-ghost");
+      else if (strcmp(k, "secondary") == 0)
+        cl_cat(classes, classes_sz, " btn-secondary");
+      else if (strcmp(k, "xs") == 0)
+        cl_cat(classes, classes_sz, " text-xs");
+      else if (strcmp(k, "sm") == 0)
+        cl_cat(classes, classes_sz, " text-sm");
+      else if (strcmp(k, "lg") == 0)
+        cl_cat(classes, classes_sz, " text-lg");
+      else if (strcmp(k, "xl") == 0)
+        cl_cat(classes, classes_sz, " text-xl");
+      else if (strcmp(k, "2xl") == 0)
+        cl_cat(classes, classes_sz, " text-2xl");
+      else if (strcmp(k, "3xl") == 0)
+        cl_cat(classes, classes_sz, " text-3xl");
+      else if (strcmp(k, "4xl") == 0)
+        cl_cat(classes, classes_sz, " text-4xl");
       continue;
     }
 
-    if (!child->value) continue;
+    if (!v || !*v) continue;
 
-    if (strcmp(child->name, "variant") == 0) {
-      snprintf(vbuf, sizeof(vbuf), " btn-%s", child->value);
-      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-    } else if (strcmp(child->name, "size") == 0) {
-      snprintf(vbuf, sizeof(vbuf), " text-%s", child->value);
-      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-    } else if (strcmp(child->name, "color") == 0) {
-      if (strcmp(child->value, "primary") == 0)
-        strncat(classes, " text-primary", classes_sz - strlen(classes) - 1);
-      else {
-        snprintf(vbuf, sizeof(vbuf), " text-%s", child->value);
-        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-      }
-    } else if (strcmp(child->name, "gap") == 0) {
-      snprintf(vbuf, sizeof(vbuf), " gap-%s", child->value);
-      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-    } else if (strcmp(child->name, "cols") == 0) {
-      snprintf(vbuf, sizeof(vbuf), " grid-cols-%s", child->value);
-      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-    } else if (strcmp(child->name, "p") == 0) {
-      snprintf(vbuf, sizeof(vbuf), " p-%s", child->value);
-      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-    } else if (strcmp(child->name, "bg") == 0) {
-      snprintf(vbuf, sizeof(vbuf), " bg-%s", child->value);
-      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-    } else if (strcmp(child->name, "shadow") == 0) {
-      snprintf(vbuf, sizeof(vbuf), " shadow-%s", child->value);
-      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-    } else if (strcmp(child->name, "rounded") == 0) {
-      snprintf(vbuf, sizeof(vbuf), " rounded-%s", child->value);
-      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-    } else if (strcmp(child->name, "max-w") == 0) {
-      snprintf(vbuf, sizeof(vbuf), " max-w-%s", child->value);
-      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    if (strcmp(k, "variant") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " btn-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "size") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " text-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "color") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " text-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "gap") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " gap-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "cols") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " grid-cols-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "p") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " p-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "px") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " px-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "py") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " py-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "bg") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " bg-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "shadow") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " shadow-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "rounded") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " rounded-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "max-w") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " max-w-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "w") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " w-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "h") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " h-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "flex") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " flex-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "justify") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " justify-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "items") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " items-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "overflow") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " overflow-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "overflow-y") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " overflow-y-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "opacity") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " opacity-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "border") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " border border-%s", v);
+      cl_cat(classes, classes_sz, vbuf);
+    } else if (strcmp(k, "border-b") == 0) {
+      cl_cat(classes, classes_sz, " border-b");
     }
   }
 }
 
 static void gen_ir_element(StrBuf *sb, IrNode *node, int depth) {
   const char *tag = node->name ? node->name : "div";
+
+  /* slot element → inject current page/layout slot content */
+  if (strcmp(tag, "slot") == 0) {
+    if (g_slot_content) {
+      gen_ir_children(sb, g_slot_content, depth);
+    } else {
+      sb_indent(sb, depth);
+      sb_append(sb, "<!-- slot -->\n");
+    }
+    return;
+  }
+
+  /* PascalCase → expand component definition with props as scope */
+  if (irw_is_pascal(tag)) {
+    IrNode *def = find_ir_component(tag);
+    if (def && g_expand_depth < 32) {
+      g_expand_depth++;
+      prop_push_from_usage(node);
+      gen_ir_children(sb, def, depth);
+      prop_pop();
+      g_expand_depth--;
+      return;
+    }
+    /* Unknown component: render kids only (avoid empty custom tags) */
+    sb_indent(sb, depth);
+    sb_appendf(sb, "<!-- component %s not found -->\n", tag);
+    gen_ir_children(sb, node, depth);
+    return;
+  }
+
   const char *html_tag = html_tag_for(tag);
   const char *base_class = tag_to_div_plus_class(tag);
 
@@ -1100,8 +1285,7 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth) {
 
   sb_indent(sb, depth);
 
-  int self_closing =
-      (strcmp(html_tag, "img") == 0 || strcmp(html_tag, "input") == 0);
+  int self_closing = irw_is_void_html(html_tag);
 
   sb_appendf(sb, "<%s", html_tag);
 
@@ -1126,6 +1310,15 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth) {
         strcmp(child->name, "__file__") != 0) {
       const char *attr_name = child->name;
       if (strcmp(attr_name, "to") == 0) attr_name = "href";
+      /* Skip layout/style-ish attrs already mapped to classes */
+      if (strcmp(attr_name, "w") == 0 || strcmp(attr_name, "h") == 0 ||
+          strcmp(attr_name, "flex") == 0 || strcmp(attr_name, "justify") == 0 ||
+          strcmp(attr_name, "items") == 0 || strcmp(attr_name, "opacity") == 0 ||
+          strcmp(attr_name, "overflow-y") == 0 ||
+          strcmp(attr_name, "border") == 0 ||
+          strcmp(attr_name, "border-b") == 0 ||
+          strcmp(attr_name, "icon") == 0)
+        continue;
       if (strcmp(attr_name, "src") == 0 || strcmp(attr_name, "alt") == 0 ||
           strcmp(attr_name, "href") == 0 ||
           strcmp(attr_name, "placeholder") == 0 ||
@@ -1271,14 +1464,69 @@ static void gen_ir_children(StrBuf *sb, IrNode *node, int depth) {
       }
       sb_append(sb, "\n");
     } else if (child->kind == IR_SLOT) {
-      sb_indent(sb, depth);
-      sb_append(sb, "<!-- slot");
-      if (child->name) sb_appendf(sb, " %s", child->name);
-      sb_append(sb, " -->\n");
-      gen_ir_children(sb, child, depth);
+      if (g_slot_content) {
+        gen_ir_children(sb, g_slot_content, depth);
+      } else {
+        sb_indent(sb, depth);
+        sb_append(sb, "<!-- slot");
+        if (child->name) sb_appendf(sb, " %s", child->name);
+        sb_append(sb, " -->\n");
+        gen_ir_children(sb, child, depth);
+      }
     } else if (!is_ir_decl_only(child)) {
       gen_ir_node(sb, child, depth);
     }
+  }
+}
+
+/* Compose layout + first route page; expand components with props. */
+static void gen_ir_project_preview(StrBuf *sb, IrNode *root, int depth) {
+  index_ir_project(root);
+
+  IrNode *page = NULL;
+  if (g_n_ir_routes > 0 && g_ir_routes[0]->value)
+    page = find_ir_component(g_ir_routes[0]->value);
+
+  if (!page) {
+    for (int i = 0; i < g_n_ir_comps; i++) {
+      if (is_route_target(g_ir_comps[i]->name) ||
+          name_is_page_like(g_ir_comps[i]->name)) {
+        page = g_ir_comps[i];
+        break;
+      }
+    }
+  }
+  if (!page) {
+    /* Prefer last page-like; else last component (pages often load last) */
+    for (int i = g_n_ir_comps - 1; i >= 0; i--) {
+      if (name_is_page_like(g_ir_comps[i]->name)) {
+        page = g_ir_comps[i];
+        break;
+      }
+    }
+  }
+
+  IrNode *layout = g_n_ir_layouts > 0 ? g_ir_layouts[0] : NULL;
+
+  if (layout) {
+    g_slot_content = page;
+    gen_ir_children(sb, layout, depth);
+    g_slot_content = NULL;
+  } else if (page) {
+    gen_ir_children(sb, page, depth);
+  } else {
+    /* Single-file / no multi-module: emit markup kids only (not defs) */
+    for (size_t i = 0; i < root->n_kids; i++) {
+      IrNode *c = root->kids[i];
+      if (!c) continue;
+      if (c->kind == IR_COMPONENT || c->kind == IR_LAYOUT ||
+          c->kind == IR_ROUTE || is_ir_decl_only(c))
+        continue;
+      gen_ir_node(sb, c, depth);
+    }
+    /* If everything was a single component body without routes */
+    if (g_n_ir_comps == 1 && g_n_ir_layouts == 0)
+      gen_ir_children(sb, g_ir_comps[0], depth);
   }
 }
 
@@ -1288,6 +1536,8 @@ static void gen_ir_node(StrBuf *sb, IrNode *node, int depth) {
 
   switch (node->kind) {
     case IR_PROJECT:
+      gen_ir_project_preview(sb, node, depth);
+      break;
     case IR_COMPONENT:
     case IR_LAYOUT:
       gen_ir_children(sb, node, depth);
@@ -1316,11 +1566,15 @@ static void gen_ir_node(StrBuf *sb, IrNode *node, int depth) {
       }
       break;
     case IR_SLOT:
-      sb_indent(sb, depth);
-      sb_append(sb, "<!-- slot");
-      if (node->name) sb_appendf(sb, " %s", node->name);
-      sb_append(sb, " -->\n");
-      gen_ir_children(sb, node, depth);
+      if (g_slot_content) {
+        gen_ir_children(sb, g_slot_content, depth);
+      } else {
+        sb_indent(sb, depth);
+        sb_append(sb, "<!-- slot");
+        if (node->name) sb_appendf(sb, " %s", node->name);
+        sb_append(sb, " -->\n");
+        gen_ir_children(sb, node, depth);
+      }
       break;
     case IR_IF:
     case IR_FOR: {
@@ -1367,13 +1621,18 @@ static void gen_ir_node(StrBuf *sb, IrNode *node, int depth) {
 }
 
 /* Build full HTML document walking ir->root only (no origin/AST). */
-static char *html_generate_from_ir_root(IrNode *root) {
+static char *html_generate_from_ir_program(IrProgram *ir) {
+  IrNode *root = ir && ir->root ? ir->root : NULL;
   state_reset();
-  collect_state_from_ir(root);
+  prop_reset();
+  if (root) {
+    index_ir_project(root);
+    collect_state_from_ir(root);
+  }
 
   StrBuf body;
   sb_init(&body);
-  gen_ir_node(&body, root, 2);
+  if (root) gen_ir_node(&body, root, 2);
 
   StrBuf doc;
   sb_init(&doc);
@@ -1387,6 +1646,14 @@ static char *html_generate_from_ir_root(IrNode *root) {
             "  <title>Cordlang Runtime Preview</title>\n"
             "  <style>\n");
   sb_append(&doc, RUNTIME_CSS);
+  {
+    char *theme = theme_css_generate_from_ir(ir);
+    if (theme) {
+      sb_append(&doc, "\n/* Theme from .cord */\n");
+      sb_append(&doc, theme);
+      free(theme);
+    }
+  }
   sb_append(&doc,
             "  </style>\n"
             "</head>\n"
@@ -1412,6 +1679,7 @@ static char *html_generate_from_ir_root(IrNode *root) {
 
   free(body.buf);
   state_reset();
+  prop_reset();
   return doc.buf;
 }
 
@@ -1419,7 +1687,7 @@ char *html_generate_from_ir(IrProgram *ir) {
   /* Walk ir->root only — never ir_project_origin / AST for body or state. */
   if (!ir || !ir->root)
     return strdup("<!DOCTYPE html><html><body>empty</body></html>\n");
-  return html_generate_from_ir_root(ir->root);
+  return html_generate_from_ir_program(ir);
 }
 
 char *html_generate(Node *root) {
