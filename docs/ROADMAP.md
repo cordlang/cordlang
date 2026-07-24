@@ -345,6 +345,7 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 | AI eval harness | ✅ `bench/ai_eval/` |
 | Marketplace `cord add` | 🟡 MVP local; **registry remoto pendiente** |
 | Capabilities / presets multi-backend | ✅ `presets` + adapters React/Svelte/Vue/Solid · [`LIBRARIES.md`](./LIBRARIES.md) |
+| Design system (tokens / type / elevate / composition) | ✅ MVP · [`DESIGN.md`](./DESIGN.md) |
 | Email HTML / PDF | ✅ **meta** — no contrato IA default |
 | Vue / Solid | ✅ **meta** — secundarios vs React/Svelte |
 | SvelteKit / Next | ✅ **meta** client wrap; no RSC/SSR real |

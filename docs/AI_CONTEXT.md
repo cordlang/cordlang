@@ -45,6 +45,12 @@ def Counter
 - Tags: `icon name=…`, `motion`, `chart`; escape hatch: `foreign Name` + `react from "pkg"` / `svelte from "…"`.
 - Docs: [`LIBRARIES.md`](./LIBRARIES.md). CLI: `cordlang preset add icons motion`.
 
+## Visual quality
+
+- Start from `theme` tokens; use `type=display|title|body|caption`, `elevate=0..4`, `section` / `stack density=`, `md:p=` responsive.
+- Motion budget: 1–2 motions per viewport (`motion fade`). Preview HTML ≠ capability UI — use `run react|svelte`.
+- Full contract: [`DESIGN.md`](./DESIGN.md).
+
 ## CLI
 
 ```bash
@@ -61,6 +67,7 @@ cordlang run | run react | run svelte
 - [ ] Interpolation is `#{…}`
 - [ ] Attrs ⊆ `schema/attrs.json`
 - [ ] No framework `import` in `.cord` (use presets / foreign maps)
+- [ ] Theme + type/elevate/section used for polished UI (not only utilities)
 - [ ] `cordlang check` green
 - [ ] No edits to `dist/` as source of truth
 

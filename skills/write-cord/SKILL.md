@@ -90,6 +90,8 @@ route /about => pages/AboutPage
 
 **Libraries:** Prefer capabilities + `foreign` maps — never write `import … from 'framer-motion'` in `.cord`. See `docs/LIBRARIES.md`.
 
+**Visual quality:** Prefer `theme` + `type=` / `elevate=` / `section` / `density=` / `md:` prefixes over raw utility sprawl. See `docs/DESIGN.md`. Motion budget: 1–2 per viewport.
+
 ## Self-check
 
 - [ ] No `<jsx>` tags in `.cord`  
@@ -97,13 +99,14 @@ route /about => pages/AboutPage
 - [ ] Multi-page → multi-file  
 - [ ] No `className` / `onClick`  
 - [ ] Attrs ⊆ `docs/schema/attrs.json`  
+- [ ] Theme / type / elevate / section used when building polished UI  
 - [ ] `cordlang check` green  
 - [ ] No edits to `dist/` as source of truth  
 - [ ] User can compile with existing CLI commands  
 
 ## References
 
-- `docs/AI.md` · `docs/AI_WORKFLOW.md` · `docs/schema/attrs.json`  
+- `docs/AI.md` · `docs/AI_WORKFLOW.md` · `docs/schema/attrs.json` · `docs/DESIGN.md`  
 - `docs/EXAMPLES.md` — file catalog  
 - `templates/` — Cord-native seeds  
 - `examples/counter.cord`, `examples/fetch_form.cord`, `my-app/`  
