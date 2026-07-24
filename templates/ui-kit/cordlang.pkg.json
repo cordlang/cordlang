@@ -1,5 +1,5 @@
 {
   "name": "ui-kit",
   "entry": "Button.cord",
-  "peerCapabilities": ["tailwind"]
+  "peerCapabilities": ["tailwind", "icons", "motion"]
 }

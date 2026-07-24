@@ -1,9 +1,12 @@
 theme dash
   primary: "#0369a1"
   bg: "#f8fafc"
+  surface: "#ffffff"
   text: "#0f172a"
   muted: "#64748b"
-  radius: 8
+  border: "#e2e8f0"
+  radius: 10
+  font: "IBM Plex Sans"
 
 use layouts/shell
 route / => pages/Overview

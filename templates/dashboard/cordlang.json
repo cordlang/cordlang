@@ -1,4 +1,5 @@
 {
-  "name": "cord-dashboard",
-  "entry": "src/app.cord"
+  "name": "dashboard",
+  "entry": "src/app.cord",
+  "presets": ["tailwind", "icons", "motion", "charts"]
 }
