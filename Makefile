@@ -54,7 +54,7 @@ else
   LDFLAGS =
 endif
 
-.PHONY: all clean test goldens
+.PHONY: all clean test goldens bench
 
 all: $(TARGET)
 
@@ -89,3 +89,10 @@ ifeq ($(OS),Windows_NT)
 else
 	@bash tests/run_tests.sh --update
 endif
+
+# Compile-time benches + Cord vs JSX/Svelte size compare (not on default CI)
+.PHONY: bench
+bench: $(TARGET)
+	@chmod +x bench/run_bench.sh bench/compare/run_compare.sh
+	@bash bench/run_bench.sh
+	@bash bench/compare/run_compare.sh
