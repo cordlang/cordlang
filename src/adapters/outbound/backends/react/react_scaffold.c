@@ -109,11 +109,18 @@ static int write_vite_skeleton(const char *project_dir, const char *out) {
       "  plugins: [react()],\n"
       "})\n";
 
-  char html[2048];
+  char html[4096];
   int has_site_css = 0, has_site_js = 0;
+  int has_favicon = 0, has_logo_svg = 0, has_apple = 0, has_manifest = 0,
+      has_og = 0;
   {
     char *css_p = fs_join(project_dir, "public/site.css");
     char *js_p = fs_join(project_dir, "public/site.js");
+    char *ico_p = fs_join(project_dir, "public/favicon.ico");
+    char *svg_p = fs_join(project_dir, "public/logo.svg");
+    char *apple_p = fs_join(project_dir, "public/apple-touch-icon.png");
+    char *man_p = fs_join(project_dir, "public/site.webmanifest");
+    char *og_p = fs_join(project_dir, "public/og.png");
     if (css_p) {
       has_site_css = fs_exists(css_p);
       free(css_p);
@@ -122,6 +129,75 @@ static int write_vite_skeleton(const char *project_dir, const char *out) {
       has_site_js = fs_exists(js_p);
       free(js_p);
     }
+    if (ico_p) {
+      has_favicon = fs_exists(ico_p);
+      free(ico_p);
+    }
+    if (svg_p) {
+      has_logo_svg = fs_exists(svg_p);
+      free(svg_p);
+    }
+    if (apple_p) {
+      has_apple = fs_exists(apple_p);
+      free(apple_p);
+    }
+    if (man_p) {
+      has_manifest = fs_exists(man_p);
+      free(man_p);
+    }
+    if (og_p) {
+      has_og = fs_exists(og_p);
+      free(og_p);
+    }
+  }
+  char head_extra[1536];
+  {
+    size_t o = 0;
+    head_extra[0] = '\0';
+#define HEAD_APPEND(s)                                                         \
+  do {                                                                         \
+    size_t _n = strlen(s);                                                     \
+    if (o + _n + 1 < sizeof(head_extra)) {                                     \
+      memcpy(head_extra + o, s, _n);                                           \
+      o += _n;                                                                 \
+      head_extra[o] = '\0';                                                    \
+    }                                                                          \
+  } while (0)
+    if (has_site_css)
+      HEAD_APPEND("    <link rel=\"stylesheet\" href=\"/site.css\" />\n");
+    if (has_favicon)
+      HEAD_APPEND("    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\" />\n");
+    if (has_logo_svg)
+      HEAD_APPEND(
+          "    <link rel=\"icon\" href=\"/logo.svg\" type=\"image/svg+xml\" />\n");
+    if (has_apple)
+      HEAD_APPEND(
+          "    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" />\n");
+    if (has_manifest)
+      HEAD_APPEND("    <link rel=\"manifest\" href=\"/site.webmanifest\" />\n");
+    HEAD_APPEND("    <meta name=\"theme-color\" content=\"#0c0f12\" />\n");
+    if (has_site_js) {
+      HEAD_APPEND("    <script>\n");
+      HEAD_APPEND("(function(){try{var t=localStorage.getItem(\"cord-docs-theme\");");
+      HEAD_APPEND("if(t!==\"dark\"&&t!==\"light\")");
+      HEAD_APPEND("t=window.matchMedia(\"(prefers-color-scheme: dark)\").matches?");
+      HEAD_APPEND("\"dark\":\"light\";");
+      HEAD_APPEND("document.documentElement.setAttribute(\"data-theme\",t);");
+      HEAD_APPEND("document.documentElement.style.colorScheme=t;");
+      HEAD_APPEND("}catch(e){}})();\n");
+      HEAD_APPEND("    </script>\n");
+    }
+    if (has_og) {
+      HEAD_APPEND("    <meta property=\"og:type\" content=\"website\" />\n");
+      HEAD_APPEND("    <meta property=\"og:title\" content=\"");
+      HEAD_APPEND(title_e);
+      HEAD_APPEND("\" />\n");
+      HEAD_APPEND("    <meta property=\"og:image\" content=\"/og.png\" />\n");
+      HEAD_APPEND(
+          "    <meta name=\"twitter:card\" content=\"summary_large_image\" />\n");
+      HEAD_APPEND("    <meta name=\"twitter:image\" content=\"/og.png\" />\n");
+    }
+#undef HEAD_APPEND
   }
   snprintf(html, sizeof(html),
            "<!doctype html>\n"
@@ -141,10 +217,7 @@ static int write_vite_skeleton(const char *project_dir, const char *out) {
            "%s"
            "  </body>\n"
            "</html>\n",
-           lang_e, title_e,
-           has_site_css
-               ? "    <link rel=\"stylesheet\" href=\"/site.css\" />\n"
-               : "",
+           lang_e, title_e, head_extra,
            has_site_js
                ? "    <script type=\"module\" src=\"/site.js\"></script>\n"
                : "");
