@@ -4,10 +4,18 @@
 #include "application/ports/backend_port.h"
 #include "application/ports/compiler_port.h"
 #include "application/ports/fs_port.h"
+#include "adapters/outbound/process/process_spawn.h"
+#include "adapters/outbound/json/json_mini.h"
 #include "domain/ir.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
+#define NPM_CMD "npm.cmd"
+#else
+#define NPM_CMD "npm"
+#endif
 
 static char *read_entry_from_config(const char *project_dir) {
   char *cfg = fs_join(project_dir, "cordlang.json");
@@ -18,25 +26,7 @@ static char *read_entry_from_config(const char *project_dir) {
   free(cfg);
   if (!json) return NULL;
 
-  /* Minimal parse: look for "entry": "..." */
-  char *entry = NULL;
-  char *key = strstr(json, "\"entry\"");
-  if (key) {
-    char *colon = strchr(key, ':');
-    if (colon) {
-      char *q1 = strchr(colon, '"');
-      if (q1) {
-        q1++;
-        char *q2 = strchr(q1, '"');
-        if (q2) {
-          size_t n = (size_t)(q2 - q1);
-          entry = malloc(n + 1);
-          memcpy(entry, q1, n);
-          entry[n] = '\0';
-        }
-      }
-    }
-  }
+  char *entry = json_object_get_string(json, "entry");
   free(json);
 
   if (!entry) entry = strdup("src/app.cord");
@@ -63,15 +53,13 @@ static int run_vite_check(const char *project_dir, const char *backend_name) {
   printf("\n--check: verifying build in %s\n", dist);
   fflush(stdout);
 
-  char cmd[2048];
   int rc = 0;
 
-#ifdef _WIN32
   if (need_install) {
     printf("--check: node_modules missing, running npm install...\n");
     fflush(stdout);
-    snprintf(cmd, sizeof(cmd), "cmd /c \"cd /d \"%s\" && npm install\"", dist);
-    rc = system(cmd);
+    char *argv_install[] = {NPM_CMD, "install", "--prefix", dist, NULL};
+    rc = process_run(NULL, argv_install, 1);
     if (rc != 0) {
       fprintf(stderr, "Error: --check: npm install failed (exit %d)\n", rc);
       free(dist);
@@ -80,29 +68,12 @@ static int run_vite_check(const char *project_dir, const char *backend_name) {
   } else {
     printf("--check: node_modules present, skipping npm install\n");
   }
-  printf("--check: running npx vite build...\n");
+
+  printf("--check: running npm exec vite build...\n");
   fflush(stdout);
-  snprintf(cmd, sizeof(cmd), "cmd /c \"cd /d \"%s\" && npx vite build\"", dist);
-  rc = system(cmd);
-#else
-  if (need_install) {
-    printf("--check: node_modules missing, running npm install...\n");
-    fflush(stdout);
-    snprintf(cmd, sizeof(cmd), "cd \"%s\" && npm install", dist);
-    rc = system(cmd);
-    if (rc != 0) {
-      fprintf(stderr, "Error: --check: npm install failed (exit %d)\n", rc);
-      free(dist);
-      return 1;
-    }
-  } else {
-    printf("--check: node_modules present, skipping npm install\n");
-  }
-  printf("--check: running npx vite build...\n");
-  fflush(stdout);
-  snprintf(cmd, sizeof(cmd), "cd \"%s\" && npx vite build", dist);
-  rc = system(cmd);
-#endif
+  /* argv-safe: path is one argument; no shell. cwd=dist so Vite resolves. */
+  char *argv_build[] = {NPM_CMD, "exec", "--", "vite", "build", NULL};
+  rc = process_run(dist, argv_build, 1);
 
   free(dist);
   if (rc != 0) {

@@ -27,12 +27,22 @@ static void sb_init(StrBuf *sb) {
   sb->buf = calloc(sb->cap, 1);
 }
 
+static void sb_oom(void) {
+  fprintf(stderr, "fatal: out of memory (StrBuf)\n");
+  exit(1);
+}
+
 static void sb_append(StrBuf *sb, const char *s) {
   if (!s) return;
   size_t slen = strlen(s);
   if (sb->len + slen + 1 >= sb->cap) {
-    while (sb->len + slen + 1 >= sb->cap) sb->cap *= 2;
-    sb->buf = realloc(sb->buf, sb->cap);
+    while (sb->len + slen + 1 >= sb->cap) {
+      if (sb->cap > (size_t)-1 / 2) sb_oom();
+      sb->cap *= 2;
+    }
+    char *nbuf = realloc(sb->buf, sb->cap);
+    if (!nbuf) sb_oom();
+    sb->buf = nbuf;
   }
   memcpy(sb->buf + sb->len, s, slen);
   sb->len += slen;
@@ -46,8 +56,13 @@ static void sb_appendf(StrBuf *sb, const char *fmt, ...) {
   va_end(args);
   if (n < 0) return;
   if (sb->len + (size_t)n + 1 >= sb->cap) {
-    while (sb->len + (size_t)n + 1 >= sb->cap) sb->cap *= 2;
-    sb->buf = realloc(sb->buf, sb->cap);
+    while (sb->len + (size_t)n + 1 >= sb->cap) {
+      if (sb->cap > (size_t)-1 / 2) sb_oom();
+      sb->cap *= 2;
+    }
+    char *nbuf = realloc(sb->buf, sb->cap);
+    if (!nbuf) sb_oom();
+    sb->buf = nbuf;
   }
   va_start(args, fmt);
   vsnprintf(sb->buf + sb->len, sb->cap - sb->len, fmt, args);
@@ -551,6 +566,7 @@ typedef struct {
   int has_router;
   char lazy_route_names[16][64];
   int n_lazy_routes;
+  int truncated; /* hard limit hit — emit must fail */
 } ReactProject;
 
 static int route_has_lazy_attr_ir(IrNode *route) {
@@ -749,20 +765,27 @@ static void project_partition_from_ir(ReactProject *p, IrProgram *ir) {
     if (!c) continue;
     if (c->kind == IR_COMPONENT) {
       if (n_comp < REACT_MAX_UNITS) raw_comps[n_comp++] = c;
+      else p->truncated = 1;
     } else if (c->kind == IR_LAYOUT) {
       if (n_layout < 16) raw_layouts[n_layout++] = c;
+      else p->truncated = 1;
     } else if (c->kind == IR_ROUTE) {
       if (p->n_routes < REACT_MAX_ROUTES) p->routes[p->n_routes++] = c;
+      else p->truncated = 1;
     } else if (ir_hook_is(c, "lazy") && c->value) {
       if (p->n_lazy_routes < 16) {
         snprintf(p->lazy_route_names[p->n_lazy_routes],
                  sizeof(p->lazy_route_names[0]), "%s", c->value);
         p->n_lazy_routes++;
+      } else {
+        p->truncated = 1;
       }
     } else if (ir_hook_is(c, "context")) {
       if (p->n_contexts < 32) p->contexts[p->n_contexts++] = c;
+      else p->truncated = 1;
     } else if (!ir_hook_is(c, "theme")) {
       if (p->n_page_nodes < 64) p->page_nodes[p->n_page_nodes++] = c;
+      else p->truncated = 1;
     }
   }
 
@@ -773,13 +796,18 @@ static void project_partition_from_ir(ReactProject *p, IrProgram *ir) {
       snprintf(p->lazy_route_names[p->n_lazy_routes],
                sizeof(p->lazy_route_names[0]), "%s", p->routes[r]->value);
       p->n_lazy_routes++;
+    } else {
+      p->truncated = 1;
     }
   }
 
   p->has_router = (p->n_routes > 0 || n_layout > 0);
 
   for (int i = 0; i < n_comp; i++) {
-    if (p->n_units >= REACT_MAX_UNITS) break;
+    if (p->n_units >= REACT_MAX_UNITS) {
+      p->truncated = 1;
+      break;
+    }
     ReactUnit *u = &p->units[p->n_units++];
     memset(u, 0, sizeof(*u));
     snprintf(u->name, sizeof(u->name), "%s",
@@ -804,7 +832,10 @@ static void project_partition_from_ir(ReactProject *p, IrProgram *ir) {
   }
 
   for (int i = 0; i < n_layout; i++) {
-    if (p->n_units >= REACT_MAX_UNITS) break;
+    if (p->n_units >= REACT_MAX_UNITS) {
+      p->truncated = 1;
+      break;
+    }
     ReactUnit *u = &p->units[p->n_units++];
     memset(u, 0, sizeof(*u));
     layout_export_name(raw_layouts[i]->name, u->name, sizeof(u->name));
@@ -823,6 +854,13 @@ static void project_partition_from_ir(ReactProject *p, IrProgram *ir) {
     u->use_outlet = 1;
     p->has_router = 1;
     scan_tree_deps_ir(u->ir_def, u);
+  }
+
+  if (p->truncated) {
+    fprintf(stderr,
+            "error: project exceeds React backend limits "
+            "(max %d units, %d routes) — split the app or raise limits\n",
+            REACT_MAX_UNITS, REACT_MAX_ROUTES);
   }
 }
 
@@ -2391,6 +2429,10 @@ int react_emit_modules_from_ir(IrProgram *ir, ReactWriteFn write_fn,
   ReactProject *proj = calloc(1, sizeof(ReactProject));
   if (!proj) return -1;
   project_partition_from_ir(proj, ir);
+  if (proj->truncated) {
+    free(proj);
+    return -1;
+  }
   attach_root_lazies_ir(proj, ir->root);
 
   for (int i = 0; i < proj->n_units; i++) {
@@ -2457,6 +2499,10 @@ static char *react_generate_impl_ir(IrProgram *ir) {
   ReactProject *proj = calloc(1, sizeof(ReactProject));
   if (!proj) return strdup("export default function App(){return null}\n");
   project_partition_from_ir(proj, ir);
+  if (proj->truncated) {
+    free(proj);
+    return NULL;
+  }
   attach_root_lazies_ir(proj, ir->root);
 
   for (int i = 0; i < proj->n_units; i++) {

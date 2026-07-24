@@ -29,12 +29,22 @@ static void sb_init(StrBuf *sb) {
   sb->buf = calloc(sb->cap, 1);
 }
 
+static void sb_oom(void) {
+  fprintf(stderr, "fatal: out of memory (StrBuf)\n");
+  exit(1);
+}
+
 static void sb_append(StrBuf *sb, const char *s) {
   if (!s) return;
   size_t slen = strlen(s);
   if (sb->len + slen + 1 >= sb->cap) {
-    while (sb->len + slen + 1 >= sb->cap) sb->cap *= 2;
-    sb->buf = realloc(sb->buf, sb->cap);
+    while (sb->len + slen + 1 >= sb->cap) {
+      if (sb->cap > (size_t)-1 / 2) sb_oom();
+      sb->cap *= 2;
+    }
+    char *nbuf = realloc(sb->buf, sb->cap);
+    if (!nbuf) sb_oom();
+    sb->buf = nbuf;
   }
   memcpy(sb->buf + sb->len, s, slen);
   sb->len += slen;
@@ -48,8 +58,13 @@ static void sb_appendf(StrBuf *sb, const char *fmt, ...) {
   va_end(args);
   if (n < 0) return;
   if (sb->len + (size_t)n + 1 >= sb->cap) {
-    while (sb->len + (size_t)n + 1 >= sb->cap) sb->cap *= 2;
-    sb->buf = realloc(sb->buf, sb->cap);
+    while (sb->len + (size_t)n + 1 >= sb->cap) {
+      if (sb->cap > (size_t)-1 / 2) sb_oom();
+      sb->cap *= 2;
+    }
+    char *nbuf = realloc(sb->buf, sb->cap);
+    if (!nbuf) sb_oom();
+    sb->buf = nbuf;
   }
   va_start(args, fmt);
   vsnprintf(sb->buf + sb->len, sb->cap - sb->len, fmt, args);
@@ -417,6 +432,7 @@ typedef struct {
   int n_contexts;
   char lazy_route_names[16][64];
   int n_lazy_routes;
+  int truncated;
 } SvelteProject;
 
 typedef struct {
@@ -585,15 +601,20 @@ static void project_partition_from_ir(SvelteProject *p, IrNode *root) {
     if (!c) continue;
     if (c->kind == IR_COMPONENT) {
       if (n_comp < SV_MAX_UNITS) raw_comps[n_comp++] = c;
+      else p->truncated = 1;
     } else if (c->kind == IR_LAYOUT) {
       if (n_layout < 16) raw_layouts[n_layout++] = c;
+      else p->truncated = 1;
     } else if (c->kind == IR_ROUTE) {
       if (p->n_routes < SV_MAX_ROUTES) p->routes[p->n_routes++] = c;
+      else p->truncated = 1;
     } else if (irw_hook_is(c, "lazy") && c->value) {
       if (p->n_lazy_routes < 16) {
         snprintf(p->lazy_route_names[p->n_lazy_routes],
                  sizeof(p->lazy_route_names[0]), "%s", c->value);
         p->n_lazy_routes++;
+      } else {
+        p->truncated = 1;
       }
     } else if (irw_hook_is(c, "context")) {
       project_add_context_ir(p, c);
@@ -607,12 +628,17 @@ static void project_partition_from_ir(SvelteProject *p, IrNode *root) {
       snprintf(p->lazy_route_names[p->n_lazy_routes],
                sizeof(p->lazy_route_names[0]), "%s", p->routes[r]->value);
       p->n_lazy_routes++;
+    } else {
+      p->truncated = 1;
     }
   }
   p->has_router = (p->n_routes > 0 || n_layout > 0);
 
   for (int i = 0; i < n_comp; i++) {
-    if (p->n_units >= SV_MAX_UNITS) break;
+    if (p->n_units >= SV_MAX_UNITS) {
+      p->truncated = 1;
+      break;
+    }
     SvelteUnit *u = &p->units[p->n_units++];
     memset(u, 0, sizeof(*u));
     snprintf(u->name, sizeof(u->name), "%s",
@@ -626,26 +652,44 @@ static void project_partition_from_ir(SvelteProject *p, IrNode *root) {
       u->kind = SK_COMPONENT;
       snprintf(u->dir, sizeof(u->dir), "components");
     }
-    snprintf(u->rel, sizeof(u->rel), "%s/%s.svelte", u->dir, u->name);
+    {
+      char relbuf[128];
+      snprintf(relbuf, sizeof(relbuf), "%s/%s.svelte", u->dir, u->name);
+      snprintf(u->rel, sizeof(u->rel), "%s", relbuf);
+    }
     cord_guess_source_path(u->name, u->dir, u->source_path,
                            sizeof(u->source_path));
     scan_deps_ir(u->ir_def, u);
   }
 
   for (int i = 0; i < n_layout; i++) {
-    if (p->n_units >= SV_MAX_UNITS) break;
+    if (p->n_units >= SV_MAX_UNITS) {
+      p->truncated = 1;
+      break;
+    }
     SvelteUnit *u = &p->units[p->n_units++];
     memset(u, 0, sizeof(*u));
     layout_name(raw_layouts[i]->name, u->name, sizeof(u->name));
     u->ir_def = raw_layouts[i];
     u->kind = SK_LAYOUT;
     snprintf(u->dir, sizeof(u->dir), "layouts");
-    snprintf(u->rel, sizeof(u->rel), "layouts/%s.svelte", u->name);
+    {
+      char relbuf[128];
+      snprintf(relbuf, sizeof(relbuf), "layouts/%s.svelte", u->name);
+      snprintf(u->rel, sizeof(u->rel), "%s", relbuf);
+    }
     cord_guess_source_path(u->name, u->dir, u->source_path,
                            sizeof(u->source_path));
     u->use_slot = 1;
     p->has_router = 1;
     scan_deps_ir(u->ir_def, u);
+  }
+
+  if (p->truncated) {
+    fprintf(stderr,
+            "error: project exceeds Svelte backend limits "
+            "(max %d units, %d routes) — split the app or raise limits\n",
+            SV_MAX_UNITS, SV_MAX_ROUTES);
   }
 }
 
@@ -2007,6 +2051,10 @@ int svelte_emit_modules_from_ir(IrProgram *ir, SvelteWriteFn write_fn,
   SvelteProject *proj = calloc(1, sizeof(SvelteProject));
   if (!proj) return -1;
   project_partition_from_ir(proj, ir->root);
+  if (proj->truncated) {
+    free(proj);
+    return -1;
+  }
   harvest_contexts_ir(proj, ir->root);
 
   if (proj->n_contexts > 0) {
@@ -2062,6 +2110,10 @@ static char *svelte_generate_impl_ir(IrProgram *ir) {
   SvelteProject *proj = calloc(1, sizeof(SvelteProject));
   if (!proj) return strdup("<!-- empty -->\n");
   project_partition_from_ir(proj, ir->root);
+  if (proj->truncated) {
+    free(proj);
+    return NULL;
+  }
   harvest_contexts_ir(proj, ir->root);
 
   if (proj->n_contexts > 0) {

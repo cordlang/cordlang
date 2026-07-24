@@ -1,0 +1,52 @@
+// ===== src/components/PhaseESmoke.jsx =====
+/* cordlang: source=src/components/PhaseESmoke.cord */
+import { createPortal } from 'react';
+
+export default function PhaseESmoke({  }) {
+  return (
+    <>
+      <p>
+        {label}
+      </p>
+      <div className="flex flex-col gap-8">
+        <span>
+          {n}
+        </span>
+        <div transition={fade}>
+          <p>
+            {'fade'}
+          </p>
+        </div>
+        <div use={tooltip}>
+          <p>
+            {'tip'}
+          </p>
+        </div>
+        <p>
+          {v}
+        </p>
+        <__loading__>
+          <p>
+            {'...'}
+          </p>
+        </__loading__>
+        {createPortal(
+          <>
+            <p>
+              {'portal'}
+            </p>
+          </>,
+          document.body
+        )}
+      </div>
+    </>
+  );
+}
+
+// ===== src/App.jsx =====
+/* cordlang: source=src/app.cord */
+import PhaseESmoke from './components/PhaseESmoke';
+
+export default function App() {
+  return <PhaseESmoke />;
+}

@@ -1,0 +1,63 @@
+<!-- ===== src/components/PhaseESmoke.svelte ===== -->
+<!-- cordlang: source=src/components/PhaseESmoke.cord -->
+<script>
+  import { writable } from 'svelte/store';
+  import { fade } from 'svelte/transition';
+  const n = writable(0);
+  function setN(v) { n.set(v); }
+  function portal(node, target) {
+    const t = target || (typeof document !== 'undefined' ? document.body : null);
+    if (t) t.appendChild(node);
+    return {
+      update(newTarget) {
+        const nt = newTarget || (typeof document !== 'undefined' ? document.body : null);
+        if (nt) nt.appendChild(node);
+      },
+      destroy() { node.remove(); }
+    };
+  }
+</script>
+
+{#snippet box(label)}
+  <p>
+    {label}
+  </p>
+{/snippet}
+<div class="flex flex-col gap-8">
+  <span>
+    {$n}
+  </span>
+  <div transition:fade>
+    <p>
+      fade
+    </p>
+  </div>
+  <div use:tooltip>
+    <p>
+      tip
+    </p>
+  </div>
+  {@render box("hi")}
+  {#await Promise.resolve(1)}
+    <p>
+      ...
+    </p>
+  {:then v}
+    <p>
+      {v}
+    </p>
+  {/await}
+  <div use:portal={document.body}>
+    <p>
+      portal
+    </p>
+  </div>
+</div>
+
+<!-- ===== src/App.svelte ===== -->
+<!-- cordlang: source=src/app.cord -->
+<script>
+  import PhaseESmoke from './components/PhaseESmoke.svelte';
+</script>
+
+<PhaseESmoke />

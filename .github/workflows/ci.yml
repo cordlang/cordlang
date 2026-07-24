@@ -77,7 +77,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-myapp-v1-
 
-      - name: Build
+      - name: Build (-Werror)
         run: make -j"$(nproc)"
 
       - name: Golden tests
@@ -87,3 +87,21 @@ jobs:
 
       - name: my-app react + svelte --check (G4)
         run: ./tests/run_myapp_check.sh
+
+  test-ubuntu-asan:
+    name: ASAN/UBSAN goldens (Ubuntu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y build-essential
+
+      - name: Build with sanitizers
+        run: make clean && make -j"$(nproc)" ASAN=1
+
+      - name: Golden tests under ASAN
+        run: |
+          chmod +x tests/run_tests.sh
+          ASAN_OPTIONS=detect_leaks=0 ./tests/run_tests.sh

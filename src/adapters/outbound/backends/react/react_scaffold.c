@@ -1,5 +1,7 @@
 #include "adapters/outbound/backends/react/react_backend.h"
 #include "adapters/outbound/backends/theme_css.h"
+#include "adapters/outbound/html_escape.h"
+#include "adapters/outbound/json/json_mini.h"
 #include "application/ports/fs_port.h"
 #include "domain/ir.h"
 #include <stdio.h>
@@ -38,30 +40,9 @@ static int scaffold_write_src(const char *rel_from_src, const char *content,
   return 0;
 }
 
-/* Best-effort: "key": "value" from cordlang.json (no full JSON parser). */
+/* Best-effort string from cordlang.json via json_mini. */
 static int cfg_string(const char *json, const char *key, char *out, size_t outsz) {
-  if (!json || !key || !out || outsz == 0) return 0;
-  char pat[80];
-  snprintf(pat, sizeof(pat), "\"%s\"", key);
-  const char *p = strstr(json, pat);
-  if (!p) return 0;
-  p = strchr(p + strlen(pat), ':');
-  if (!p) return 0;
-  p++;
-  while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') p++;
-  if (*p != '"') return 0;
-  p++;
-  size_t i = 0;
-  while (*p && *p != '"' && i + 1 < outsz) {
-    if (*p == '\\' && p[1]) {
-      p++;
-      out[i++] = *p++;
-      continue;
-    }
-    out[i++] = *p++;
-  }
-  out[i] = '\0';
-  return i > 0;
+  return json_object_copy_string(json, key, out, outsz);
 }
 
 static void load_html_meta(const char *project_dir, char *lang, size_t lang_sz,
@@ -89,6 +70,10 @@ static int write_vite_skeleton(const char *project_dir, const char *out) {
   char lang[32];
   char title[256];
   load_html_meta(project_dir, lang, sizeof(lang), title, sizeof(title));
+  char lang_e[64];
+  char title_e[512];
+  html_escape_to(lang_e, sizeof(lang_e), lang);
+  html_escape_to(title_e, sizeof(title_e), title);
 
   const char *pkg =
       "{\n"
@@ -137,7 +122,7 @@ static int write_vite_skeleton(const char *project_dir, const char *out) {
            "    <script type=\"module\" src=\"/src/main.jsx\"></script>\n"
            "  </body>\n"
            "</html>\n",
-           lang, title);
+           lang_e, title_e);
 
   const char *main_jsx =
       "import React from 'react'\n"
@@ -442,68 +427,12 @@ static void scaffold_public_assets(const char *project_dir, const char *out) {
 }
 
 int react_scaffold_from_ast(const char *project_dir, Node *root) {
-  char *out = fs_join(project_dir, "dist/react");
-  if (!out) return -1;
-
-  if (fs_mkdir_p(out) != 0) {
-    free(out);
-    return -1;
-  }
-
-  /* ensure subdirs exist */
-  char *p1 = fs_join(out, "src/pages");
-  char *p2 = fs_join(out, "src/components");
-  char *p3 = fs_join(out, "src/layouts");
-  if (p1) {
-    fs_mkdir_p(p1);
-    free(p1);
-  }
-  if (p2) {
-    fs_mkdir_p(p2);
-    free(p2);
-  }
-  if (p3) {
-    fs_mkdir_p(p3);
-    free(p3);
-  }
-
-  int rc = write_vite_skeleton(project_dir, out);
-  if (rc != 0) {
-    fprintf(stderr, "Error: failed writing Vite skeleton\n");
-    free(out);
-    return rc;
-  }
-
-  scaffold_public_assets(project_dir, out);
-
-  /* theme.css from NODE_THEME (first → :root) */
-  {
-    char *theme_css = theme_css_generate(root);
-    if (theme_css) {
-      rc |= write_path(out, "src/theme.css", theme_css);
-      free(theme_css);
-    }
-    if (rc != 0) {
-      fprintf(stderr, "Error: failed writing theme.css\n");
-      free(out);
-      return rc;
-    }
-  }
-
-  ScaffoldCtx ctx;
-  memset(&ctx, 0, sizeof(ctx));
-  ctx.out_root = out;
-
-  rc = react_emit_modules(root, scaffold_write_src, &ctx);
-  if (rc != 0 || ctx.rc != 0) {
-    fprintf(stderr, "Error: failed writing React modules\n");
-    free(out);
-    return -1;
-  }
-
-  print_tree(&ctx);
-  free(out);
-  return 0;
+  if (!root) return -1;
+  IrProgram *ir = ir_from_ast(root, NULL);
+  if (!ir) return -1;
+  int rc = react_scaffold_from_ir(project_dir, ir);
+  ir_free(ir);
+  return rc;
 }
 
 /* Legacy: single blob → App.jsx only (used if someone calls scaffold directly) */

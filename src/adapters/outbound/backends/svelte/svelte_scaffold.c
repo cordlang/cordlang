@@ -1,5 +1,7 @@
 #include "adapters/outbound/backends/svelte/svelte_backend.h"
 #include "adapters/outbound/backends/theme_css.h"
+#include "adapters/outbound/html_escape.h"
+#include "adapters/outbound/json/json_mini.h"
 #include "application/ports/fs_port.h"
 #include "domain/ir.h"
 #include <stdio.h>
@@ -39,28 +41,7 @@ static int scaffold_write_src(const char *rel_from_src, const char *content,
 }
 
 static int cfg_string(const char *json, const char *key, char *out, size_t outsz) {
-  if (!json || !key || !out || outsz == 0) return 0;
-  char pat[80];
-  snprintf(pat, sizeof(pat), "\"%s\"", key);
-  const char *p = strstr(json, pat);
-  if (!p) return 0;
-  p = strchr(p + strlen(pat), ':');
-  if (!p) return 0;
-  p++;
-  while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') p++;
-  if (*p != '"') return 0;
-  p++;
-  size_t i = 0;
-  while (*p && *p != '"' && i + 1 < outsz) {
-    if (*p == '\\' && p[1]) {
-      p++;
-      out[i++] = *p++;
-      continue;
-    }
-    out[i++] = *p++;
-  }
-  out[i] = '\0';
-  return i > 0;
+  return json_object_copy_string(json, key, out, outsz);
 }
 
 static void load_html_meta(const char *project_dir, char *lang, size_t lang_sz,
@@ -88,6 +69,10 @@ static int write_vite_skeleton(const char *project_dir, const char *out) {
   char lang[32];
   char title[256];
   load_html_meta(project_dir, lang, sizeof(lang), title, sizeof(title));
+  char lang_e[64];
+  char title_e[512];
+  html_escape_to(lang_e, sizeof(lang_e), lang);
+  html_escape_to(title_e, sizeof(title_e), title);
 
   const char *pkg =
       "{\n"
@@ -142,7 +127,7 @@ static int write_vite_skeleton(const char *project_dir, const char *out) {
            "    <script type=\"module\" src=\"/src/main.js\"></script>\n"
            "  </body>\n"
            "</html>\n",
-           lang, title);
+           lang_e, title_e);
 
   const char *main_js =
       "import { mount } from 'svelte'\n"

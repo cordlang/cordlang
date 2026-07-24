@@ -22,6 +22,9 @@ set(SOURCES
   src/application/preview_service.c
   src/adapters/inbound/cli.c
   src/adapters/outbound/fs/fs.c
+  src/adapters/outbound/process/process_spawn.c
+  src/adapters/outbound/json/json_mini.c
+  src/adapters/outbound/html_escape.c
   src/adapters/outbound/lexer/lexer.c
   src/adapters/outbound/parser/parser.c
   src/adapters/outbound/compiler/compiler.c
@@ -41,8 +44,14 @@ add_executable(cordlang ${SOURCES})
 target_include_directories(cordlang PRIVATE src)
 # strdup / POSIX APIs under -std=c17 on glibc
 target_compile_definitions(cordlang PRIVATE _POSIX_C_SOURCE=200809L)
-target_compile_options(cordlang PRIVATE -Wall -Wextra -Wno-unused-parameter -Wno-unused-function)
+target_compile_options(cordlang PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-function -Wno-format-truncation)
 
 if(WIN32)
   target_link_libraries(cordlang PRIVATE ws2_32)
+endif()
+
+option(CORDLANG_ASAN "Build with AddressSanitizer + UBSan" OFF)
+if(CORDLANG_ASAN)
+  target_compile_options(cordlang PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+  target_link_options(cordlang PRIVATE -fsanitize=address,undefined)
 endif()

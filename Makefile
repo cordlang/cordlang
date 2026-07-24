@@ -1,6 +1,7 @@
 CC = gcc
 # c17 + POSIX (strdup, etc. on glibc). On Windows MinGW, extra define is harmless.
-CFLAGS = -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -g -std=c17 \
+CFLAGS = -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-function \
+	-Wno-format-truncation -g -std=c17 \
 	-D_DEFAULT_SOURCE -D_POSIX_C_SOURCE=200809L -Isrc
 TARGET = cordlang
 
@@ -22,6 +23,9 @@ SRC = \
   src/application/preview_service.c \
   src/adapters/inbound/cli.c \
   src/adapters/outbound/fs/fs.c \
+  src/adapters/outbound/process/process_spawn.c \
+  src/adapters/outbound/json/json_mini.c \
+  src/adapters/outbound/html_escape.c \
   src/adapters/outbound/lexer/lexer.c \
   src/adapters/outbound/parser/parser.c \
   src/adapters/outbound/compiler/compiler.c \
@@ -35,6 +39,12 @@ SRC = \
   src/adapters/outbound/backends/svelte/svelte_scaffold.c \
   src/adapters/outbound/backends/html/html_backend.c \
   src/adapters/outbound/runtime/preview_server.c
+
+# Optional sanitizers: make ASAN=1
+ifeq ($(ASAN),1)
+  CFLAGS += -fsanitize=address,undefined -fno-omit-frame-pointer
+  LDFLAGS += -fsanitize=address,undefined
+endif
 
 # Windows (MinGW) needs Winsock
 ifeq ($(OS),Windows_NT)

@@ -83,7 +83,7 @@ cordlang run svelte       # app Svelte
 | RSC / Next / Remix | ❌ |
 | useSyncExternalStore / useInsertionEffect / useEffectEvent | ✅ |
 | useImperativeHandle + forwardRef | ✅ |
-| Tests de snapshot del codegen | ❌ |
+| Tests de snapshot del codegen | ✅ |
 
 ### 1.3 Backend Svelte
 

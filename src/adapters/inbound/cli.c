@@ -10,6 +10,7 @@
 #include "application/ports/compiler_port.h"
 #include "application/ports/fs_port.h"
 #include "adapters/outbound/lexer/lexer.h"
+#include "adapters/outbound/json/json_mini.h"
 #include "domain/ast.h"
 #include "domain/diag.h"
 #include "domain/ir.h"
@@ -97,25 +98,7 @@ static char *resolve_check_entry(const char *path) {
     free(cfg);
     char *entry_rel = NULL;
     if (json) {
-      char *key = strstr(json, "\"entry\"");
-      if (key) {
-        char *colon = strchr(key, ':');
-        if (colon) {
-          char *q1 = strchr(colon, '"');
-          if (q1) {
-            q1++;
-            char *q2 = strchr(q1, '"');
-            if (q2) {
-              size_t en = (size_t)(q2 - q1);
-              entry_rel = malloc(en + 1);
-              if (entry_rel) {
-                memcpy(entry_rel, q1, en);
-                entry_rel[en] = '\0';
-              }
-            }
-          }
-        }
-      }
+      entry_rel = json_object_get_string(json, "entry");
       free(json);
     }
     if (!entry_rel) entry_rel = strdup("src/app.cord");

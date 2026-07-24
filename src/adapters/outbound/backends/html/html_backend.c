@@ -20,12 +20,22 @@ static void sb_init(StrBuf *sb) {
   sb->buf = calloc(sb->cap, 1);
 }
 
+static void sb_oom(void) {
+  fprintf(stderr, "fatal: out of memory (StrBuf)\n");
+  exit(1);
+}
+
 static void sb_append(StrBuf *sb, const char *s) {
   if (!s) return;
   size_t slen = strlen(s);
   if (sb->len + slen + 1 >= sb->cap) {
-    while (sb->len + slen + 1 >= sb->cap) sb->cap *= 2;
-    sb->buf = realloc(sb->buf, sb->cap);
+    while (sb->len + slen + 1 >= sb->cap) {
+      if (sb->cap > (size_t)-1 / 2) sb_oom();
+      sb->cap *= 2;
+    }
+    char *nbuf = realloc(sb->buf, sb->cap);
+    if (!nbuf) sb_oom();
+    sb->buf = nbuf;
   }
   memcpy(sb->buf + sb->len, s, slen);
   sb->len += slen;
@@ -40,8 +50,13 @@ static void sb_appendf(StrBuf *sb, const char *fmt, ...) {
   if (n < 0) return;
 
   if (sb->len + (size_t)n + 1 >= sb->cap) {
-    while (sb->len + (size_t)n + 1 >= sb->cap) sb->cap *= 2;
-    sb->buf = realloc(sb->buf, sb->cap);
+    while (sb->len + (size_t)n + 1 >= sb->cap) {
+      if (sb->cap > (size_t)-1 / 2) sb_oom();
+      sb->cap *= 2;
+    }
+    char *nbuf = realloc(sb->buf, sb->cap);
+    if (!nbuf) sb_oom();
+    sb->buf = nbuf;
   }
 
   va_start(args, fmt);
