@@ -65,6 +65,13 @@ static const char *RUNTIME_JS =
     "export function frag(children) { return h(FRAG, null, children); }\n"
     "export function txt(v) { return mkText(v === null || v === undefined ? '' : v); }\n"
     "\n"
+    "/* `for` lists: stamp the key so reconciliation can match across renders. */\n"
+    "export function keyed(key, node) {\n"
+    "  const vn = asVnode(node);\n"
+    "  vn.key = key;\n"
+    "  return vn;\n"
+    "}\n"
+    "\n"
     "function asVnode(v) {\n"
     "  if (v === null || v === undefined || v === false || v === true) return frag(null);\n"
     "  if (Array.isArray(v)) return frag(v);\n"
@@ -686,6 +693,79 @@ static const char *HMR_CLIENT_JS =
 const char *esm_runtime_js(void) { return RUNTIME_JS; }
 
 const char *esm_hmr_client_js(void) { return HMR_CLIENT_JS; }
+
+/*
+ * The shell. The entry .cord is a STATIC module import — the browser requests
+ * /src/app.cord, the dev server answers with JavaScript, and the module graph
+ * unfolds from there. That is exactly how Vite serves .vue / .svelte; no browser
+ * parses those formats natively either.
+ */
+char *esm_index_html(const char *lang, const char *title, const char *entry_url,
+                     int has_site_css, int has_site_js, int has_favicon,
+                     int has_logo_svg) {
+  char lang_e[64];
+  char title_e[512];
+  html_escape_to(lang_e, sizeof(lang_e), lang && *lang ? lang : "en");
+  html_escape_to(title_e, sizeof(title_e),
+                 title && *title ? title : "Cordlang App");
+
+  const char *entry = entry_url && *entry_url ? entry_url : "/src/app.cord";
+
+  size_t cap = 4096 + strlen(entry);
+  char *out = malloc(cap);
+  if (!out) return NULL;
+
+  snprintf(
+      out, cap,
+      "<!doctype html>\n"
+      "<html lang=\"%s\">\n"
+      "  <head>\n"
+      "    <meta charset=\"UTF-8\" />\n"
+      "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
+      "    <title>%s</title>\n"
+      "%s"
+      "%s"
+      "    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n"
+      "    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n"
+      "    <link href=\"https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Syne:wght@600;700;800&display=swap\" rel=\"stylesheet\" />\n"
+      "    <link rel=\"stylesheet\" href=\"/@cord/theme.css\" />\n"
+      "    <link rel=\"stylesheet\" href=\"/@cord/base.css\" />\n"
+      "%s"
+      "%s"
+      "  </head>\n"
+      "  <body>\n"
+      "    <div id=\"app\"></div>\n"
+      "    <script type=\"module\">\n"
+      "      import app from '%s';\n"
+      "      import { mount } from '/@cord/runtime.js';\n"
+      "      mount(app, document.getElementById('app'));\n"
+      "    </script>\n"
+      "    <script type=\"module\" src=\"/@cord/hmr.js\"></script>\n"
+      "%s"
+      "  </body>\n"
+      "</html>\n",
+      lang_e, title_e,
+      has_favicon ? "    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\" />\n"
+                  : "",
+      has_logo_svg
+          ? "    <link rel=\"icon\" href=\"/logo.svg\" type=\"image/svg+xml\" />\n"
+          : "",
+      has_site_css ? "    <link rel=\"stylesheet\" href=\"/site.css\" />\n" : "",
+      has_site_js
+          ? "    <script>\n"
+            "(function(){try{var t=localStorage.getItem(\"cord-docs-theme\");"
+            "if(t!==\"dark\"&&t!==\"light\")"
+            "t=window.matchMedia(\"(prefers-color-scheme: dark)\").matches?"
+            "\"dark\":\"light\";"
+            "document.documentElement.setAttribute(\"data-theme\",t);"
+            "document.documentElement.style.colorScheme=t;"
+            "}catch(e){}})();\n"
+            "    </script>\n"
+          : "",
+      entry,
+      has_site_js ? "    <script type=\"module\" src=\"/site.js\"></script>\n" : "");
+  return out;
+}
 
 char *esm_error_module(const char *message) {
   const char *msg = message ? message : "error desconocido";
