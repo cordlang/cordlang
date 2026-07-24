@@ -9,6 +9,7 @@ Start here for humans and for AI tools.
 | [EXAMPLES.md](./EXAMPLES.md) | Everyone | Catalog of `examples/` + `my-app/` |
 | [AI.md](./AI.md) | **AI models** | Do / don't contract for LLMs |
 | [LANGUAGE.md](./LANGUAGE.md) | Design | Language design notes (ex-`idea.md`) |
+| [SPEC.md](./SPEC.md) | Language | Normative syntax & semantics (v0.x) |
 | [REACT.md](./REACT.md) | Backend map | Cordlang ↔ React |
 | [SVELTE.md](./SVELTE.md) | Backend map | Cordlang ↔ Svelte 5 |
 | [IR.md](./IR.md) | Compiler | IR pipeline |

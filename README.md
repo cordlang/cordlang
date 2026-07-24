@@ -231,6 +231,7 @@ CI (`.github/workflows/ci.yml`) runs goldens **and** `my-app` `--check` on Windo
 |------|---------|
 | [docs/ROADMAP.md](./docs/ROADMAP.md) | Phases A–F, IR, next sprint |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Compiler internals (parser → IR → codegen) |
+| [docs/SPEC.md](./docs/SPEC.md) | Normative language specification (v0.x) |
 | [docs/LANGUAGE.md](./docs/LANGUAGE.md) | Language design & syntax |
 | [docs/REACT.md](./docs/REACT.md) | Mapping to React APIs |
 | [docs/SVELTE.md](./docs/SVELTE.md) | Mapping to Svelte 5 |
