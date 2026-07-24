@@ -520,6 +520,7 @@ int react_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
 static const BackendPort react_port = {
     .name = "react",
     .extension = ".jsx",
+    .needs_node_check = 1,
     .generate_from_ir = react_generate_from_ir,
     .scaffold_from_ir = react_scaffold_from_ir,
     .generate = react_generate,

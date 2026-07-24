@@ -1,0 +1,50 @@
+<!-- ===== src/components/Counter.vue ===== -->
+<!-- cordlang: source=src/components/Counter.cord -->
+<script setup>
+import { ref } from 'vue';
+const props = defineProps({
+  label: { default: 'Counter' },
+});
+const label = props.label;
+const count = ref(0);
+function setCount(v) { count.value = typeof v === 'function' ? v(count.value) : v; }
+</script>
+
+<template>
+<div class="flex flex-col gap-16 p-24 flex items-center justify-center">
+  <h1 class="text-2xl font-bold">
+    {{ label }}
+  </h1>
+  <p class="text-lg text-muted">
+    Count: 
+    {{ count }}
+  </p>
+  <div class="flex flex-row gap-8 flex items-center justify-center">
+    <button class="btn btn-outline" @click="() => setCount(count - 1)">
+      -
+    </button>
+    <span class="text-4xl font-bold">
+      {{ count }}
+    </span>
+    <button class="btn btn-primary" @click="() => setCount(count + 1)">
+      +
+    </button>
+  </div>
+  <button class="btn btn-ghost" @click="() => setCount(0)">
+    Reset
+  </button>
+</div>
+</template>
+
+<!-- ===== src/router.js ===== -->
+export const router = null;
+
+<!-- ===== src/App.vue ===== -->
+<!-- cordlang: source=src/app.cord -->
+<script setup>
+import Counter from './components/Counter.vue';
+</script>
+
+<template>
+  <Counter />
+</template>

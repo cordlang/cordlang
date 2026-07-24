@@ -1,24 +1,24 @@
 // ===== src/components/Demo.jsx =====
 /* cordlang: source=src/components/Demo.cord */
-import { useState } from 'react';
+import { createSignal } from 'solid-js';
 
 export default function Demo({  }) {
-  const [count, setCount] = useState(1);
+  const [count, setCount] = createSignal(1);
   return (
     <>
-      <div className="flex flex-col gap-8">
+      <div class="flex flex-col gap-8">
         <p>
           {'show #{count}'}
         </p>
         <p>
           {'live '}
-          {count}
+          {count()}
         </p>
         <p>
           {'mix '}
           {'#{count}'}
           {' and '}
-          {count}
+          {count()}
         </p>
       </div>
     </>

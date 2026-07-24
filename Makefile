@@ -39,6 +39,12 @@ SRC = \
   src/adapters/outbound/backends/react/react_scaffold.c \
   src/adapters/outbound/backends/svelte/svelte_backend.c \
   src/adapters/outbound/backends/svelte/svelte_scaffold.c \
+  src/adapters/outbound/backends/vue/vue_backend.c \
+  src/adapters/outbound/backends/vue/vue_ir.c \
+  src/adapters/outbound/backends/vue/vue_scaffold.c \
+  src/adapters/outbound/backends/solid/solid_backend.c \
+  src/adapters/outbound/backends/solid/solid_ir.c \
+  src/adapters/outbound/backends/solid/solid_scaffold.c \
   src/adapters/outbound/backends/html/html_backend.c \
   src/adapters/outbound/runtime/preview_server.c
 

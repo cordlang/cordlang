@@ -1,0 +1,47 @@
+<!-- ===== src/components/ListDemo.vue ===== -->
+<!-- cordlang: source=src/components/ListDemo.cord -->
+<script setup>
+import { ref } from 'vue';
+const props = defineProps({
+  title: { default: 'Items' },
+});
+const title = props.title;
+const showHint = ref(1);
+function setShowHint(v) { showHint.value = typeof v === 'function' ? v(showHint.value) : v; }
+</script>
+
+<template>
+<div class="flex flex-col gap-16 p-24">
+  <h1 class="text-2xl font-bold">
+    {{ title }}
+  </h1>
+  <template v-if="showHint">
+    <p class="text-muted">
+      Hint: click items
+    </p>
+  </template>
+  <template v-for="item in (items || [])" :key="item.id">
+    <div class="flex flex-row gap-8 flex items-center justify-center">
+      <span class="font-bold">
+        {{ item.name }}
+      </span>
+      <button class="btn btn-outline" @click="() => selectItem(item.id)">
+        Select
+      </button>
+    </div>
+  </template>
+</div>
+</template>
+
+<!-- ===== src/router.js ===== -->
+export const router = null;
+
+<!-- ===== src/App.vue ===== -->
+<!-- cordlang: source=src/app.cord -->
+<script setup>
+import ListDemo from './components/ListDemo.vue';
+</script>
+
+<template>
+  <ListDemo />
+</template>

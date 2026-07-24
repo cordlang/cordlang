@@ -1,0 +1,152 @@
+<!-- ===== src/pages/HomePage.vue ===== -->
+<!-- cordlang: source=src/pages/HomePage.cord -->
+<script setup>
+</script>
+
+<template>
+<div class="flex flex-col gap-16">
+  <h1 class="text-2xl font-bold">
+    Home
+  </h1>
+  <p class="text-muted">
+    Welcome home.
+  </p>
+  <router-link :to="/shop">
+    Go to Shop
+  </router-link>
+</div>
+</template>
+
+<!-- ===== src/pages/ShopPage.vue ===== -->
+<!-- cordlang: source=src/pages/ShopPage.cord -->
+<script setup>
+</script>
+
+<template>
+<div class="flex flex-col gap-16">
+  <h1 class="text-2xl font-bold">
+    Products
+  </h1>
+  <p class="text-muted">
+    Browse the shop.
+  </p>
+  <router-link :to="/shop/1">
+    Product 1
+  </router-link>
+</div>
+</template>
+
+<!-- ===== src/pages/ProductPage.vue ===== -->
+<!-- cordlang: source=src/pages/ProductPage.cord -->
+<script setup>
+const props = defineProps({
+  id: { },
+});
+const id = props.id;
+</script>
+
+<template>
+<div class="flex flex-col gap-16">
+  <h1 class="text-2xl font-bold">
+    Product 
+    {{ id }}
+  </h1>
+  <p class="text-muted">
+    Details for item.
+  </p>
+  <router-link :to="/shop">
+    Back to shop
+  </router-link>
+</div>
+</template>
+
+<!-- ===== src/layouts/DefaultLayout.vue ===== -->
+<!-- cordlang: source=src/layouts/default.cord -->
+<script setup>
+</script>
+
+<template>
+<header class="sticky top-0 bg-white shadow-sm">
+  <div class="flex flex-row justify-between flex items-center p-16">
+    <h1 class="text-xl font-bold">
+      App
+    </h1>
+    <nav>
+      <div class="flex flex-row gap-16 flex items-center justify-center">
+        <router-link :to="/">
+          Home
+        </router-link>
+        <router-link :to="/shop">
+          Shop
+        </router-link>
+      </div>
+    </nav>
+  </div>
+</header>
+<main class="p-24">
+  <slot />
+</main>
+</template>
+
+<!-- ===== src/layouts/Shop.vue ===== -->
+<!-- cordlang: source=src/layouts/Shop.cord -->
+<script setup>
+</script>
+
+<template>
+<header class="sticky top-0 bg-blue-600">
+  <div class="flex flex-row justify-between flex items-center p-16">
+    <h1 class="text-xl font-bold text-white">
+      Shop
+    </h1>
+    <nav>
+      <div class="flex flex-row gap-16 flex items-center justify-center">
+        <router-link :to="/shop">
+          All
+        </router-link>
+        <router-link :to="/">
+          Home
+        </router-link>
+      </div>
+    </nav>
+  </div>
+</header>
+<main class="p-24">
+  <slot />
+</main>
+</template>
+
+<!-- ===== src/router.js ===== -->
+import { createRouter, createWebHashHistory } from 'vue-router';
+import DefaultLayout from './layouts/DefaultLayout.vue';
+import Shop from './layouts/Shop.vue';
+import HomePage from './pages/HomePage.vue';
+import ShopPage from './pages/ShopPage.vue';
+import ProductPage from './pages/ProductPage.vue';
+
+const routes = [
+  { path: '/', component: HomePage, meta: { layout: DefaultLayout } },
+  { path: '/shop', component: ShopPage, meta: { layout: Shop } },
+  { path: '/shop/:id', component: ProductPage, meta: { layout: Shop } },
+];
+
+export const router = createRouter({
+  history: createWebHashHistory(),
+  routes,
+});
+
+<!-- ===== src/App.vue ===== -->
+<!-- cordlang: source=src/app.cord -->
+<script setup>
+import { RouterView } from 'vue-router';
+import { computed } from 'vue';
+import { router } from './router.js';
+const layout = computed(() => router?.currentRoute.value.meta.layout || null);
+</script>
+
+<template>
+  <component :is="layout" v-if="layout">
+    <RouterView />
+  </component>
+  <RouterView v-else />
+</template>

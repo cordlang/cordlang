@@ -44,8 +44,10 @@ static void print_usage(void) {
   printf("Backends:\n");
   printf("  preview / html                 Built-in runtime preview (default for run)\n");
   printf("  react                          React + Vite + Tailwind scaffold\n");
-  printf("  svelte                         Svelte 5 + Vite + Tailwind + hash router\n\n");
-  printf("Flags (run react|svelte):\n");
+  printf("  svelte                         Svelte 5 + Vite + Tailwind + hash router\n");
+  printf("  vue                            Vue 3 + Vite + Tailwind + vue-router\n");
+  printf("  solid                          SolidJS + Vite + Tailwind + @solidjs/router\n\n");
+  printf("Flags (run react|svelte|vue|solid):\n");
   printf("  --check                        After first scaffold: npm install if needed + vite build\n");
   printf("  --watch                        Poll .cord files; rebuild dist/<backend> on change\n");
   printf("                                 (combine: --watch --check runs check only once)\n\n");
@@ -62,6 +64,8 @@ static void print_usage(void) {
   printf("  cd my-app && cordlang run         # preview in browser\n");
   printf("  cd my-app && cordlang run react   # generate React app\n");
   printf("  cd my-app && cordlang run svelte  # generate Svelte app\n");
+  printf("  cd my-app && cordlang run vue     # generate Vue app\n");
+  printf("  cd my-app && cordlang run solid   # generate Solid app\n");
   printf("  cd my-app && cordlang run react --check\n");
   printf("  cd my-app && cordlang run react --watch\n");
   printf("  cd my-app && cordlang run svelte --watch --check\n");
@@ -72,6 +76,8 @@ static void print_usage(void) {
   printf("  cd my-app && cordlang symbols\n");
   printf("  cd my-app && cordlang goto Counter\n");
   printf("  cordlang compile src/app.cord --backend svelte\n");
+  printf("  cordlang compile src/app.cord --backend vue\n");
+  printf("  cordlang compile src/app.cord --backend solid\n");
   printf("  cordlang compile src/app.cord --backend react --sourcemap -o App.jsx\n");
   printf("  cordlang fmt src/\n");
   printf("  cordlang fmt --check src/\n");

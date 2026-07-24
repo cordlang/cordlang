@@ -168,7 +168,18 @@ int run_service_run(const char *backend_name, const char *project_dir,
   const BackendPort *backend = backend_find(backend_name);
   if (!backend) {
     fprintf(stderr, "Error: unknown backend '%s'\n", backend_name);
-    fprintf(stderr, "Available: react, svelte | preview: cordlang run\n");
+    {
+      const char *names[16];
+      int n = backend_list(names, 16);
+      fprintf(stderr, "Available:");
+      int first = 1;
+      for (int i = 0; i < n; i++) {
+        if (!names[i] || strcmp(names[i], "html") == 0) continue;
+        fprintf(stderr, "%s%s", first ? " " : ", ", names[i]);
+        first = 0;
+      }
+      fprintf(stderr, " | preview: cordlang run\n");
+    }
     return 1;
   }
 
@@ -185,18 +196,18 @@ int run_service_run(const char *backend_name, const char *project_dir,
 
   if (check) {
     /* Only Node-based scaffolds support vite check; only on first build. */
-    if (strcmp(backend->name, "react") != 0 &&
-        strcmp(backend->name, "svelte") != 0) {
-      fprintf(stderr, "Error: --check is only supported for react and svelte\n");
+    if (!backend->needs_node_check) {
+      fprintf(stderr, "Error: --check is not supported for backend '%s'\n",
+              backend->name);
       return 1;
     }
     if (run_vite_check(dir, backend->name) != 0) return 1;
   }
 
   if (watch) {
-    if (strcmp(backend->name, "react") != 0 &&
-        strcmp(backend->name, "svelte") != 0) {
-      fprintf(stderr, "Error: --watch is only supported for react and svelte\n");
+    if (!backend->needs_node_check) {
+      fprintf(stderr, "Error: --watch is not supported for backend '%s'\n",
+              backend->name);
       return 1;
     }
     WatchCtx ctx = {.backend = backend, .dir = dir};

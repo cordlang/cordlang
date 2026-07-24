@@ -1,0 +1,97 @@
+<!-- ===== src/pages/HomePage.vue ===== -->
+<!-- cordlang: source=src/pages/HomePage.cord -->
+<script setup>
+</script>
+
+<template>
+<div class="flex flex-col gap-16">
+  <h1 class="text-2xl font-bold">
+    Home
+  </h1>
+  <p class="text-muted">
+    Welcome home.
+  </p>
+  <router-link :to="/about">
+    Go to About
+  </router-link>
+</div>
+</template>
+
+<!-- ===== src/pages/AboutPage.vue ===== -->
+<!-- cordlang: source=src/pages/AboutPage.cord -->
+<script setup>
+</script>
+
+<template>
+<div class="flex flex-col gap-16">
+  <h1 class="text-2xl font-bold">
+    About
+  </h1>
+  <p class="text-muted">
+    About this app.
+  </p>
+  <router-link :to="/">
+    Back home
+  </router-link>
+</div>
+</template>
+
+<!-- ===== src/layouts/DefaultLayout.vue ===== -->
+<!-- cordlang: source=src/layouts/default.cord -->
+<script setup>
+</script>
+
+<template>
+<header class="sticky top-0 bg-white shadow-sm">
+  <div class="flex flex-row justify-between flex items-center p-16">
+    <h1 class="text-xl font-bold">
+      App
+    </h1>
+    <nav>
+      <div class="flex flex-row gap-16 flex items-center justify-center">
+        <router-link :to="/">
+          Home
+        </router-link>
+        <router-link :to="/about">
+          About
+        </router-link>
+      </div>
+    </nav>
+  </div>
+</header>
+<main class="p-24">
+  <slot />
+</main>
+</template>
+
+<!-- ===== src/router.js ===== -->
+import { createRouter, createWebHashHistory } from 'vue-router';
+import DefaultLayout from './layouts/DefaultLayout.vue';
+import HomePage from './pages/HomePage.vue';
+import AboutPage from './pages/AboutPage.vue';
+
+const routes = [
+  { path: '/', component: HomePage, meta: { layout: DefaultLayout } },
+  { path: '/about', component: AboutPage, meta: { layout: DefaultLayout } },
+];
+
+export const router = createRouter({
+  history: createWebHashHistory(),
+  routes,
+});
+
+<!-- ===== src/App.vue ===== -->
+<!-- cordlang: source=src/app.cord -->
+<script setup>
+import { RouterView } from 'vue-router';
+import { computed } from 'vue';
+import { router } from './router.js';
+const layout = computed(() => router?.currentRoute.value.meta.layout || null);
+</script>
+
+<template>
+  <component :is="layout" v-if="layout">
+    <RouterView />
+  </component>
+  <RouterView v-else />
+</template>

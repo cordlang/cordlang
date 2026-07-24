@@ -1,4 +1,4 @@
-#include "adapters/outbound/backends/svelte/svelte_backend.h"
+#include "adapters/outbound/backends/vue/vue_backend.h"
 #include "adapters/outbound/backends/theme_css.h"
 #include "adapters/outbound/html_escape.h"
 #include "adapters/outbound/json/json_mini.h"
@@ -47,7 +47,7 @@ static int cfg_string(const char *json, const char *key, char *out, size_t outsz
 static void load_html_meta(const char *project_dir, char *lang, size_t lang_sz,
                            char *title, size_t title_sz) {
   snprintf(lang, lang_sz, "en");
-  snprintf(title, title_sz, "Cordlang Svelte App");
+  snprintf(title, title_sz, "Cordlang Vue App");
   if (!project_dir) return;
   char *cfg_path = fs_join(project_dir, "cordlang.json");
   if (!cfg_path) return;
@@ -76,7 +76,7 @@ static int write_vite_skeleton(const char *project_dir, const char *out) {
 
   const char *pkg =
       "{\n"
-      "  \"name\": \"cordlang-svelte-app\",\n"
+      "  \"name\": \"cordlang-vue-app\",\n"
       "  \"private\": true,\n"
       "  \"version\": \"0.1.0\",\n"
       "  \"type\": \"module\",\n"
@@ -85,11 +85,14 @@ static int write_vite_skeleton(const char *project_dir, const char *out) {
       "    \"build\": \"vite build\",\n"
       "    \"preview\": \"vite preview\"\n"
       "  },\n"
+      "  \"dependencies\": {\n"
+      "    \"vue\": \"^3.5.13\",\n"
+      "    \"vue-router\": \"^4.5.0\"\n"
+      "  },\n"
       "  \"devDependencies\": {\n"
-      "    \"@sveltejs/vite-plugin-svelte\": \"^5.0.3\",\n"
+      "    \"@vitejs/plugin-vue\": \"^5.2.1\",\n"
       "    \"autoprefixer\": \"^10.4.20\",\n"
       "    \"postcss\": \"^8.4.49\",\n"
-      "    \"svelte\": \"^5.16.0\",\n"
       "    \"tailwindcss\": \"^3.4.17\",\n"
       "    \"vite\": \"^6.0.3\"\n"
       "  }\n"
@@ -97,21 +100,11 @@ static int write_vite_skeleton(const char *project_dir, const char *out) {
 
   const char *vite =
       "import { defineConfig } from 'vite'\n"
-      "import { svelte } from '@sveltejs/vite-plugin-svelte'\n"
+      "import vue from '@vitejs/plugin-vue'\n"
       "\n"
       "export default defineConfig({\n"
-      "  plugins: [svelte()],\n"
+      "  plugins: [vue()],\n"
       "})\n";
-
-  const char *svelte_cfg =
-      "import { vitePreprocess } from '@sveltejs/vite-plugin-svelte'\n"
-      "\n"
-      "export default {\n"
-      "  preprocess: vitePreprocess(),\n"
-      "  compilerOptions: {\n"
-      "    runes: true,\n"
-      "  },\n"
-      "}\n";
 
   char html[1024];
   snprintf(html, sizeof(html),
@@ -130,11 +123,14 @@ static int write_vite_skeleton(const char *project_dir, const char *out) {
            lang_e, title_e);
 
   const char *main_js =
-      "import { mount } from 'svelte'\n"
+      "import { createApp } from 'vue'\n"
       "import './app.css'\n"
-      "import App from './App.svelte'\n"
+      "import App from './App.vue'\n"
+      "import { router } from './router.js'\n"
       "\n"
-      "mount(App, { target: document.getElementById('app') })\n";
+      "const app = createApp(App)\n"
+      "if (router) app.use(router)\n"
+      "app.mount('#app')\n";
 
   const char *css =
       "/* Theme tokens from Cord `theme` blocks (see theme.css) */\n"
@@ -189,7 +185,7 @@ static int write_vite_skeleton(const char *project_dir, const char *out) {
   const char *tailwind =
       "/** @type {import('tailwindcss').Config} */\n"
       "export default {\n"
-      "  content: ['./index.html', './src/**/*.{js,svelte}'],\n"
+      "  content: ['./index.html', './src/**/*.{js,vue}'],\n"
       "  theme: {\n"
       "    extend: {\n"
       "      spacing: {\n"
@@ -236,8 +232,7 @@ static int write_vite_skeleton(const char *project_dir, const char *out) {
   int rc = 0;
   rc |= write_path(out, "package.json", pkg);
   rc |= write_path(out, "vite.config.js", vite);
-  rc |= write_path(out, "svelte.config.js", svelte_cfg);
-  rc |= write_path(out, "index.html", html);
+    rc |= write_path(out, "index.html", html);
   rc |= write_path(out, "tailwind.config.js", tailwind);
   rc |= write_path(out, "postcss.config.js", postcss);
   rc |= write_path(out, ".gitignore", gitignore);
@@ -275,14 +270,13 @@ static void scaffold_public_assets(const char *project_dir, const char *out) {
 }
 
 static void print_scaffold_summary(ScaffoldCtx *ctx) {
-  printf("\nSvelte app generated in: dist\\svelte\n");
+  printf("\nVue app generated in: dist\\vue\n");
   printf("  +-- package.json\n");
   printf("  +-- vite.config.js\n");
-  printf("  +-- svelte.config.js\n");
   printf("  +-- index.html\n");
   printf("  +-- public\\            # static assets (/logo.png → public/logo.png)\n");
   printf("  \\-- src\\\n");
-  printf("      +-- App.svelte       # router\n");
+  printf("      +-- App.vue       # router\n");
   printf("      +-- main.js\n");
   printf("      +-- app.css\n");
   printf("      +-- theme.css        # CSS vars from theme blocks\n");
@@ -294,13 +288,13 @@ static void print_scaffold_summary(ScaffoldCtx *ctx) {
     for (int i = 0; i < ctx->n_files; i++) printf("  - %s\n", ctx->files[i]);
   }
   printf("\nNext steps:\n");
-  printf("  cd dist\\svelte\n");
+  printf("  cd dist\\vue\n");
   printf("  npm install\n");
   printf("  npm run dev\n");
 }
 
-int svelte_scaffold_from_ast(const char *project_dir, Node *root) {
-  char *out = fs_join(project_dir, "dist/svelte");
+int vue_scaffold_from_ast(const char *project_dir, Node *root) {
+  char *out = fs_join(project_dir, "dist/vue");
   if (!out) return -1;
   if (fs_mkdir_p(out) != 0) {
     free(out);
@@ -325,7 +319,7 @@ int svelte_scaffold_from_ast(const char *project_dir, Node *root) {
 
   int rc = write_vite_skeleton(project_dir, out);
   if (rc != 0) {
-    fprintf(stderr, "Error: failed writing Svelte skeleton\n");
+    fprintf(stderr, "Error: failed writing Vue skeleton\n");
     free(out);
     return rc;
   }
@@ -349,9 +343,9 @@ int svelte_scaffold_from_ast(const char *project_dir, Node *root) {
   memset(&ctx, 0, sizeof(ctx));
   ctx.out_root = out;
 
-  rc = svelte_emit_modules(root, scaffold_write_src, &ctx);
+  rc = vue_emit_modules(root, scaffold_write_src, &ctx);
   if (rc != 0 || ctx.rc != 0) {
-    fprintf(stderr, "Error: failed writing Svelte modules\n");
+    fprintf(stderr, "Error: failed writing Vue modules\n");
     free(out);
     return -1;
   }
@@ -362,24 +356,24 @@ int svelte_scaffold_from_ast(const char *project_dir, Node *root) {
   return 0;
 }
 
-int svelte_scaffold(const char *project_dir, const char *blob) {
-  char *out = fs_join(project_dir, "dist/svelte");
+int vue_scaffold(const char *project_dir, const char *blob) {
+  char *out = fs_join(project_dir, "dist/vue");
   if (!out) return -1;
   if (fs_mkdir_p(out) != 0) {
     free(out);
     return -1;
   }
   int rc = write_vite_skeleton(project_dir, out);
-  rc |= write_path(out, "src/App.svelte",
+  rc |= write_path(out, "src/App.vue",
                    blob ? blob : "<script></script>\n<p>Empty</p>\n");
   free(out);
   return rc;
 }
 
-int svelte_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
+int vue_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
   if (!ir || !ir->root) return -1;
 
-  char *out = fs_join(project_dir, "dist/svelte");
+  char *out = fs_join(project_dir, "dist/vue");
   if (!out) return -1;
   if (fs_mkdir_p(out) != 0) {
     free(out);
@@ -404,7 +398,7 @@ int svelte_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
 
   int rc = write_vite_skeleton(project_dir, out);
   if (rc != 0) {
-    fprintf(stderr, "Error: failed writing Svelte skeleton\n");
+    fprintf(stderr, "Error: failed writing Vue skeleton\n");
     free(out);
     return rc;
   }
@@ -430,9 +424,9 @@ int svelte_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
   ctx.out_root = out;
 
   /* Pure IR body emission (IR-2) */
-  rc = svelte_emit_modules_from_ir(ir, scaffold_write_src, &ctx);
+  rc = vue_emit_modules_from_ir(ir, scaffold_write_src, &ctx);
   if (rc != 0 || ctx.rc != 0) {
-    fprintf(stderr, "Error: failed writing Svelte modules\n");
+    fprintf(stderr, "Error: failed writing Vue modules\n");
     free(out);
     return -1;
   }
@@ -442,15 +436,15 @@ int svelte_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
   return 0;
 }
 
-static const BackendPort svelte_port = {
-    .name = "svelte",
-    .extension = ".svelte",
+static const BackendPort vue_port = {
+    .name = "vue",
+    .extension = ".vue",
     .needs_node_check = 1,
-    .generate_from_ir = svelte_generate_from_ir,
-    .scaffold_from_ir = svelte_scaffold_from_ir,
-    .generate = svelte_generate,
-    .scaffold = svelte_scaffold,
-    .scaffold_from_ast = svelte_scaffold_from_ast,
+    .generate_from_ir = vue_generate_from_ir,
+    .scaffold_from_ir = vue_scaffold_from_ir,
+    .generate = vue_generate,
+    .scaffold = vue_scaffold,
+    .scaffold_from_ast = vue_scaffold_from_ast,
 };
 
-const BackendPort *svelte_backend_port(void) { return &svelte_port; }
+const BackendPort *vue_backend_port(void) { return &vue_port; }

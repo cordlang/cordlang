@@ -22,7 +22,7 @@ application/*_service.c     (use cases)
         └── adapters/outbound/
               ├── lexer / parser / compiler
               ├── fs / process / json
-              └── backends/{react,svelte,html}
+              └── backends/{react,svelte,vue,solid,html}
 ```
 
 | Layer | Path | Responsibility |
@@ -90,6 +90,8 @@ Orchestration lives in `src/application/compile_service.c` and `run_service.c`:
 | Backend registry | `adapters/outbound/backends/registry.c` (static list) |
 | React emit | `backends/react/react_ir.c`, `react_backend.c`, `react_scaffold.c` |
 | Svelte emit | `backends/svelte/svelte_backend.c`, `svelte_scaffold.c` |
+| Vue emit | `backends/vue/vue_ir.c`, `vue_backend.c`, `vue_scaffold.c` |
+| Solid emit | `backends/solid/solid_ir.c`, `solid_backend.c`, `solid_scaffold.c` |
 | HTML preview | `backends/html/html_backend.c` + `runtime/preview_server.c` |
 | Theme CSS | `backends/theme_css.c` |
 | Source maps | `backends/source_attr.c` (VLQ from `cordlang: source=` markers) |
@@ -129,13 +131,24 @@ Backends must not retain IR or AST after returning from generate/scaffold.
 
 ---
 
-## How to add a backend (today)
+## How to add a backend (React-style checklist)
 
-1. Implement `BackendPort` with `generate_from_ir` + `scaffold_from_ir` (walk **only** `IrNode`).
-2. Register in `registry.c` (`backend_register_all`).
-3. Add goldens under `tests/fixtures` + `tests/golden`, and regression pins if fixing bugs.
-4. Document map in `docs/<BACKEND>.md`; update `ROADMAP.md` parity matrix.
-5. No LLM or network in the emit path.
+Add a new target by mirroring the React three-file layout under
+`src/adapters/outbound/backends/<name>/`:
+
+1. **`<name>_backend.h`** — declare `generate_from_ir`, `scaffold_from_ir`,
+   AST wrappers, `emit_modules_from_ir`, and `<name>_backend_port()`.
+2. **`<name>_backend.c`** (or split **`<name>_ir.c`**) — pure `IrNode` walkers
+   for codegen; AST entrypoints only lower via `ir_from_ast` then call IR APIs.
+   Do **not** walk AST in `generate_from_ir`. No LLM / network in emit.
+3. **`<name>_scaffold.c`** — Vite (or equivalent) skeleton + write modules via
+   `emit_modules_from_ir`; set `BackendPort` fields including
+   `needs_node_check` (1 if `run --check` / `--watch` use npm+vite).
+4. Register in `registry.c` (`backend_register_all`); keep `MAX_BACKENDS` headroom.
+5. Wire sources in `Makefile`, `CMakeLists.txt`, and `build.bat` if present.
+6. Add goldens: `tests/fixtures` + `tests/golden/*.<name>.txt`; extend
+   `BACKENDS` in `tests/run_tests.sh` / `.ps1`.
+7. Document Cord ↔ target map in `docs/<NAME>.md`; update ROADMAP parity.
 
 See [`IR.md`](./IR.md) § “Contrato para un backend nuevo”.
 

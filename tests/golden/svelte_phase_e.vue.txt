@@ -1,0 +1,70 @@
+<!-- ===== src/components/PhaseESmoke.vue ===== -->
+<!-- cordlang: source=src/components/PhaseESmoke.cord -->
+<script setup>
+const n = ref(0);
+function setN(v) { n.value = v; }
+  function portal(node, target) {
+    const t = target || (typeof document !== 'undefined' ? document.body : null);
+    if (t) t.appendChild(node);
+    return {
+      update(newTarget) {
+        const nt = newTarget || (typeof document !== 'undefined' ? document.body : null);
+        if (nt) nt.appendChild(node);
+      },
+      destroy() { node.remove(); }
+    };
+  }
+</script>
+
+<template>
+<!-- snippet box(label) -->
+<template>
+  <p>
+    {{ label }}
+  </p>
+{/snippet}
+<div class="flex flex-col gap-8">
+  <span>
+    {{ n }}
+  </span>
+  <div transition:fade>
+    <p>
+      fade
+    </p>
+  </div>
+  <div use:tooltip>
+    <p>
+      tip
+    </p>
+  </div>
+  {@render box("hi")}
+  <!-- await Promise.resolve(1) -->
+<template>
+    <p>
+      ...
+    </p>
+  {:then v}
+    <p>
+      {{ v }}
+    </p>
+  {/await}
+  <div use:portal={document.body}>
+    <p>
+      portal
+    </p>
+  </div>
+</div>
+</template>
+
+<!-- ===== src/router.js ===== -->
+export const router = null;
+
+<!-- ===== src/App.vue ===== -->
+<!-- cordlang: source=src/app.cord -->
+<script setup>
+import PhaseESmoke from './components/PhaseESmoke.vue';
+</script>
+
+<template>
+  <PhaseESmoke />
+</template>

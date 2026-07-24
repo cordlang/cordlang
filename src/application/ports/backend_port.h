@@ -16,6 +16,7 @@
 typedef struct BackendPort {
   const char *name;
   const char *extension;
+  int needs_node_check; /* 1 = vite --check/--watch supported */
 
   /* Preferred: codegen from canonical IR (AST must still be alive for origins). */
   char *(*generate_from_ir)(IrProgram *ir);
@@ -28,6 +29,8 @@ typedef struct BackendPort {
 } BackendPort;
 
 const BackendPort *backend_find(const char *name);
+/* Fill names[0..*out_n) with registered backend names; returns count. */
+int backend_list(const char **names, int max);
 void backend_register_all(void);
 
 #endif

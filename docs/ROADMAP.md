@@ -133,7 +133,7 @@ Leyenda: ✅ hecho · 🟡 parcial · ❌ no · ≈ equivalente idiomático · �
 | Typecheck / diagnostics | ✅ `cordlang check` | ✅ shared | P1 done |
 | Source maps .cord→out | ✅ VLQ from markers | ✅ VLQ from markers | P2 done |
 | Hot reload .cord | ✅ `--watch` | ✅ `--watch` | P1 done |
-| Vue / Solid backends | ❌ → M9 expansion | — | P3 |
+| Vue / Solid backends | ✅ Vue 3 + Solid (IR-first) | — | F1/F2 done |
 
 ---
 
@@ -266,8 +266,8 @@ Mapa completo: [`docs/SVELTE.md`](./SVELTE.md) (basado en [svelte.dev/docs/svelt
 
 | # | Item | Notas |
 |---|------|-------|
-| F1 | Backend **Vue 3** | Tras IR residual limpio |
-| F2 | Backend **Solid** | Idem |
+| F1 | Backend **Vue 3** | ✅ `backends/vue/` + goldens + `docs/VUE.md` |
+| F2 | Backend **Solid** | ✅ `backends/solid/` + goldens + `docs/SOLID.md` |
 | F3 | Package registry de componentes `.cord` | |
 | F4 | AI prompts / skill “write cord not jsx” | ✅ `docs/AI.md` + `AGENTS.md` + `skills/write-cord` |
 | F5 | Playground web (WASM compile) | |

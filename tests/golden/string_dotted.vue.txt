@@ -1,0 +1,28 @@
+<!-- ===== src/components/X.vue ===== -->
+<!-- cordlang: source=src/components/X.cord -->
+<script setup>
+</script>
+
+<template>
+<div class="flex flex-col">
+  <p>
+    build.bat
+  </p>
+  <p>
+    say "hi" please
+  </p>
+</div>
+</template>
+
+<!-- ===== src/router.js ===== -->
+export const router = null;
+
+<!-- ===== src/App.vue ===== -->
+<!-- cordlang: source=src/app.cord -->
+<script setup>
+import X from './components/X.vue';
+</script>
+
+<template>
+  <X />
+</template>

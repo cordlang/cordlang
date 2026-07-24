@@ -1724,6 +1724,7 @@ int html_scaffold(const char *project_dir, const char *html_doc) {
 static const BackendPort html_port = {
     .name = "html",
     .extension = ".html",
+    .needs_node_check = 0,
     .generate_from_ir = html_generate_from_ir,
     .scaffold_from_ir = html_scaffold_from_ir,
     .generate = html_generate,

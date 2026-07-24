@@ -23,7 +23,7 @@ if [[ "${1:-}" == "--update" || "${1:-}" == "-UpdateGoldens" ]]; then
 fi
 
 FIXTURES=(basic_counter routes_simple interp if_for nested_routes component_slot string_dotted escape_hash_brace react_phase_d svelte_phase_e)
-BACKENDS=(react svelte)
+BACKENDS=(react svelte vue solid)
 GOLDEN_DIR="$ROOT/tests/golden"
 mkdir -p "$GOLDEN_DIR"
 

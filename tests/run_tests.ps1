@@ -1,5 +1,5 @@
 # Cordlang golden tests (Windows PowerShell)
-# Compares cordlang compile fixture --backend {react,svelte} to tests/golden/*
+# Compares cordlang compile fixture --backend {react,svelte,vue,solid} to tests/golden/*
 #
 # Create/update goldens (after intentional codegen changes):
 #   .\tests\run_tests.ps1 -UpdateGoldens
@@ -39,7 +39,7 @@ if (-not (Test-Path -LiteralPath $GoldenDir)) {
 }
 
 $names = "basic_counter", "routes_simple", "interp", "if_for", "nested_routes", "react_phase_d", "component_slot", "string_dotted", "escape_hash_brace", "svelte_phase_e"
-$backends = "react", "svelte"
+$backends = "react", "svelte", "vue", "solid"
 
 function Get-NormalizedText([string]$text) {
   if ($null -eq $text) { return "" }

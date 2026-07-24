@@ -1,0 +1,66 @@
+<!-- ===== src/components/FancyInput.vue ===== -->
+<!-- cordlang: source=src/components/FancyInput.cord -->
+<script setup>
+import { ref } from 'vue';
+const inputEl = ref(null);
+</script>
+
+<template>
+<input ref="inputEl" type="text" />
+</template>
+
+<!-- ===== src/components/PhaseDDemo.vue ===== -->
+<!-- cordlang: source=src/components/PhaseDDemo.cord -->
+<script setup>
+import { ref, watchEffect } from 'vue';
+  import FancyInput from './FancyInput.vue';
+const count = ref(0);
+const form = ref(null);
+const saving = ref(false);
+  async function formAction(e) {
+    e.preventDefault();
+    saving.value = true;
+    try {
+      form.value = await submitForm(form.value, new FormData(e.target));
+    } finally {
+      saving.value = false;
+    }
+  }
+function setCount(v) { count.value = typeof v === 'function' ? v(count.value) : v; }
+</script>
+
+<template>
+<div class="flex flex-col gap-8">
+  <p>
+    Count: 
+    {{ count }}
+  </p>
+  <button class="btn" @click="() => setCount(count + 1)">
+    +
+  </button>
+  <template v-if="saving">
+    <p>
+      pending
+    </p>
+  </template>
+  <form onsubmit={formAction}>
+    <button class="btn">
+      Go
+    </button>
+  </form>
+  <FancyInput />
+</div>
+</template>
+
+<!-- ===== src/router.js ===== -->
+export const router = null;
+
+<!-- ===== src/App.vue ===== -->
+<!-- cordlang: source=src/app.cord -->
+<script setup>
+import FancyInput from './components/FancyInput.vue';
+</script>
+
+<template>
+  <FancyInput />
+</template>
