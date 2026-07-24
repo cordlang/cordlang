@@ -73,9 +73,17 @@ static LspDoc *doc_upsert(const char *uri, const char *text) {
   return d;
 }
 
+/* Growable JSON string escape. *buf must be heap-allocated (or NULL). */
 static void json_escape_append(char **buf, size_t *len, size_t *cap,
                                const char *s) {
   if (!s) return;
+  if (!*buf) {
+    *cap = 64;
+    *len = 0;
+    *buf = malloc(*cap);
+    if (!*buf) return;
+    (*buf)[0] = '\0';
+  }
   for (const char *p = s; *p; p++) {
     const char *rep = NULL;
     char tmp[8];
@@ -90,22 +98,37 @@ static void json_escape_append(char **buf, size_t *len, size_t *cap,
       rep = "\\r";
     else if (*p == '\t')
       rep = "\\t";
-    else {
+    else if ((unsigned char)*p < 0x20) {
+      snprintf(tmp, sizeof(tmp), "\\u%04x", (unsigned char)*p);
+      rep = tmp;
+    } else {
       tmp[0] = *p;
       tmp[1] = 0;
       rep = tmp;
     }
     size_t rl = strlen(rep);
     if (*len + rl + 1 >= *cap) {
-      *cap *= 2;
-      char *n = realloc(*buf, *cap);
+      size_t ncap = *cap ? *cap * 2 : 64;
+      while (*len + rl + 1 >= ncap) ncap *= 2;
+      char *n = realloc(*buf, ncap);
       if (!n) return;
       *buf = n;
+      *cap = ncap;
     }
     memcpy(*buf + *len, rep, rl);
     *len += rl;
     (*buf)[*len] = '\0';
   }
+}
+
+static char *json_escape_dup(const char *s) {
+  size_t len = 0, cap = 0;
+  char *buf = NULL;
+  json_escape_append(&buf, &len, &cap, s ? s : "");
+  if (!buf) {
+    buf = strdup("");
+  }
+  return buf;
 }
 
 static void lsp_send(const char *body) {
@@ -114,7 +137,8 @@ static void lsp_send(const char *body) {
   fflush(stdout);
 }
 
-/* Extract JSON string value for "key" near start of object (best-effort). */static int json_get_str(const char *json, const char *key, char *out,
+/* Extract JSON string value for "key" near start of object (best-effort). */
+static int json_get_str(const char *json, const char *key, char *out,
                         size_t out_sz) {
   char pat[96];
   snprintf(pat, sizeof(pat), "\"%s\"", key);
@@ -137,6 +161,52 @@ static void lsp_send(const char *body) {
   }
   out[i] = '\0';
   return 1;
+}
+
+/* Heap version — avoids large stack buffers for document text. */
+static char *json_get_str_dup(const char *json, const char *key) {
+  char pat[96];
+  snprintf(pat, sizeof(pat), "\"%s\"", key);
+  const char *p = strstr(json, pat);
+  if (!p) return NULL;
+  p = strchr(p + strlen(pat), ':');
+  if (!p) return NULL;
+  p++;
+  while (*p && isspace((unsigned char)*p)) p++;
+  if (*p != '"') return NULL;
+  p++;
+  size_t cap = 256, len = 0;
+  char *out = malloc(cap);
+  if (!out) return NULL;
+  while (*p && *p != '"') {
+    char ch;
+    if (*p == '\\' && p[1]) {
+      p++;
+      switch (*p) {
+        case 'n': ch = '\n'; break;
+        case 'r': ch = '\r'; break;
+        case 't': ch = '\t'; break;
+        case '"': ch = '"'; break;
+        case '\\': ch = '\\'; break;
+        default: ch = *p; break;
+      }
+      p++;
+    } else {
+      ch = *p++;
+    }
+    if (len + 2 >= cap) {
+      cap *= 2;
+      char *n = realloc(out, cap);
+      if (!n) {
+        free(out);
+        return NULL;
+      }
+      out = n;
+    }
+    out[len++] = ch;
+  }
+  out[len] = '\0';
+  return out;
 }
 
 static int json_get_int(const char *json, const char *key, int *out) {
@@ -176,33 +246,52 @@ static int json_id(const char *msg, char *out, size_t out_sz) {
 }
 
 static void respond_ok(const char *id, const char *result_json) {
-  char body[65536];
-  if (id && id[0] && (id[0] == '"' || isdigit((unsigned char)id[0]) || id[0] == '-')) {
-    /* id already may be bare number string */
-  }
   int id_num = 1;
   for (const char *c = id; c && *c; c++)
     if (!isdigit((unsigned char)*c) && *c != '-') {
       id_num = 0;
       break;
     }
-  if (id_num && id)
-    snprintf(body, sizeof(body),
-             "{\"jsonrpc\":\"2.0\",\"id\":%s,\"result\":%s}", id,
-             result_json ? result_json : "null");
-  else
-    snprintf(body, sizeof(body),
-             "{\"jsonrpc\":\"2.0\",\"id\":\"%s\",\"result\":%s}",
-             id ? id : "0", result_json ? result_json : "null");
+
+  const char *res = result_json ? result_json : "null";
+  char *body = NULL;
+  if (id_num && id) {
+    size_t need = strlen(id) + strlen(res) + 64;
+    body = malloc(need);
+    if (!body) return;
+    snprintf(body, need, "{\"jsonrpc\":\"2.0\",\"id\":%s,\"result\":%s}", id,
+             res);
+  } else {
+    char *id_esc = json_escape_dup(id ? id : "0");
+    size_t need = (id_esc ? strlen(id_esc) : 1) + strlen(res) + 64;
+    body = malloc(need);
+    if (!body) {
+      free(id_esc);
+      return;
+    }
+    snprintf(body, need, "{\"jsonrpc\":\"2.0\",\"id\":\"%s\",\"result\":%s}",
+             id_esc ? id_esc : "0", res);
+    free(id_esc);
+  }
   lsp_send(body);
+  free(body);
 }
 
 static void notify(const char *method, const char *params_json) {
-  char body[65536];
-  snprintf(body, sizeof(body),
-           "{\"jsonrpc\":\"2.0\",\"method\":\"%s\",\"params\":%s}", method,
-           params_json ? params_json : "null");
+  char *meth_esc = json_escape_dup(method ? method : "");
+  size_t plen = params_json ? strlen(params_json) : 4;
+  size_t mlen = meth_esc ? strlen(meth_esc) : 0;
+  size_t need = mlen + plen + 64;
+  char *body = malloc(need);
+  if (!body) {
+    free(meth_esc);
+    return;
+  }
+  snprintf(body, need, "{\"jsonrpc\":\"2.0\",\"method\":\"%s\",\"params\":%s}",
+           meth_esc ? meth_esc : "", params_json ? params_json : "null");
   lsp_send(body);
+  free(body);
+  free(meth_esc);
 }
 
 static int severity_of(DiagLevel lvl) {
@@ -226,34 +315,34 @@ static void publish_diagnostics(const char *uri, const char *path) {
     return;
   }
   {
-    char head[1024];
-    snprintf(head, sizeof(head),
-             "{\"uri\":\"%s\",\"diagnostics\":[", uri ? uri : "");
-    strcpy(params, head);
-    len = strlen(params);
+    char *uri_esc = json_escape_dup(uri ? uri : "");
+    int n = snprintf(params, cap, "{\"uri\":\"%s\",\"diagnostics\":[",
+                     uri_esc ? uri_esc : "");
+    free(uri_esc);
+    if (n < 0) {
+      free(params);
+      diag_list_free(&diags);
+      return;
+    }
+    len = (size_t)n;
   }
 
   for (size_t i = 0; i < diags.len; i++) {
     Diagnostic *dg = &diags.items[i];
     int line = dg->line > 0 ? dg->line - 1 : 0;
     int col = dg->col > 0 ? dg->col - 1 : 0;
-    char item[2048];
-    char msg_esc[1024];
-    msg_esc[0] = '\0';
-    {
-      size_t ml = 0, mc = sizeof(msg_esc);
-      char *mp = msg_esc;
-      json_escape_append(&mp, &ml, &mc, dg->message ? dg->message : "");
-    }
+    char *msg_esc = json_escape_dup(dg->message ? dg->message : "");
+    char item[4096];
     snprintf(item, sizeof(item),
              "%s{\"range\":{\"start\":{\"line\":%d,\"character\":%d},"
              "\"end\":{\"line\":%d,\"character\":%d}},\"severity\":%d,"
              "\"source\":\"cordlang\",\"message\":\"%s\"}",
              i ? "," : "", line, col, line, col + 1, severity_of(dg->level),
-             msg_esc);
+             msg_esc ? msg_esc : "");
+    free(msg_esc);
     size_t il = strlen(item);
     if (len + il + 4 >= cap) {
-      cap *= 2;
+      while (len + il + 4 >= cap) cap *= 2;
       char *n = realloc(params, cap);
       if (!n) break;
       params = n;
@@ -265,7 +354,12 @@ static void publish_diagnostics(const char *uri, const char *path) {
   {
     const char *tail = "]}";
     size_t tl = strlen(tail);
-    if (len + tl + 1 < cap) memcpy(params + len, tail, tl + 1);
+    if (len + tl + 1 >= cap) {
+      cap = len + tl + 1;
+      char *n = realloc(params, cap);
+      if (n) params = n;
+    }
+    if (len + tl + 1 <= cap) memcpy(params + len, tail, tl + 1);
   }
   notify("textDocument/publishDiagnostics", params);
   free(params);
@@ -319,13 +413,16 @@ static void handle_document_symbol(const char *id, const char *msg) {
     Node *c = root->children[i];
     if (!c || c->type != NODE_COMPONENT_DEF || !c->value) continue;
     int line = c->line > 0 ? c->line - 1 : 0;
-    char item[512];
+    char *name_esc = json_escape_dup(c->value);
+    char item[1024];
     snprintf(item, sizeof(item),
              "%s{\"name\":\"%s\",\"kind\":5,\"range\":{\"start\":{\"line\":%d,"
              "\"character\":0},\"end\":{\"line\":%d,\"character\":0}},"
              "\"selectionRange\":{\"start\":{\"line\":%d,\"character\":0},"
              "\"end\":{\"line\":%d,\"character\":0}}}",
-             first ? "" : ",", c->value, line, line, line, line);
+             first ? "" : ",", name_esc ? name_esc : "", line, line, line,
+             line);
+    free(name_esc);
     first = 0;
     size_t il = strlen(item);
     if (len + il + 2 >= cap) {
@@ -424,11 +521,13 @@ static void handle_definition(const char *id, const char *msg) {
       free(dir);
     }
     path_to_uri(abs, file_uri, sizeof(file_uri));
+    char *uri_esc = json_escape_dup(file_uri);
     char result[2048];
     snprintf(result, sizeof(result),
              "{\"uri\":\"%s\",\"range\":{\"start\":{\"line\":%d,\"character\":0},"
              "\"end\":{\"line\":%d,\"character\":0}}}",
-             file_uri, fline, fline);
+             uri_esc ? uri_esc : "", fline, fline);
+    free(uri_esc);
     respond_ok(id, result);
     compiler_result_free(&r);
     return;
@@ -470,12 +569,9 @@ static void handle_message(const char *msg) {
     const char *td = strstr(msg, "\"textDocument\"");
     if (td) json_get_str(td, "uri", uri, sizeof(uri));
     char *text = NULL;
-    /* didOpen/didChange may include text */
+    /* didOpen/didChange may include text — parse on heap (never 4MB stack). */
     const char *tp = strstr(msg, "\"text\"");
-    if (tp) {
-      char buf[MAX_MSG];
-      if (json_get_str(tp, "text", buf, sizeof(buf))) text = strdup(buf);
-    }
+    if (tp) text = json_get_str_dup(tp, "text");
     LspDoc *d = doc_upsert(uri, text);
     free(text);
     if (d) publish_diagnostics(uri, d->path);
