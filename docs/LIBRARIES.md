@@ -54,9 +54,9 @@ foreign MapView
 SPA scaffolds write thin adapters when presets are enabled:
 
 - React: `src/CordIcon.jsx`, `CordMotion.jsx`, `CordChart.jsx`
-- Svelte: `src/CordIcon.svelte`, `CordMotion.svelte`, `CordChart.svelte` (icon bridge is thin MVP; npm peer `@lucide/svelte`)
-- Vue: `src/CordIcon.vue`, `CordMotion.vue`, `CordChart.vue`
-- Solid: `src/CordIcon.jsx`, `CordMotion.jsx`, `CordChart.jsx`
+- Svelte: `src/CordIcon.svelte` (`@lucide/svelte`), `CordMotion.svelte`, `CordChart.svelte` (SVG bar MVP)
+- Vue: `src/CordIcon.vue`; motion/charts thin CSS/SVG (no unused npm)
+- Solid: `src/CordIcon.jsx`; motion/charts thin CSS/SVG (no unused npm)
 
 Do **not** teach models to write `import { motion } from "framer-motion"` in `.cord` — use presets + tags.
 
