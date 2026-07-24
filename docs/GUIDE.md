@@ -138,8 +138,10 @@ theme shop
   radius: 12
 ```
 
-→ `src/theme.css` CSS variables (`--color-primary`, `--radius`, …).  
-Use `color=primary` on tags when the backend maps tokens.
+→ `src/theme.css` CSS variables (`--color-primary`, `--radius`, …) plus design-system
+defaults (type scale, elevation, density). See [`DESIGN.md`](./DESIGN.md).
+
+Use `color=primary`, `type=display`, `elevate=2`, `section`, `md:p=24` on tags when the backend maps tokens.
 
 ### 3.5 Multi-file app
 

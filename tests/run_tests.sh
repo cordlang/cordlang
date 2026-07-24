@@ -22,7 +22,7 @@ if [[ "${1:-}" == "--update" || "${1:-}" == "-UpdateGoldens" ]]; then
   UPDATE=1
 fi
 
-FIXTURES=(basic_counter routes_simple interp if_for nested_routes component_slot string_dotted escape_hash_brace react_phase_d svelte_phase_e preset_caps)
+FIXTURES=(basic_counter routes_simple interp if_for nested_routes component_slot string_dotted escape_hash_brace react_phase_d svelte_phase_e preset_caps theme_design_tokens)
 # Main matrix: SPA backends with full golden coverage.
 # email/pdf/next/sveltekit use dedicated fixtures + regression/ (see below).
 BACKENDS=(react svelte vue solid)

@@ -1,0 +1,32 @@
+// ===== src/components/DesignDemo.jsx =====
+/* cordlang: source=src/components/DesignDemo.cord */
+
+export default function DesignDemo({  }) {
+  return (
+    <>
+      <section class="p-24" density={comfortable} md:p={48}>
+        <div class="flex flex-col gap-16" density={spacious}>
+          <h1 type="display">
+            {'Design tokens'}
+          </h1>
+          <p class="text-muted" type="body">
+            {'Type scale and elevation from theme.css'}
+          </p>
+          <div class="card p-24" elevate={2}>
+            <span type="caption">
+              {'Elevated surface'}
+            </span>
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
+
+// ===== src/App.jsx =====
+/* cordlang: source=src/app.cord */
+import DesignDemo from './components/DesignDemo';
+
+export default function App() {
+  return <DesignDemo />;
+}
