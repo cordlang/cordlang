@@ -2,6 +2,7 @@
 #include "adapters/outbound/backends/ir_walk.h"
 #include "adapters/outbound/backends/source_attr.h"
 #include "adapters/outbound/backends/theme_css.h"
+#include "adapters/outbound/html_escape.h"
 #include "domain/interp.h"
 #include "domain/ir.h"
 #include <ctype.h>
@@ -868,7 +869,11 @@ static void gen_element_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
   {
     char *cls = classes;
     while (*cls == ' ') cls++;
-    if (*cls) sb_appendf(sb, " class=\"%s\"", cls);
+    if (*cls) {
+      char *esc = js_escape_dq_dup(cls);
+      sb_appendf(sb, " class=\"%s\"", esc ? esc : "");
+      free(esc);
+    }
   }
 
   if (strcmp(tag, "link") == 0) {
@@ -880,10 +885,13 @@ static void gen_element_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
           c->value)
         to = c->value;
     }
+    if (!url_href_is_safe(to)) to = "/";
+    char *esc = js_escape_dq_dup(to);
     if (to[0] == '/')
-      sb_appendf(sb, " href=\"#%s\"", to);
+      sb_appendf(sb, " href=\"#%s\"", esc ? esc : "/");
     else
-      sb_appendf(sb, " href=\"#/%s\"", to);
+      sb_appendf(sb, " href=\"#/%s\"", esc ? esc : "/");
+    free(esc);
   }
 
   for (size_t i = 0; i < node->n_kids; i++) {
@@ -940,8 +948,11 @@ static void gen_element_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
         strcmp(c->name, "rows") == 0) {
       if (c->value && looks_like_js_expr(c->value) && strchr(c->value, '.'))
         sb_appendf(sb, " %s={%s}", c->name, c->value);
-      else
-        sb_appendf(sb, " %s=\"%s\"", c->name, c->value ? c->value : "");
+      else {
+        char *esc = js_escape_dq_dup(c->value ? c->value : "");
+        sb_appendf(sb, " %s=\"%s\"", c->name, esc ? esc : "");
+        free(esc);
+      }
     }
   }
 
@@ -1103,10 +1114,12 @@ static void gen_children_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) 
       }
     } else if (irw_hook_is(child, "head")) {
       if (child->value) {
+        char title_e[512];
+        html_escape_to(title_e, sizeof(title_e), child->value);
         sb_indent(sb, depth);
         sb_append(sb, "<svelte:head>\n");
         sb_indent(sb, depth + 1);
-        sb_appendf(sb, "<title>%s</title>\n", child->value);
+        sb_appendf(sb, "<title>%s</title>\n", title_e);
         sb_indent(sb, depth);
         sb_append(sb, "</svelte:head>\n");
       }
@@ -1158,10 +1171,12 @@ static void gen_node_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
         }
       } else if (node->name && strcmp(node->name, "head") == 0) {
         if (node->value) {
+          char title_e[512];
+          html_escape_to(title_e, sizeof(title_e), node->value);
           sb_indent(sb, depth);
           sb_append(sb, "<svelte:head>\n");
           sb_indent(sb, depth + 1);
-          sb_appendf(sb, "<title>%s</title>\n", node->value);
+          sb_appendf(sb, "<title>%s</title>\n", title_e);
           sb_indent(sb, depth);
           sb_append(sb, "</svelte:head>\n");
         }
@@ -1314,7 +1329,9 @@ static void emit_js_lit(StrBuf *sb, const char *val) {
     sb_append(sb, val);
     return;
   }
-  sb_appendf(sb, "'%s'", val);
+  char *esc = js_escape_sq_dup(val);
+  sb_appendf(sb, "'%s'", esc ? esc : "");
+  free(esc);
 }
 
 static void foreach_state(IrNode *def,
@@ -1696,7 +1713,12 @@ static char *gen_svelte_module_ir(SvelteProject *proj, SvelteUnit *u) {
     sb_append(&script, "    let cancelled = false;\n");
     sb_appendf(&script, "    %sLoading = true;\n", nm);
     sb_appendf(&script, "    %sError = null;\n", nm);
-    sb_appendf(&script, "    fetch(\"%s\")\n", url);
+    {
+      const char *safe_url = url_href_is_safe(url) ? url : "/";
+      char *esc = js_escape_dq_dup(safe_url);
+      sb_appendf(&script, "    fetch(\"%s\")\n", esc ? esc : "/");
+      free(esc);
+    }
     sb_append(&script, "      .then((r) => {\n");
     sb_append(&script, "        if (!r.ok) throw new Error(String(r.status));\n");
     sb_append(&script, "        return r.json();\n");

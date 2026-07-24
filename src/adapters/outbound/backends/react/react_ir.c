@@ -5,6 +5,7 @@
 #include "adapters/outbound/backends/source_attr.h"
 #include "adapters/outbound/backends/theme_css.h"
 #include "adapters/outbound/backends/ir_walk.h"
+#include "adapters/outbound/html_escape.h"
 #include "domain/interp.h"
 #include "domain/ir.h"
 #include <ctype.h>
@@ -252,7 +253,9 @@ static void emit_jsx_value(StrBuf *sb, const char *val, int force_expr) {
       return;
     }
   }
-  sb_appendf(sb, "\"%s\"", val);
+  char *esc = js_escape_dq_dup(val);
+  sb_appendf(sb, "\"%s\"", esc ? esc : "");
+  free(esc);
 }
 
 static void emit_js_literal(StrBuf *sb, const char *val) {
@@ -264,7 +267,9 @@ static void emit_js_literal(StrBuf *sb, const char *val) {
     sb_append(sb, val);
     return;
   }
-  sb_appendf(sb, "\"%s\"", val);
+  char *esc = js_escape_dq_dup(val);
+  sb_appendf(sb, "\"%s\"", esc ? esc : "");
+  free(esc);
 }
 
 /* Style map entries under IR_ATTR "style" or direct style keys */
@@ -1114,7 +1119,11 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
       continue;
     }
     if (strcmp(child->name, "to") == 0) {
-      sb_appendf(sb, " href=\"%s\"", child->value ? child->value : "/");
+      const char *href = child->value ? child->value : "/";
+      if (!url_href_is_safe(href)) href = "#";
+      char *esc = js_escape_dq_dup(href);
+      sb_appendf(sb, " href=\"%s\"", esc ? esc : "#");
+      free(esc);
       continue;
     }
     if (strcmp(child->name, "action") == 0 && child->value) {
@@ -1933,7 +1942,12 @@ static void gen_component_fn_ir(StrBuf *sb, IrNode *def, const char *name,
     sb_append(sb, "    let cancelled = false;\n");
     sb_appendf(sb, "    %s(true);\n", set_load);
     sb_appendf(sb, "    %s(null);\n", set_err);
-    sb_appendf(sb, "    fetch(\"%s\")\n", url);
+    {
+      const char *safe_url = url_href_is_safe(url) ? url : "/";
+      char *esc = js_escape_dq_dup(safe_url);
+      sb_appendf(sb, "    fetch(\"%s\")\n", esc ? esc : "/");
+      free(esc);
+    }
     sb_append(sb, "      .then((r) => {\n");
     sb_append(sb, "        if (!r.ok) throw new Error(String(r.status));\n");
     sb_append(sb, "        return r.json();\n");
