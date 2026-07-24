@@ -379,11 +379,13 @@ Kitchen-sink: `examples/phase_d_hooks.cord`.
 | `useImperativeHandle` | `imperativeHandle ref=inputEl` + object body |
 | Actions polish | `pending=saving` + form `aria-busy` + btn `disabled` |
 
-### Out of scope (docs only)
+### Out of scope vs meta backends
 
-- **D5 Next.js** / **D6 Remix** / **D7 React Native** backends — not implemented;
-  the DSL surface above is client React (Vite SPA). Meta-framework targets are
-  roadmap items, not code in this phase.
+- **Remix** / **React Native** — not implemented (docs / roadmap only).
+- **Next.js** — **meta-backend MVP** exists (`cordlang run next` / `--backend next`):
+  wraps the React SPA emit + scaffold notes. **Not** full RSC, App Router, or
+  server components. Details: [`NEXT.md`](./NEXT.md).
+- The DSL surface above remains client React (Vite SPA) for day-to-day use.
 
 ### Testing Library recipe
 

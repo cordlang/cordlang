@@ -3,7 +3,7 @@
 You are working in the **Cordlang** repository: a C compiler that turns `.cord` UI sources into React, Svelte 5, or HTML preview.
 
 Human overview: [README.md](./README.md)  
-AI-focused contract: [docs/AI.md](./docs/AI.md)  
+AI-focused contract: [docs/AI_CONTEXT.md](./docs/AI_CONTEXT.md) · [docs/AI.md](./docs/AI.md)  
 Syntax guide: [docs/GUIDE.md](./docs/GUIDE.md) · cheatsheet: [docs/CHEATSHEET.md](./docs/CHEATSHEET.md)
 
 ---
@@ -37,9 +37,10 @@ Syntax guide: [docs/GUIDE.md](./docs/GUIDE.md) · cheatsheet: [docs/CHEATSHEET.m
 - Split apps: `app.cord` + `pages/` + `components/` + `layouts/`.
 - Use multi-file `use` / `route / => pages/X`.
 - Use `setCount(...)` style updaters for state.
-- After edits, prefer `cordlang check` / `cordlang analyze` / compile if the CLI is built.
+- After edits, prefer `cordlang check` / `cordlang check --json` / `cordlang analyze` / compile if the CLI is built.
 - Attrs: [`docs/schema/attrs.json`](./docs/schema/attrs.json). Prop types: `string` \| `number` \| `boolean` \| `any`.
-- AI loop: [`docs/AI_WORKFLOW.md`](./docs/AI_WORKFLOW.md) · `cordlang ai`.
+- AI loop: [`docs/AI_WORKFLOW.md`](./docs/AI_WORKFLOW.md) · `cordlang ai` / `ai context` / `ai doctor`.
+- If check fails: [`skills/fix-cord-check/`](./skills/fix-cord-check/).
 
 ### Don't
 
@@ -47,7 +48,9 @@ Syntax guide: [docs/GUIDE.md](./docs/GUIDE.md) · cheatsheet: [docs/CHEATSHEET.m
 - Invent keywords not documented in GUIDE / REACT / SVELTE.
 - Use `{count}` instead of `#{count}`.
 - Use `className` / `onClick` / `export default function` inside `.cord`.
-- Treat SvelteKit/Next as implemented (roadmap only).
+- Treat SvelteKit/Next as full frameworks — they are **meta-backend MVPs**
+  (`cordlang run next|sveltekit`): SPA emit wrapped for scaffolds, not full
+  RSC/SSR/file-routing parity. See `docs/NEXT.md` / `docs/SVELTEKIT.md`.
 - Commit `node_modules/`, `dist/`, or `*.exe`.
 
 ---

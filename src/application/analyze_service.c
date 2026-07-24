@@ -20,6 +20,15 @@ typedef struct {
   int is_layout[MAX_NAMES];
 } CompSet;
 
+typedef struct {
+  int n_link_bad;
+  int n_layout_bad;
+  int n_h1;
+  int n_fetch_ui;
+  int n_form_pending;
+  int n_no_purpose;
+} AnalyzeCounts;
+
 static int is_pascal(const char *s) {
   return s && s[0] && isupper((unsigned char)s[0]);
 }
@@ -77,6 +86,31 @@ static int subtree_has_slot(Node *n) {
   return 0;
 }
 
+/* Heuristic: loading/error UI for fetch `name` in scope. */
+static int subtree_has_fetch_ui(Node *n, const char *fetch_name) {
+  if (!n || !fetch_name) return 0;
+  char loading[NAME_LEN + 16];
+  char err[NAME_LEN + 16];
+  snprintf(loading, sizeof(loading), "%sLoading", fetch_name);
+  snprintf(err, sizeof(err), "%sError", fetch_name);
+
+  if (n->type == NODE_LOADING) return 1;
+  if (n->type == NODE_IF && n->value) {
+    if (strstr(n->value, loading) || strstr(n->value, err) ||
+        strstr(n->value, "Loading") || strstr(n->value, "Error"))
+      return 1;
+  }
+  if (n->type == NODE_TEXT && n->value) {
+    if (strstr(n->value, "Loading") || strstr(n->value, "loading") ||
+        strstr(n->value, "Error") || strstr(n->value, "error"))
+      return 1;
+  }
+  for (size_t i = 0; i < n->children_len; i++) {
+    if (subtree_has_fetch_ui(n->children[i], fetch_name)) return 1;
+  }
+  return 0;
+}
+
 static void collect(Node *n, CompSet *comps) {
   if (!n) return;
   if (n->type == NODE_COMPONENT_DEF && n->value) {
@@ -90,8 +124,12 @@ static void collect(Node *n, CompSet *comps) {
 }
 
 static void walk(Node *n, CompSet *comps, DiagList *out, const char *file,
-                 int *n_link_bad, int *n_layout_bad, int *n_h1) {
-  if (!n) return;
+                 Node *scope, AnalyzeCounts *c) {
+  if (!n || !c) return;
+
+  Node *next_scope = scope;
+  if (n->type == NODE_COMPONENT_DEF || n->type == NODE_ROOT)
+    next_scope = n;
 
   if (n->type == NODE_ELEMENT && n->value) {
     if (is_pascal(n->value)) comp_mark(comps, n->value);
@@ -100,11 +138,51 @@ static void walk(Node *n, CompSet *comps, DiagList *out, const char *file,
       if (!elem_has_attr(n, "to") && !elem_has_attr(n, "href")) {
         diag_emit(out, DIAG_WARN, file, n->line, n->col,
                   "link without to= or href=");
-        (*n_link_bad)++;
+        c->n_link_bad++;
+      }
+      if (!elem_has_attr(n, "purpose")) {
+        diag_emit(out, DIAG_INFO, file, n->line, n->col,
+                  "link without purpose= (optional semantic hint)");
+        c->n_no_purpose++;
       }
     }
 
-    if (strcmp(n->value, "h1") == 0) (*n_h1)++;
+    if (strcmp(n->value, "btn") == 0 || strcmp(n->value, "button") == 0) {
+      if (!elem_has_attr(n, "purpose")) {
+        diag_emit(out, DIAG_INFO, file, n->line, n->col,
+                  "btn without purpose= (optional semantic hint)");
+        c->n_no_purpose++;
+      }
+    }
+
+    if (strcmp(n->value, "form") == 0) {
+      /* form may rely on action=formAction from action decl; still prefer pending nearby */
+      if (!elem_has_attr(n, "pending") && !elem_has_attr(n, "action")) {
+        /* bare form — soft info only via action decl check */
+      }
+    }
+
+    if (strcmp(n->value, "h1") == 0) c->n_h1++;
+  }
+
+  if (n->type == NODE_FETCH_DECL && n->value) {
+    Node *search = next_scope ? next_scope : n;
+    if (!subtree_has_fetch_ui(search, n->value)) {
+      diag_emit_ex(out, DIAG_WARN, file, n->line, n->col, "fetch-ui",
+                   "add if nameLoading / if nameError (or Loading text)",
+                   "fetch '%s' has no nearby loading/error UI", n->value);
+      c->n_fetch_ui++;
+    }
+  }
+
+  if (n->type == NODE_ACTION_DECL) {
+    if (!elem_has_attr(n, "pending")) {
+      diag_emit_ex(out, DIAG_WARN, file, n->line, n->col, "form-pending",
+                   "add pending=saving (or similar) to action …",
+                   "action '%s' without pending=",
+                   n->value ? n->value : "?");
+      c->n_form_pending++;
+    }
   }
 
   if (n->type == NODE_COMPONENT_DEF && n->value) {
@@ -112,29 +190,34 @@ static void walk(Node *n, CompSet *comps, DiagList *out, const char *file,
     if (idx >= 0 && comps->is_layout[idx] && !subtree_has_slot(n)) {
       diag_emit(out, DIAG_WARN, file, n->line, n->col,
                 "layout-like component '%s' has no slot", n->value);
-      (*n_layout_bad)++;
+      c->n_layout_bad++;
     }
   }
 
   /* route layout=Name marks layout + usage */
   if (n->type == NODE_ROUTE) {
     for (size_t i = 0; i < n->children_len; i++) {
-      Node *c = n->children[i];
-      if (c && c->type == NODE_ATTR && c->value &&
-          strcmp(c->value, "layout") == 0 && c->value2) {
-        int idx = comp_index(comps, c->value2);
+      Node *ch = n->children[i];
+      if (ch && ch->type == NODE_ATTR && ch->value &&
+          strcmp(ch->value, "layout") == 0 && ch->value2) {
+        int idx = comp_index(comps, ch->value2);
         if (idx >= 0) comps->is_layout[idx] = 1;
-        comp_mark(comps, c->value2);
+        comp_mark(comps, ch->value2);
       }
     }
     if (n->value2) comp_mark(comps, n->value2);
   }
 
   for (size_t i = 0; i < n->children_len; i++)
-    walk(n->children[i], comps, out, file, n_link_bad, n_layout_bad, n_h1);
+    walk(n->children[i], comps, out, file, next_scope, c);
 }
 
 int analyze_service_run(const char *entry_path, DiagList *out) {
+  return analyze_service_run_opts(entry_path, out, 0, NULL);
+}
+
+int analyze_service_run_opts(const char *entry_path, DiagList *out, int quiet,
+                             int *out_score) {
   if (!out) return 1;
   if (!entry_path || !*entry_path) {
     diag_emit(out, DIAG_ERROR, "<analyze>", 0, 0, "no entry path");
@@ -150,15 +233,14 @@ int analyze_service_run(const char *entry_path, DiagList *out) {
   }
 
   CompSet comps = {0};
-  int n_link_bad = 0, n_layout_bad = 0, n_h1 = 0, n_unused = 0;
+  AnalyzeCounts counts = {0};
+  int n_unused = 0;
 
   collect(result.ast->root, &comps);
-  walk(result.ast->root, &comps, out, entry_path, &n_link_bad, &n_layout_bad,
-       &n_h1);
+  walk(result.ast->root, &comps, out, entry_path, result.ast->root, &counts);
 
   for (int i = 0; i < comps.count; i++) {
     if (!comps.used[i] && !comps.is_layout[i]) {
-      /* Skip obvious entry shells */
       if (strcmp(comps.names[i], "App") == 0) continue;
       diag_emit(out, DIAG_INFO, entry_path, comps.lines[i], comps.cols[i],
                 "component '%s' is never referenced", comps.names[i]);
@@ -166,32 +248,41 @@ int analyze_service_run(const char *entry_path, DiagList *out) {
     }
   }
 
-  if (n_h1 == 0) {
+  if (counts.n_h1 == 0) {
     diag_emit(out, DIAG_INFO, entry_path, 0, 0,
               "no h1 found (a11y heuristic)");
-  } else if (n_h1 > 3) {
+  } else if (counts.n_h1 > 3) {
     diag_emit(out, DIAG_INFO, entry_path, 0, 0,
-              "%d h1 elements — consider a single page title", n_h1);
+              "%d h1 elements — consider a single page title", counts.n_h1);
   }
 
-  /* Score: 100 minus weighted issues (deterministic, no LLM) */
+  /* Score weights documented in docs/AI_WORKFLOW.md */
   int score = 100;
-  score -= n_link_bad * 15;
-  score -= n_layout_bad * 10;
+  score -= counts.n_link_bad * 15;
+  score -= counts.n_layout_bad * 10;
   score -= n_unused * 5;
-  if (n_h1 == 0) score -= 5;
-  if (n_h1 > 3) score -= 3;
+  score -= counts.n_fetch_ui * 8;
+  score -= counts.n_form_pending * 6;
+  score -= counts.n_no_purpose * 2;
+  if (counts.n_h1 == 0) score -= 5;
+  if (counts.n_h1 > 3) score -= 3;
   if (score < 0) score = 0;
   if (score > 100) score = 100;
+  if (out_score) *out_score = score;
 
-  printf("cordlang analyze — deterministic score (no LLM)\n");
-  printf("  score: %d/100\n", score);
-  printf("  unused components: %d\n", n_unused);
-  printf("  link without to/href: %d\n", n_link_bad);
-  printf("  layout without slot: %d\n", n_layout_bad);
-  printf("  h1 count: %d\n", n_h1);
-  printf("  details: %d warning(s), %d info\n",
-         diag_count_level(out, DIAG_WARN), diag_count_level(out, DIAG_INFO));
+  if (!quiet) {
+    printf("cordlang analyze — deterministic score (no LLM)\n");
+    printf("  score: %d/100\n", score);
+    printf("  unused components: %d\n", n_unused);
+    printf("  link without to/href: %d\n", counts.n_link_bad);
+    printf("  layout without slot: %d\n", counts.n_layout_bad);
+    printf("  fetch without loading/error UI: %d\n", counts.n_fetch_ui);
+    printf("  action without pending: %d\n", counts.n_form_pending);
+    printf("  btn/link without purpose: %d\n", counts.n_no_purpose);
+    printf("  h1 count: %d\n", counts.n_h1);
+    printf("  details: %d warning(s), %d info\n",
+           diag_count_level(out, DIAG_WARN), diag_count_level(out, DIAG_INFO));
+  }
 
   compiler_result_free(&result);
   return 0;

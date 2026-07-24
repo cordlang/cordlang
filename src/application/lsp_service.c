@@ -334,14 +334,26 @@ static void publish_diagnostics(const char *uri, const char *path) {
     int line = dg->line > 0 ? dg->line - 1 : 0;
     int col = dg->col > 0 ? dg->col - 1 : 0;
     char *msg_esc = json_escape_dup(dg->message ? dg->message : "");
+    char *code_esc =
+        dg->code && dg->code[0] ? json_escape_dup(dg->code) : NULL;
     char item[4096];
-    snprintf(item, sizeof(item),
-             "%s{\"range\":{\"start\":{\"line\":%d,\"character\":%d},"
-             "\"end\":{\"line\":%d,\"character\":%d}},\"severity\":%d,"
-             "\"source\":\"cordlang\",\"message\":\"%s\"}",
-             i ? "," : "", line, col, line, col + 1, severity_of(dg->level),
-             msg_esc ? msg_esc : "");
+    if (code_esc) {
+      snprintf(item, sizeof(item),
+               "%s{\"range\":{\"start\":{\"line\":%d,\"character\":%d},"
+               "\"end\":{\"line\":%d,\"character\":%d}},\"severity\":%d,"
+               "\"source\":\"cordlang\",\"code\":\"%s\",\"message\":\"%s\"}",
+               i ? "," : "", line, col, line, col + 1, severity_of(dg->level),
+               code_esc, msg_esc ? msg_esc : "");
+    } else {
+      snprintf(item, sizeof(item),
+               "%s{\"range\":{\"start\":{\"line\":%d,\"character\":%d},"
+               "\"end\":{\"line\":%d,\"character\":%d}},\"severity\":%d,"
+               "\"source\":\"cordlang\",\"message\":\"%s\"}",
+               i ? "," : "", line, col, line, col + 1, severity_of(dg->level),
+               msg_esc ? msg_esc : "");
+    }
     free(msg_esc);
+    free(code_esc);
     size_t il = strlen(item);
     if (len + il + 4 >= cap) {
       while (len + il + 4 >= cap) cap *= 2;
@@ -674,6 +686,104 @@ static void handle_hover(const char *id, const char *msg) {
   respond_ok(id, result);
 }
 
+/* Extract 'Name' from messages like: JSX attribute 'className' is not Cordlang */
+static int extract_quoted_attr(const char *msg, char *out, size_t out_sz) {
+  if (!msg || !out || out_sz < 2) return 0;
+  const char *a = strchr(msg, '\'');
+  if (!a) return 0;
+  a++;
+  const char *b = strchr(a, '\'');
+  if (!b || b <= a) return 0;
+  size_t n = (size_t)(b - a);
+  if (n + 1 > out_sz) n = out_sz - 1;
+  memcpy(out, a, n);
+  out[n] = '\0';
+  return 1;
+}
+
+static void handle_code_action(const char *id, const char *msg) {
+  char uri[1024];
+  uri[0] = '\0';
+  const char *td = strstr(msg, "\"textDocument\"");
+  if (td) json_get_str(td, "uri", uri, sizeof(uri));
+  LspDoc *d = doc_find(uri);
+  const char *path = d && d->path ? d->path : NULL;
+  if (!path || !fs_exists(path)) {
+    respond_ok(id, "[]");
+    return;
+  }
+
+  DiagList diags;
+  diag_list_init(&diags);
+  check_service_run(path, &diags);
+
+  char *uri_esc = json_escape_dup(uri);
+  size_t cap = 4096;
+  size_t len = 0;
+  char *out = malloc(cap);
+  if (!out) {
+    free(uri_esc);
+    diag_list_free(&diags);
+    respond_ok(id, "[]");
+    return;
+  }
+  out[0] = '[';
+  len = 1;
+  int n_actions = 0;
+
+  for (size_t i = 0; i < diags.len; i++) {
+    Diagnostic *dg = &diags.items[i];
+    if (!dg->code || strcmp(dg->code, "jsx-attr") != 0) continue;
+    char attr[64];
+    if (!extract_quoted_attr(dg->message, attr, sizeof(attr))) continue;
+    const char *repl = cord_jsx_attr_replace(attr);
+    if (!repl) continue;
+
+    int line = dg->line > 0 ? dg->line - 1 : 0;
+    int col = dg->col > 0 ? dg->col - 1 : 0;
+    int end_col = col + (int)strlen(attr);
+
+    char title[128];
+    snprintf(title, sizeof(title), "Replace %s with %s", attr, repl);
+    char *title_esc = json_escape_dup(title);
+    char *repl_esc = json_escape_dup(repl);
+
+    char item[1024];
+    snprintf(item, sizeof(item),
+             "%s{\"title\":\"%s\",\"kind\":\"quickfix\","
+             "\"edit\":{\"changes\":{\"%s\":[{"
+             "\"range\":{\"start\":{\"line\":%d,\"character\":%d},"
+             "\"end\":{\"line\":%d,\"character\":%d}},"
+             "\"newText\":\"%s\"}]}}}",
+             n_actions ? "," : "", title_esc ? title_esc : "fix",
+             uri_esc ? uri_esc : "", line, col, line, end_col,
+             repl_esc ? repl_esc : "");
+    free(title_esc);
+    free(repl_esc);
+
+    size_t il = strlen(item);
+    if (len + il + 2 >= cap) {
+      while (len + il + 2 >= cap) cap *= 2;
+      char *nbuf = realloc(out, cap);
+      if (!nbuf) break;
+      out = nbuf;
+    }
+    memcpy(out + len, item, il);
+    len += il;
+    out[len] = '\0';
+    n_actions++;
+  }
+
+  if (len + 2 <= cap) {
+    out[len++] = ']';
+    out[len] = '\0';
+  }
+  respond_ok(id, out);
+  free(out);
+  free(uri_esc);
+  diag_list_free(&diags);
+}
+
 static void handle_message(const char *msg) {
   const char *method = json_method(msg);
   char id[64];
@@ -689,7 +799,8 @@ static void handle_message(const char *msg) {
              "\"documentSymbolProvider\":true,"
              "\"definitionProvider\":true,"
              "\"completionProvider\":{\"triggerCharacters\":[\" \",\"=\",\"@\"]},"
-             "\"hoverProvider\":true"
+             "\"hoverProvider\":true,"
+             "\"codeActionProvider\":true"
              "},\"serverInfo\":{\"name\":\"cordlang\",\"version\":\"%s\"}}",
              CORDLANG_VERSION);
     respond_ok(has_id ? id : "0", caps);
@@ -734,6 +845,10 @@ static void handle_message(const char *msg) {
   }
   if (strcmp(method, "textDocument/hover") == 0 && has_id) {
     handle_hover(id, msg);
+    return;
+  }
+  if (strcmp(method, "textDocument/codeAction") == 0 && has_id) {
+    handle_code_action(id, msg);
     return;
   }
   if (has_id) respond_ok(id, "null");

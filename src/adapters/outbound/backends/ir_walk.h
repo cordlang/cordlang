@@ -162,4 +162,20 @@ static inline int irw_hook_is(const IrNode *n, const char *kind) {
   return n && n->kind == IR_HOOK && n->name && kind && strcmp(n->name, kind) == 0;
 }
 
+/* Truthy Cord attr: missing/empty/"true" (shared by React/Solid emit). */
+static inline int irw_attr_truthy(const char *v) {
+  return !v || !*v || strcmp(v, "true") == 0;
+}
+
+static inline int irw_route_has_lazy(const IrNode *route) {
+  if (!route) return 0;
+  for (size_t i = 0; i < route->n_kids; i++) {
+    const IrNode *c = route->kids[i];
+    if (c && c->kind == IR_ATTR && c->name && strcmp(c->name, "lazy") == 0 &&
+        irw_attr_truthy(c->value))
+      return 1;
+  }
+  return 0;
+}
+
 #endif

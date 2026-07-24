@@ -624,14 +624,7 @@ typedef struct {
 } SolidProject;
 
 static int route_has_lazy_attr_ir(IrNode *route) {
-  if (!route) return 0;
-  for (size_t i = 0; i < route->n_kids; i++) {
-    IrNode *c = route->kids[i];
-    if (c && c->kind == IR_ATTR && c->name && strcmp(c->name, "lazy") == 0 &&
-        attr_is_true(c->value))
-      return 1;
-  }
-  return 0;
+  return irw_route_has_lazy(route);
 }
 
 static int project_is_lazy_route_name(SolidProject *proj, const char *name) {

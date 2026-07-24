@@ -15,11 +15,13 @@ You are authoring **Cordlang** — a dense UI DSL compiled to React, Svelte 5, o
 
 ## Read first (in repo)
 
-1. `docs/AI.md` — hard do / don't  
-2. `docs/CHEATSHEET.md` — one-screen syntax  
-3. `docs/GUIDE.md` — samples  
-4. `AGENTS.md` — repo rules  
-5. `skills/write-cord/references/patterns.md` — copy-paste patterns  
+1. `docs/AI_CONTEXT.md` — compact contract (preferred)
+2. `docs/AI.md` — hard do / don't  
+3. `docs/CHEATSHEET.md` — one-screen syntax  
+4. `docs/GUIDE.md` — samples  
+5. `AGENTS.md` — repo rules  
+6. `skills/write-cord/references/patterns.md` — copy-paste patterns  
+7. If `cordlang check` fails → `skills/fix-cord-check/SKILL.md` 
 
 ## Default behavior
 
@@ -28,7 +30,8 @@ You are authoring **Cordlang** — a dense UI DSL compiled to React, Svelte 5, o
 3. Mention how to run: `cordlang run`, `cordlang run react`, `cordlang run svelte`, `cordlang check`, `cordlang analyze`.  
 4. Prefer typed props: `props title: string = ""` (`string` \| `number` \| `boolean` \| `any`).  
 5. Only show generated React/Svelte if the user asks for emitted code.  
-6. After edits: `cordlang check` (or `cordlang ai check`). See `docs/AI_WORKFLOW.md`.
+6. After edits: `cordlang check` (or `cordlang ai check` / `check --json`). See `docs/AI_WORKFLOW.md`.
+7. If check fails: follow `skills/fix-cord-check/SKILL.md`.
 
 ## Syntax rules (non-negotiable)
 

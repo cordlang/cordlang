@@ -295,7 +295,10 @@ static void merge_ast_children(Node *dst_root, Node *src_root) {
     Node *c = src_root->children[i];
     if (!c) continue;
     if (c->type == NODE_USE) {
-      /* uses resolved separately; drop from merge of raw file later */
+      /* uses already resolved separately; drop and free so ast_free of
+       * the submodule does not lose them when children_len is cleared. */
+      src_root->children[i] = NULL;
+      node_free(c);
       continue;
     }
     src_root->children[i] = NULL;

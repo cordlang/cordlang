@@ -27,6 +27,10 @@ Reports median / min / max milliseconds per fixture size:
 
 See [`compare/`](./compare/) for Cord vs hand-written JSX/Svelte **source/output sizes**.
 
+## AI contract eval
+
+See [`ai_eval/`](./ai_eval/) — deterministic `check` baseline for IA-fail fixtures (no LLM).
+
 ## CI
 
 Not part of the default PR CI (timing noise). Optional:

@@ -172,8 +172,34 @@ int theme_is_color_token(const char *val) {
 
 /* ── shared CSS var / utility emit (key, val pairs) ─────── */
 
+/* Custom-property name: leading letter/underscore, then alnum/_/- */
+static int css_prop_key_ok(const char *key) {
+  if (!key || !*key) return 0;
+  if (!(isalpha((unsigned char)key[0]) || key[0] == '_')) return 0;
+  for (const char *p = key + 1; *p; p++) {
+    if (!(isalnum((unsigned char)*p) || *p == '_' || *p == '-')) return 0;
+  }
+  return 1;
+}
+
+/* Reject CSS breakout: no ; { } or controls in values we interpolate raw. */
+static int css_prop_val_ok(const char *val) {
+  if (!val || !*val) return 0;
+  for (const char *p = val; *p; p++) {
+    unsigned char c = (unsigned char)*p;
+    if (c < 0x20) return 0;
+    if (c == ';' || c == '{' || c == '}' || c == '"' || c == '\'') return 0;
+  }
+  return 1;
+}
+
 static void emit_css_var(Sb *sb, const char *key, const char *val) {
   if (!key || !val) return;
+  if (!css_prop_key_ok(key) || !css_prop_val_ok(val)) {
+    sb_appendf(sb, "  /* skipped unsafe theme entry: %s */\n",
+               css_prop_key_ok(key) ? key : "?");
+    return;
+  }
   if (entry_is_color(key, val)) {
     /* ensure # prefix for bare hex */
     if (looks_like_color(val) && val[0] != '#' &&

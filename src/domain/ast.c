@@ -25,6 +25,13 @@ Node *node_create(NodeType type, const char *value, int line, int col) {
   return n;
 }
 
+/* Like node_create, but takes ownership of `value` (malloc'd or NULL). */
+Node *node_adopt(NodeType type, char *value, int line, int col) {
+  Node *n = node_create(type, NULL, line, col);
+  n->value = value;
+  return n;
+}
+
 static void node_validate(Node *n) {
   if (!n) {
     fprintf(stderr, "FATAL: node_validate called with NULL\n");

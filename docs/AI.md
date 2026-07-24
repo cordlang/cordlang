@@ -6,11 +6,12 @@ This page is the contract for **any** model (Grok, Claude, GPT, Copilot, Cursor,
 
 Also see:
 
+- **Start here (compact):** [`AI_CONTEXT.md`](./AI_CONTEXT.md)
 - Root agent brief: [`AGENTS.md`](../AGENTS.md)
 - **Skill:** [`skills/write-cord/SKILL.md`](../skills/write-cord/SKILL.md)
 - **Attrs schema (machine-readable):** [`schema/attrs.json`](./schema/attrs.json)
-- Prop types + check: this doc + `cordlang check`
-- Workflow: [`AI_WORKFLOW.md`](./AI_WORKFLOW.md) · CLI `cordlang ai`
+- Prop types + check: this doc + `cordlang check` / `cordlang check --json`
+- Workflow: [`AI_WORKFLOW.md`](./AI_WORKFLOW.md) · CLI `cordlang ai` / `ai context` / `ai doctor`
 - Human guide: [GUIDE.md](./GUIDE.md) · [CHEATSHEET.md](./CHEATSHEET.md)
 
 ---

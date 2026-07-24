@@ -20,6 +20,47 @@ static inline int cord_is_forbidden_jsx_attr(const char *name) {
           strcmp(name, "dangerouslySetInnerHTML") == 0);
 }
 
+/* Fix hint for agents when a forbidden JSX attr is used. NULL if unknown. */
+static inline const char *cord_jsx_attr_hint(const char *name) {
+  if (!name) return NULL;
+  if (strcmp(name, "className") == 0)
+    return "use class=... or a style attr (gap/p/...)";
+  if (strcmp(name, "onClick") == 0) return "use @click=...";
+  if (strcmp(name, "onChange") == 0) return "use @change=...";
+  if (strcmp(name, "onInput") == 0) return "use @input=...";
+  if (strcmp(name, "onSubmit") == 0) return "use @submit= or form action=";
+  if (strcmp(name, "htmlFor") == 0) return "use for=";
+  if (strcmp(name, "defaultValue") == 0) return "use value= / bind=";
+  if (strcmp(name, "dangerouslySetInnerHTML") == 0)
+    return "not supported in .cord";
+  return NULL;
+}
+
+/* Replacement attr name for LSP codeAction (NULL if no simple rename). */
+static inline const char *cord_jsx_attr_replace(const char *name) {
+  if (!name) return NULL;
+  if (strcmp(name, "className") == 0) return "class";
+  if (strcmp(name, "onClick") == 0) return "@click";
+  if (strcmp(name, "onChange") == 0) return "@change";
+  if (strcmp(name, "onInput") == 0) return "@input";
+  if (strcmp(name, "onSubmit") == 0) return "@submit";
+  if (strcmp(name, "htmlFor") == 0) return "for";
+  return NULL;
+}
+
+static inline int cord_is_purpose_vocab(const char *v) {
+  return v && (strcmp(v, "navigation") == 0 || strcmp(v, "content") == 0 ||
+               strcmp(v, "action") == 0 || strcmp(v, "form") == 0 ||
+               strcmp(v, "status") == 0 || strcmp(v, "decoration") == 0 ||
+               strcmp(v, "landmark") == 0);
+}
+
+static inline int cord_is_importance_vocab(const char *v) {
+  return v && (strcmp(v, "primary") == 0 || strcmp(v, "secondary") == 0 ||
+               strcmp(v, "tertiary") == 0 || strcmp(v, "optional") == 0 ||
+               strcmp(v, "critical") == 0);
+}
+
 static inline int cord_is_style_attr(const char *name) {
   return name &&
          (strcmp(name, "variant") == 0 || strcmp(name, "size") == 0 ||

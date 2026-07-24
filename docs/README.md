@@ -7,7 +7,8 @@ Start here for humans and for AI tools.
 | [GUIDE.md](./GUIDE.md) | Everyone | Practical guide **with samples** |
 | [CHEATSHEET.md](./CHEATSHEET.md) | Everyone | One-screen syntax |
 | [EXAMPLES.md](./EXAMPLES.md) | Everyone | Catalog of `examples/` + `my-app/` |
-| [AI.md](./AI.md) | **AI models** | Do / don't contract for LLMs |
+| [AI_CONTEXT.md](./AI_CONTEXT.md) | **AI models** | Compact contract (start here) |
+| [AI.md](./AI.md) | **AI models** | Full do / don't contract for LLMs |
 | [LANGUAGE.md](./LANGUAGE.md) | Design | Language design notes (ex-`idea.md`) |
 | [SPEC.md](./SPEC.md) | Language | Normative syntax & semantics (v0.x) |
 | [REACT.md](./REACT.md) | Backend map | Cordlang ↔ React |
@@ -45,4 +46,4 @@ Start here for humans and for AI tools.
 2. Open `my-app/src/` and `examples/counter.cord`  
 3. [CHEATSHEET.md](./CHEATSHEET.md) while coding  
 4. [REACT.md](./REACT.md) / [SVELTE.md](./SVELTE.md) when mapping mental models  
-5. If you are an LLM: [AI.md](./AI.md) + [AGENTS.md](../AGENTS.md)  
+5. If you are an LLM: [AI_CONTEXT.md](./AI_CONTEXT.md) → [AI.md](./AI.md) + [AGENTS.md](../AGENTS.md)  

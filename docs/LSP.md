@@ -26,15 +26,17 @@ Install (dev): `cd editor/vscode && npm install`, then open as extension folder.
 
 | Method | Behavior |
 |--------|----------|
-| `initialize` | sync + documentSymbol + definition + **completion** + **hover** |
-| `textDocument/didOpen\|didChange\|didSave` | `check` → `publishDiagnostics` |
+| `initialize` | sync + documentSymbol + definition + **completion** + **hover** + **codeAction** |
+| `textDocument/didOpen\|didChange\|didSave` | `check` → `publishDiagnostics` (includes `code` when set) |
 | `textDocument/documentSymbol` | components from project parse |
 | `textDocument/definition` | goto component under cursor |
 | `textDocument/completion` | tags / attrs / keywords (schema surface) |
 | `textDocument/hover` | tag/attr/keyword docs; prop types when known |
+| `textDocument/codeAction` | quickfix rename for JSX traps (`className`→`class`, `onClick`→`@click`, …) |
 | `shutdown` / `exit` | clean shutdown |
 
 ## Roadmap leftovers
 
 - Formatting / rename / references via LSP
 - Schema JSON loaded dynamically (today: embedded lists + `known_attrs.h`)
+- Autofix for `bad-interp` (`{x}` → `#{x}`) beyond attr renames

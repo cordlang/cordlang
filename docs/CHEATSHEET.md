@@ -69,6 +69,6 @@ route /p/:id => pages/ProductPage
 
 ```
 run | run react|svelte [--check] [--watch]
-check | analyze | ai [check] | fmt | symbols | goto Name
+check [--json] | analyze [--json] | ai [check|context|doctor] | fmt | symbols | goto Name
 compile file.cord --backend react|svelte|html|--ir
 ```

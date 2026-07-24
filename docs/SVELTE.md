@@ -334,7 +334,7 @@ backend React:
 | `link to=/x` | `<a href="#/x">` |
 | `params id` | props desde `matchRoute` |
 | `lazy Page = pages/Heavy` | `() => import(...)` + `{#await}` |
-| **SvelteKit** file routing / SSR | roadmap backend `kit` (Fase E6) |
+| **SvelteKit** file routing / SSR | meta-backend MVP `sveltekit` (SPA wrap; not full Kit) |
 
 ---
 

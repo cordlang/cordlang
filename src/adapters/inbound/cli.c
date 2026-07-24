@@ -33,10 +33,12 @@ static void print_usage(void) {
   printf("  cordlang run <backend> --check Scaffold + npm install (if needed) + vite build\n");
   printf("  cordlang run <backend> --watch Watch src/**/*.cord and rebuild on change\n");
   printf("  cordlang build <backend>       Compile entry to dist only\n");
-  printf("  cordlang check [path]          Semantic checks (diagnostics)\n");
-  printf("  cordlang analyze [path]        Deterministic score / heuristics (no LLM)\n");
+  printf("  cordlang check [path] [--json] Semantic checks (diagnostics)\n");
+  printf("  cordlang analyze [path] [--json] Deterministic score / heuristics (no LLM)\n");
   printf("  cordlang ai                    AI workflow help (propose → check)\n");
   printf("  cordlang ai check [path]       Same as: cordlang check [path]\n");
+  printf("  cordlang ai context            Print compact AI contract\n");
+  printf("  cordlang ai doctor [path]      check + analyze summary\n");
   printf("  cordlang compile <file.cord>   Compile a single file to stdout\n");
   printf("  cordlang fmt [path]            Format .cord file(s) in place\n");
   printf("  cordlang fmt --check [path]    Exit 1 if formatting would change files\n");
@@ -158,21 +160,33 @@ static char *resolve_check_entry(const char *path) {
 }
 
 static int cmd_check(int argc, char **argv) {
-  const char *path = argc > 0 ? argv[0] : ".";
+  int as_json = 0;
+  const char *path = ".";
+  for (int i = 0; i < argc; i++) {
+    if (strcmp(argv[i], "--json") == 0)
+      as_json = 1;
+    else if (argv[i][0] != '-')
+      path = argv[i];
+  }
   char *entry = resolve_check_entry(path);
   if (!entry) return 1;
 
   DiagList diags;
   diag_list_init(&diags);
   int rc = check_service_run(entry, &diags);
-  diag_print_all(&diags);
-  if (rc == 0 && diags.len == 0)
-    printf("OK: no issues in %s\n", entry);
-  else if (rc == 0)
-    printf("OK: %zu warning(s), 0 errors in %s\n", diags.len, entry);
-  else
-    fprintf(stderr, "check failed: %d error(s) in %s\n", diag_error_count(&diags),
-            entry);
+  if (as_json) {
+    diag_print_json(&diags);
+    fputc('\n', stdout);
+  } else {
+    diag_print_all(&diags);
+    if (rc == 0 && diags.len == 0)
+      printf("OK: no issues in %s\n", entry);
+    else if (rc == 0)
+      printf("OK: %zu warning(s), 0 errors in %s\n", diags.len, entry);
+    else
+      fprintf(stderr, "check failed: %d error(s) in %s\n",
+              diag_error_count(&diags), entry);
+  }
 
   diag_list_free(&diags);
   free(entry);
@@ -446,32 +460,119 @@ static int cmd_fmt(int argc, char **argv) {
 }
 
 static int cmd_analyze(int argc, char **argv) {
-  const char *path = argc > 0 ? argv[0] : ".";
+  int as_json = 0;
+  const char *path = ".";
+  for (int i = 0; i < argc; i++) {
+    if (strcmp(argv[i], "--json") == 0)
+      as_json = 1;
+    else if (argv[i][0] != '-')
+      path = argv[i];
+  }
   char *entry = resolve_check_entry(path);
   if (!entry) return 1;
 
   DiagList diags;
   diag_list_init(&diags);
-  int rc = analyze_service_run(entry, &diags);
-  diag_print_all(&diags);
+  int score = 0;
+  int rc = analyze_service_run_opts(entry, &diags, as_json ? 1 : 0, &score);
+  if (as_json) {
+    printf("{\"score\":%d,\"diagnostics\":", score);
+    diag_print_json(&diags);
+    printf("}\n");
+  } else {
+    diag_print_all(&diags);
+  }
   diag_list_free(&diags);
   free(entry);
   return rc;
 }
 
+static int ai_print_context(void) {
+  static const char *paths[] = {
+      "docs/AI_CONTEXT.md",
+      "cordlang/docs/AI_CONTEXT.md",
+      "../docs/AI_CONTEXT.md",
+      NULL,
+  };
+  for (int i = 0; paths[i]; i++) {
+    if (!fs_exists(paths[i])) continue;
+    size_t len = 0;
+    char *body = fs_read_file(paths[i], &len);
+    if (!body) continue;
+    fwrite(body, 1, len, stdout);
+    if (len == 0 || body[len - 1] != '\n') fputc('\n', stdout);
+    free(body);
+    return 0;
+  }
+  /* Embedded fallback if docs not found from CWD */
+  printf("# Cordlang AI context (embedded fallback)\n\n");
+  printf("Prefer .cord over JSX. Use #{expr}, @click=, state/setX.\n");
+  printf("Validate: cordlang check [--json]\n");
+  printf("Schema: docs/schema/attrs.json · Skill: skills/write-cord/\n");
+  printf("Full file missing — open docs/AI_CONTEXT.md from the repo.\n");
+  return 0;
+}
+
+static int ai_doctor(int argc, char **argv) {
+  const char *path = ".";
+  for (int i = 0; i < argc; i++) {
+    if (argv[i][0] != '-') path = argv[i];
+  }
+  char *entry = resolve_check_entry(path);
+  if (!entry) return 1;
+
+  printf("cordlang ai doctor\n");
+  printf("  version: %s\n", CORDLANG_VERSION);
+  printf("  entry: %s\n", entry);
+
+  DiagList check_diags;
+  diag_list_init(&check_diags);
+  int check_rc = check_service_run(entry, &check_diags);
+  printf("  check: %s (%d error(s), %d warning(s), %d info)\n",
+         check_rc == 0 ? "ok" : "FAILED", diag_error_count(&check_diags),
+         diag_count_level(&check_diags, DIAG_WARN),
+         diag_count_level(&check_diags, DIAG_INFO));
+  diag_print_all(&check_diags);
+  diag_list_free(&check_diags);
+
+  DiagList analyze_diags;
+  diag_list_init(&analyze_diags);
+  int score = 0;
+  int arc = analyze_service_run_opts(entry, &analyze_diags, 1, &score);
+  if (arc != 0) {
+    printf("  analyze: FAILED (parse)\n");
+    diag_print_all(&analyze_diags);
+  } else {
+    printf("  analyze score: %d/100 (%d warning(s), %d info)\n", score,
+           diag_count_level(&analyze_diags, DIAG_WARN),
+           diag_count_level(&analyze_diags, DIAG_INFO));
+    diag_print_all(&analyze_diags);
+  }
+  diag_list_free(&analyze_diags);
+  free(entry);
+  return check_rc != 0 ? 1 : 0;
+}
+
 static int cmd_ai(int argc, char **argv) {
   if (argc > 0 && strcmp(argv[0], "check") == 0)
     return cmd_check(argc - 1, argv + 1);
+  if (argc > 0 && strcmp(argv[0], "context") == 0)
+    return ai_print_context();
+  if (argc > 0 && strcmp(argv[0], "doctor") == 0)
+    return ai_doctor(argc - 1, argv + 1);
 
   printf("Cordlang AI workflow (LLM outside the compiler)\n\n");
-  printf("1. Edit .cord with skills/write-cord (or any model + docs/AI.md)\n");
-  printf("2. Validate:  cordlang check [path]\n");
-  printf("3. Optional:  cordlang analyze [path]   # score, no LLM\n");
+  printf("1. Edit .cord with skills/write-cord (or any model + docs/AI_CONTEXT.md)\n");
+  printf("2. Validate:  cordlang check [path] [--json]\n");
+  printf("3. Optional:  cordlang analyze [path] [--json]\n");
   printf("4. Preview:   cordlang run react --watch\n");
   printf("              cordlang run svelte --check\n\n");
-  printf("Docs: docs/AI.md · docs/AI_WORKFLOW.md · docs/schema/attrs.json\n");
-  printf("Skill: skills/write-cord/\n\n");
-  printf("Shortcut: cordlang ai check [path]\n");
+  printf("Docs: docs/AI_CONTEXT.md · docs/AI.md · docs/AI_WORKFLOW.md · docs/schema/attrs.json\n");
+  printf("Skills: skills/write-cord/ · skills/fix-cord-check/\n\n");
+  printf("Shortcuts:\n");
+  printf("  cordlang ai check [path] [--json]\n");
+  printf("  cordlang ai context\n");
+  printf("  cordlang ai doctor [path]\n");
   return 0;
 }
 

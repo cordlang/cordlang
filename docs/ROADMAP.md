@@ -305,9 +305,9 @@ DESPUÉS ► Horizonte B (semántica, marketplace, Vue/Solid, Kit/Next, …)
 | **A1** | DX `.cord` | P0 | Diagnósticos en `check` (attrs, traps JSX); LSP mínimo / snippets; preview `run --watch` documentado; skill al día | Agente edita app con `check` verde sin inventar keywords |
 | **A2** | Contratos anti-alucinación | P0 | `props name: string` + validación; [`schema/attrs.json`](./schema/attrs.json) para LSP/IA | Schema machine-readable + check tipado |
 | **A3** | IR + paridad React/Svelte | P0–P1 | Checklist en SVELTE.md; goldens; IR.md como contrato de backends | Misma app compila React y Svelte con UI equivalente en features soportadas |
-| **A4** | Tooling IA (CLI/skill) | P1 | `cordlang ai` + skill propose→`check`; fixtures IA-fail→fix | Sin LLM en `compile` |
+| **A4** | Tooling IA (CLI/skill) | P1 | `cordlang ai` + `ai context`/`doctor` + `check --json` + hints; fixtures IA-fail→fix; `fix-cord-check`; `.cursor/rules` | Sin LLM en `compile` · ✅ |
 | **A5** | Templates Cord | P1–P2 | 3–5 plantillas en `templates/`; docs; `cord add` más adelante | Repo + TEMPLATES.md |
-| **A6** | Analyze determinista | P2 | `cordlang analyze` — reglas score **sin LLM** | Heurísticas a11y/estructura; LLM solo sugerencias opcionales post-A |
+| **A6** | Analyze determinista | P2 | `cordlang analyze` — score **sin LLM** (+ fetch/pending/purpose heuristics, `--json`) | ✅ |
 
 ### 4.2 Fase G — hecho (histórico)
 
@@ -315,7 +315,7 @@ DESPUÉS ► Horizonte B (semántica, marketplace, Vue/Solid, Kit/Next, …)
 |---|------|--------|
 | G0–G6 | Repo público, theme/HTML IR, CI, my-app `--check`, docs/AI skill, MIT | ✅ |
 | G7 | Source maps reales | ✅ VLQ from source= markers |
-| G8 | LSP full | parcialmente → `cordlang lsp` (diagnostics/symbols/definition); completion/hover abiertos |
+| G8 | LSP full | parcialmente → `cordlang lsp` (diagnostics/symbols/definition/completion/hover/**codeAction**); rename/format abiertos |
 
 ### 4.2b Fase H — Madurez del proyecto ✅ (2026-07-24)
 
@@ -336,7 +336,9 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 
 | Tema | Notas |
 |------|--------|
-| Metadata semántica (`purpose`, `importance`) | ✅ vocabulario en `schema/attrs.json` + `known_attrs`; passthrough HTML/email `data-*` |
+| Metadata semántica (`purpose`, `importance`) | ✅ vocabulario + check warning si fuera de vocab; templates/`my-app` demos |
+| AI eval harness | ✅ `bench/ai_eval/` (contrato determinista; LLM opcional después) |
+| MCP Cordlang / playground WASM real | ⏳ post-plan (stub playground; sin MCP aún) |
 | Marketplace `cord add` | ✅ MVP local (`cordlang add`); registry remoto pendiente |
 | Email HTML / PDF desde IR | ✅ |
 | Vue / Solid | ✅ |
@@ -436,4 +438,4 @@ Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `ir`, `dx`, `ci`
 
 ---
 
-*Última actualización: Fase F ecosistema MVP (add / init --template / versioning / playground stub / native spike); prioridades = polish + WASM real / registry remoto.*
+*Última actualización: tooling IA (check --json / hints / ai context|doctor / fix-cord-check / analyze ampliado / LSP codeAction / ai_eval); playground WASM real y MCP Cordlang = pendientes.*

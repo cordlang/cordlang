@@ -210,10 +210,24 @@ static void walk_checks(Node *n, const NameSet *defs, CheckCtx *ctx,
       if (ch->type == NODE_ATTR && ch->value) {
         if (strcmp(ch->value, "alt") == 0) has_alt = 1;
         if (cord_is_forbidden_jsx_attr(ch->value)) {
-          diag_emit(out, DIAG_ERROR, file, ch->line, ch->col,
-                    "JSX attribute '%s' is not Cordlang — use @events / style "
-                    "attrs (see docs/schema/attrs.json)",
-                    ch->value);
+          diag_emit_ex(out, DIAG_ERROR, file, ch->line, ch->col, "jsx-attr",
+                       cord_jsx_attr_hint(ch->value),
+                       "JSX attribute '%s' is not Cordlang — use @events / "
+                       "style attrs (see docs/schema/attrs.json)",
+                       ch->value);
+        } else if (strcmp(ch->value, "purpose") == 0 && ch->value2 &&
+                   !cord_is_purpose_vocab(ch->value2)) {
+          diag_emit_ex(out, DIAG_WARN, file, ch->line, ch->col, "semantic-vocab",
+                       "use navigation|content|action|form|status|decoration|"
+                       "landmark",
+                       "purpose='%s' is outside documented vocabulary",
+                       ch->value2);
+        } else if (strcmp(ch->value, "importance") == 0 && ch->value2 &&
+                   !cord_is_importance_vocab(ch->value2)) {
+          diag_emit_ex(out, DIAG_WARN, file, ch->line, ch->col, "semantic-vocab",
+                       "use primary|secondary|tertiary|optional|critical",
+                       "importance='%s' is outside documented vocabulary",
+                       ch->value2);
         } else if (builtin && !cord_is_known_attr(ch->value)) {
           diag_emit(out, DIAG_WARN, file, ch->line, ch->col,
                     "unknown attribute '%s' on tag '%s'", ch->value, n->value);
@@ -221,8 +235,9 @@ static void walk_checks(Node *n, const NameSet *defs, CheckCtx *ctx,
       }
       if (ch->type == NODE_BOOL_ATTR && ch->value) {
         if (cord_is_forbidden_jsx_attr(ch->value)) {
-          diag_emit(out, DIAG_ERROR, file, ch->line, ch->col,
-                    "JSX attribute '%s' is not Cordlang", ch->value);
+          diag_emit_ex(out, DIAG_ERROR, file, ch->line, ch->col, "jsx-attr",
+                       cord_jsx_attr_hint(ch->value),
+                       "JSX attribute '%s' is not Cordlang", ch->value);
         } else if (builtin && !cord_is_known_attr(ch->value)) {
           diag_emit(out, DIAG_WARN, file, ch->line, ch->col,
                     "unknown attribute '%s' on tag '%s'", ch->value, n->value);
@@ -233,6 +248,27 @@ static void walk_checks(Node *n, const NameSet *defs, CheckCtx *ctx,
     if (builtin && strcmp(n->value, "img") == 0 && !has_alt) {
       diag_emit(out, DIAG_WARN, file, n->line, n->col,
                 "img without alt — add alt=\"...\" (or alt=\"\" if decorative)");
+    }
+  }
+
+  /* AI trap: bare {expr} in text instead of #{expr} */
+  if (n->type == NODE_TEXT && n->value) {
+    const char *s = n->value;
+    for (size_t i = 0; s[i]; i++) {
+      if (s[i] != '{') continue;
+      if (i > 0 && s[i - 1] == '#') continue;
+      /* Skip JSON-ish or CSS; require {ident} shape */
+      size_t j = i + 1;
+      if (!s[j] || !(isalpha((unsigned char)s[j]) || s[j] == '_')) continue;
+      while (s[j] && (isalnum((unsigned char)s[j]) || s[j] == '_' ||
+                      s[j] == '.'))
+        j++;
+      if (s[j] == '}') {
+        diag_emit_ex(out, DIAG_ERROR, file, n->line, n->col, "bad-interp",
+                     "use #{expr} for interpolation (not {expr})",
+                     "JSX-style '{…}' in text — Cordlang uses #{…}");
+        break;
+      }
     }
   }
 

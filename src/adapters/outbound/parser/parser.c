@@ -117,17 +117,17 @@ static Node *parse_style_map(Parser *p) {
           val_str = token_str(val);
         }
 
-        Node *entry = node_create(NODE_STYLE_ENTRY, key_str, key.line, key.col);
+        Node *entry = node_adopt(NODE_STYLE_ENTRY, key_str, key.line, key.col);
         if (val_str) entry->value2 = val_str;
         node_add_child(map, entry);
       } else if (peek(p).type == TOKEN_IDENTIFIER || peek(p).type == TOKEN_NUMBER || peek(p).type == TOKEN_STRING) {
         Token val = advance(p);
         char *val_str = token_str(val);
-        Node *entry = node_create(NODE_STYLE_ENTRY, key_str, key.line, key.col);
+        Node *entry = node_adopt(NODE_STYLE_ENTRY, key_str, key.line, key.col);
         entry->value2 = val_str;
         node_add_child(map, entry);
       } else {
-        Node *entry = node_create(NODE_STYLE_ENTRY, key_str, key.line, key.col);
+        Node *entry = node_adopt(NODE_STYLE_ENTRY, key_str, key.line, key.col);
         entry->value2 = strdup("true");
         node_add_child(map, entry);
       }
@@ -159,7 +159,7 @@ static Node *parse_attrs(Parser *p, Node *element) {
       if (peek(p).type == TOKEN_IDENTIFIER) {
         Token event = advance(p);
         char *event_name = token_str(event);
-        Node *evt_node = node_create(NODE_EVENT, event_name, event.line, event.col);
+        Node *evt_node = node_adopt(NODE_EVENT, event_name, event.line, event.col);
 
         if (match(p, TOKEN_EQUALS)) {
           /* Capture full handler: name | name(...) | (expr) */
@@ -325,12 +325,13 @@ static Node *parse_attrs(Parser *p, Node *element) {
         Token var = p->current;
         loop->value = token_str(var);
         consume(p, TOKEN_IDENTIFIER, "Expected 'in' after for variable");
-        if (strcmp(token_str(p->current), "in") != 0) {
+        {
+          char *in_chk = token_str(p->current);
+          int is_in = in_chk && strcmp(in_chk, "in") == 0;
+          free(in_chk);
           Token tok = advance(p);
           loop->value2 = token_str(tok);
-        } else {
-          Token tok = advance(p);
-          loop->value2 = token_str(tok);
+          (void)is_in; /* both branches took the next token historically */
         }
         node_add_child(element, loop);
         free(key_str);
@@ -349,7 +350,7 @@ static Node *parse_attrs(Parser *p, Node *element) {
       }
 
       if (strcmp(key_str, "else") == 0) {
-        node_add_child(element, node_create(NODE_TEXT, strdup("__else__"), key.line, key.col));
+        node_add_child(element, node_create(NODE_TEXT, "__else__", key.line, key.col));
         free(key_str);
         continue;
       }
@@ -363,7 +364,7 @@ static Node *parse_attrs(Parser *p, Node *element) {
         } else if (peek(p).type == TOKEN_STRING) {
           Token val = advance(p);
           char *val_str = token_str(val);
-          Node *attr = node_create(NODE_ATTR, key_str, key.line, key.col);
+          Node *attr = node_adopt(NODE_ATTR, key_str, key.line, key.col);
           attr->value2 = val_str;
           node_add_child(element, attr);
         } else if (peek(p).type == TOKEN_IDENTIFIER || peek(p).type == TOKEN_NUMBER) {
@@ -415,11 +416,11 @@ static Node *parse_attrs(Parser *p, Node *element) {
             free(val_str);
             val_str = strdup(buf);
           }
-          Node *attr = node_create(NODE_ATTR, key_str, key.line, key.col);
+          Node *attr = node_adopt(NODE_ATTR, key_str, key.line, key.col);
           attr->value2 = val_str;
           node_add_child(element, attr);
         } else {
-          Node *attr = node_create(NODE_ATTR, key_str, key.line, key.col);
+          Node *attr = node_adopt(NODE_ATTR, key_str, key.line, key.col);
           attr->value2 = strdup("true");
           node_add_child(element, attr);
         }
@@ -427,12 +428,12 @@ static Node *parse_attrs(Parser *p, Node *element) {
         if (peek(p).type == TOKEN_IDENTIFIER) {
           Token val = advance(p);
           char *val_str = token_str(val);
-          Node *attr = node_create(NODE_ATTR, key_str, key.line, key.col);
+          Node *attr = node_adopt(NODE_ATTR, key_str, key.line, key.col);
           attr->value2 = val_str;
           node_add_child(element, attr);
         }
       } else {
-        Node *bool_attr = node_create(NODE_BOOL_ATTR, key_str, key.line, key.col);
+        Node *bool_attr = node_adopt(NODE_BOOL_ATTR, key_str, key.line, key.col);
         node_add_child(element, bool_attr);
       }
     }
@@ -466,7 +467,7 @@ static Node *parse_element(Parser *p) {
 
   Token tag_tok = advance(p);
   char *tag_name = token_str(tag_tok);
-  Node *element = node_create(NODE_ELEMENT, tag_name, tag_tok.line, tag_tok.col);
+  Node *element = node_adopt(NODE_ELEMENT, tag_name, tag_tok.line, tag_tok.col);
 
   parse_attrs(p, element);
 
@@ -500,7 +501,7 @@ static char *parse_default_value(Parser *p) {
 static Node *parse_prop_node(Parser *p) {
   Token prop = advance(p);
   Node *prop_node =
-      node_create(NODE_TEXT, token_str(prop), prop.line, prop.col);
+      node_adopt(NODE_TEXT, token_str(prop), prop.line, prop.col);
   if (match(p, TOKEN_COLON)) {
     if (peek(p).type == TOKEN_IDENTIFIER) {
       Token ty = advance(p);
@@ -523,7 +524,7 @@ static Node *parse_def(Parser *p) {
 
   Token name_tok = advance(p);
   char *name = token_str(name_tok);
-  Node *def = node_create(NODE_COMPONENT_DEF, name, name_tok.line, name_tok.col);
+  Node *def = node_adopt(NODE_COMPONENT_DEF, name, name_tok.line, name_tok.col);
 
   /* Optional flags after name: def FancyInput forwardRef */
   while (peek(p).type == TOKEN_IDENTIFIER) {
@@ -642,7 +643,7 @@ static Node *parse_def(Parser *p) {
           continue;
         }
         Token st = advance(p);
-        Node *st_node = node_create(NODE_STATE_DECL, token_str(st), st.line, st.col);
+        Node *st_node = node_adopt(NODE_STATE_DECL, token_str(st), st.line, st.col);
         if (match(p, TOKEN_EQUALS)) st_node->value2 = parse_default_value(p);
         node_add_child(state, st_node);
       }
@@ -657,7 +658,7 @@ static Node *parse_def(Parser *p) {
       if (peek(p).type == TOKEN_IDENTIFIER) {
         Token comp = advance(p);
         Node *computed =
-            node_create(NODE_COMPUTED_DECL, token_str(comp), comp.line, comp.col);
+            node_adopt(NODE_COMPUTED_DECL, token_str(comp), comp.line, comp.col);
         if (match(p, TOKEN_EQUALS)) {
           /* Capture rest of line as expression */
           char expr[512] = {0};
@@ -703,7 +704,7 @@ static Node *parse_layout(Parser *p) {
     line = name_tok.line;
     col = name_tok.col;
     lname = NULL; /* will use token_str */
-    Node *layout = node_create(NODE_COMPONENT_DEF, token_str(name_tok), line, col);
+    Node *layout = node_adopt(NODE_COMPONENT_DEF, token_str(name_tok), line, col);
     layout->value2 = strdup("__layout__");
 
     while (peek(p).type == TOKEN_NEWLINE) advance(p);
@@ -739,7 +740,7 @@ static Node *parse_layout(Parser *p) {
 static Node *parse_theme(Parser *p) {
   advance(p);
   Token name_tok = advance(p);
-  Node *theme = node_create(NODE_THEME, token_str(name_tok), name_tok.line, name_tok.col);
+  Node *theme = node_adopt(NODE_THEME, token_str(name_tok), name_tok.line, name_tok.col);
 
   while (peek(p).type != TOKEN_DEDENT && peek(p).type != TOKEN_EOF) {
     if (peek(p).type == TOKEN_NEWLINE) { advance(p); continue; }
@@ -750,7 +751,7 @@ static Node *parse_theme(Parser *p) {
         if (peek(p).type == TOKEN_STRING || peek(p).type == TOKEN_IDENTIFIER || peek(p).type == TOKEN_NUMBER) {
           Token val = advance(p);
           char *val_str = token_str(val);
-          Node *entry = node_create(NODE_ATTR, token_str(key), key.line, key.col);
+          Node *entry = node_adopt(NODE_ATTR, token_str(key), key.line, key.col);
           entry->value2 = val_str;
           node_add_child(theme, entry);
         }
@@ -888,7 +889,7 @@ static Node *parse_route(Parser *p) {
         free(pn);
         if (stop) break;
         advance(p);
-        node_add_child(props, node_create(NODE_TEXT, token_str(prop), prop.line,
+        node_add_child(props, node_adopt(NODE_TEXT, token_str(prop), prop.line,
                                           prop.col));
       }
       node_add_child(route, props);
@@ -1814,7 +1815,10 @@ static Node *parse_react_decl(Parser *p) {
       if (strcmp(k, "to") == 0) {
         advance(p);
         free(k);
-        if (match(p, TOKEN_EQUALS)) por->value = capture_expr_line(p);
+        if (match(p, TOKEN_EQUALS)) {
+          free(por->value);
+          por->value = capture_expr_line(p);
+        }
       } else {
         free(k);
       }
@@ -2460,7 +2464,7 @@ static Node *parse_stmt(Parser *p) {
         continue;
       }
       Token st = advance(p);
-      Node *st_node = node_create(NODE_STATE_DECL, token_str(st), st.line, st.col);
+      Node *st_node = node_adopt(NODE_STATE_DECL, token_str(st), st.line, st.col);
       if (match(p, TOKEN_EQUALS)) st_node->value2 = parse_default_value(p);
       node_add_child(state, st_node);
     }
@@ -2473,7 +2477,7 @@ static Node *parse_stmt(Parser *p) {
     if (peek(p).type == TOKEN_IDENTIFIER) {
       Token comp = advance(p);
       Node *computed =
-          node_create(NODE_COMPUTED_DECL, token_str(comp), comp.line, comp.col);
+          node_adopt(NODE_COMPUTED_DECL, token_str(comp), comp.line, comp.col);
       if (match(p, TOKEN_EQUALS)) {
         char expr[512] = {0};
         size_t elen = 0;
@@ -2520,7 +2524,7 @@ static Node *parse_stmt(Parser *p) {
     return parse_if(p);
   } else if (strcmp(kw, "else") == 0) {
     free(kw);
-    Node *else_marker = node_create(NODE_TEXT, strdup("__else__"), check.line, check.col);
+    Node *else_marker = node_create(NODE_TEXT, "__else__", check.line, check.col);
     (void)advance(p);
     if (peek(p).type == TOKEN_NEWLINE) {
       advance(p);

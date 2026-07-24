@@ -73,6 +73,8 @@ typedef struct Node {
 } Node;
 
 Node *node_create(NodeType type, const char *value, int line, int col);
+/* Takes ownership of value (malloc'd or NULL). Prefer over node_create(token_str()). */
+Node *node_adopt(NodeType type, char *value, int line, int col);
 void node_add_child(Node *parent, Node *child);
 void node_free(Node *node);
 Node *node_clone(const Node *node);
