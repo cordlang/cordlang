@@ -125,6 +125,91 @@ foreach ($name in $names) {
   }
 }
 
+# ── Regression tests (Phase H1) ─────────────────────────────
+Write-Host ""
+Write-Host "Regression tests"
+
+$RegRoot = Join-Path $Root "tests\regression"
+if (Test-Path -LiteralPath $RegRoot) {
+  $regDirs = Get-ChildItem -LiteralPath $RegRoot -Directory | Where-Object { $_.Name -notlike ".*" }
+  foreach ($dir in $regDirs) {
+    $input = Join-Path $dir.FullName "input.cord"
+    if (-not (Test-Path -LiteralPath $input)) { continue }
+    $slug = $dir.Name
+
+    $expectFail = Join-Path $dir.FullName "expect_check_nonzero"
+    if (Test-Path -LiteralPath $expectFail) {
+      $label = "regression/$slug (check)"
+      $out = & $Cordlang check $input 2>&1 | Out-String
+      $ec = $LASTEXITCODE
+      if ($ec -eq 0) {
+        Write-Host ("FAIL: " + $label + " - expected non-zero check") -ForegroundColor Red
+        $failed = $failed + 1
+      } else {
+        $needlePath = Join-Path $dir.FullName "expect_check_contains.txt"
+        if (Test-Path -LiteralPath $needlePath) {
+          $needle = (Get-Content -LiteralPath $needlePath -TotalCount 1)
+          if ($out -like ("*" + $needle + "*")) {
+            Write-Host ("PASS: " + $label) -ForegroundColor Green
+            $passed = $passed + 1
+          } else {
+            Write-Host ("FAIL: " + $label + " - missing substring '" + $needle + "'") -ForegroundColor Red
+            Write-Host $out
+            $failed = $failed + 1
+          }
+        } else {
+          Write-Host ("PASS: " + $label) -ForegroundColor Green
+          $passed = $passed + 1
+        }
+      }
+    }
+
+    foreach ($backend in $backends) {
+      $expectedPath = Join-Path $dir.FullName ("expected." + $backend + ".txt")
+      if (-not (Test-Path -LiteralPath $expectedPath)) { continue }
+      $label = "regression/$slug (" + $backend + ")"
+      $args = @("compile", $input, "--backend", $backend)
+      $stdout = & $Cordlang @args 2>&1
+      $exitCode = $LASTEXITCODE
+      if ($exitCode -ne 0) {
+        Write-Host ("FAIL: " + $label + " - compile exit " + $exitCode) -ForegroundColor Red
+        $failed = $failed + 1
+        continue
+      }
+      if ($stdout -is [System.Array]) {
+        $actualRaw = ($stdout | ForEach-Object { "$_" }) -join "`n"
+        if (-not $actualRaw.EndsWith("`n") -and $actualRaw.Length -gt 0) {
+          $actualRaw = $actualRaw + "`n"
+        }
+      } else {
+        $actualRaw = [string]$stdout
+      }
+      $actual = Get-NormalizedText $actualRaw
+
+      if ($UpdateGoldens) {
+        $utf8 = New-Object System.Text.UTF8Encoding $false
+        [System.IO.File]::WriteAllText($expectedPath, $actual, $utf8)
+        Write-Host ("UPDATE: " + $label) -ForegroundColor Cyan
+        $updated = $updated + 1
+        $passed = $passed + 1
+        continue
+      }
+
+      $expected = Get-NormalizedText ([System.IO.File]::ReadAllText($expectedPath))
+      if ($actual -eq $expected) {
+        Write-Host ("PASS: " + $label) -ForegroundColor Green
+        $passed = $passed + 1
+      } else {
+        Write-Host ("FAIL: " + $label + " - output differs from expected") -ForegroundColor Red
+        Write-Host ("  expected: " + $expectedPath)
+        $failed = $failed + 1
+      }
+    }
+  }
+} else {
+  Write-Host "SKIP: tests/regression not present" -ForegroundColor Yellow
+}
+
 # ── Formatter tests (Phase C6) ─────────────────────────────
 Write-Host ""
 Write-Host "Formatter tests (fmt)"

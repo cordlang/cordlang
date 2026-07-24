@@ -1,0 +1,6 @@
+# Golden: dotted filenames and escaped quotes stay strings
+
+def X
+  col
+    p "build.bat"
+    p "say \"hi\" please"

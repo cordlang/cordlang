@@ -1,0 +1,34 @@
+// ===== src/components/Demo.jsx =====
+/* cordlang: source=src/components/Demo.cord */
+import { useState } from 'react';
+
+export default function Demo({  }) {
+  const [count, setCount] = useState(1);
+  return (
+    <>
+      <div className="flex flex-col gap-8">
+        <p>
+          {'show #{count}'}
+        </p>
+        <p>
+          {'live '}
+          {count}
+        </p>
+        <p>
+          {'mix '}
+          {'#{count}'}
+          {' and '}
+          {count}
+        </p>
+      </div>
+    </>
+  );
+}
+
+// ===== src/App.jsx =====
+/* cordlang: source=src/app.cord */
+import Demo from './components/Demo';
+
+export default function App() {
+  return <Demo />;
+}

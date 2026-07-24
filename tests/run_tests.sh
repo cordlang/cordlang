@@ -79,6 +79,82 @@ for name in "${FIXTURES[@]}"; do
 done
 
 # ── Formatter tests (Phase C6) ─────────────────────────────
+# ── Regression tests (Phase H1) ─────────────────────────────
+echo ""
+echo "Regression tests"
+
+REG_ROOT="$ROOT/tests/regression"
+if [[ -d "$REG_ROOT" ]]; then
+  shopt -s nullglob
+  for reg_dir in "$REG_ROOT"/*/; do
+    [[ -d "$reg_dir" ]] || continue
+    slug="$(basename "$reg_dir")"
+    [[ "$slug" == .* ]] && continue
+    input="$reg_dir/input.cord"
+    if [[ ! -f "$input" ]]; then
+      continue
+    fi
+
+    if [[ -f "$reg_dir/expect_check_nonzero" ]]; then
+      label="regression/$slug (check)"
+      set +e
+      out=$("$CORDLANG" check "$input" 2>&1)
+      ec=$?
+      set -e
+      if [[ "$ec" -eq 0 ]]; then
+        echo "FAIL: $label — expected non-zero check"
+        failed=$((failed + 1))
+      else
+        if [[ -f "$reg_dir/expect_check_contains.txt" ]]; then
+          needle="$(tr -d '\r' < "$reg_dir/expect_check_contains.txt" | head -n1)"
+          if echo "$out" | grep -Fq "$needle"; then
+            echo "PASS: $label"
+            passed=$((passed + 1))
+          else
+            echo "FAIL: $label — missing substring '$needle'"
+            echo "$out"
+            failed=$((failed + 1))
+          fi
+        else
+          echo "PASS: $label"
+          passed=$((passed + 1))
+        fi
+      fi
+    fi
+
+    for backend in "${BACKENDS[@]}"; do
+      expected="$reg_dir/expected.$backend.txt"
+      [[ -f "$expected" ]] || continue
+      label="regression/$slug ($backend)"
+      if ! "$CORDLANG" compile "$input" --backend "$backend" >/dev/null 2>&1; then
+        echo "FAIL: $label — compile failed"
+        failed=$((failed + 1))
+        continue
+      fi
+      actual="$("$CORDLANG" compile "$input" --backend "$backend" | normalize)"
+      if [[ "$UPDATE" -eq 1 ]]; then
+        printf '%s' "$actual" > "$expected"
+        echo "UPDATE: $label -> $expected"
+        updated=$((updated + 1))
+        passed=$((passed + 1))
+        continue
+      fi
+      want="$(normalize < "$expected")"
+      if [[ "$actual" == "$want" ]]; then
+        echo "PASS: $label"
+        passed=$((passed + 1))
+      else
+        echo "FAIL: $label — output differs from expected"
+        echo "  expected: $expected"
+        failed=$((failed + 1))
+      fi
+    done
+  done
+  shopt -u nullglob
+else
+  echo "SKIP: tests/regression not present"
+fi
+
 echo ""
 echo "Formatter tests (fmt)"
 

@@ -21,8 +21,9 @@ Syntax guide: [docs/GUIDE.md](./docs/GUIDE.md) · cheatsheet: [docs/CHEATSHEET.m
 1. Prefer changes that keep **React and Svelte** in sync (lower to IR, then emit).
 2. Do not put I/O in `domain/`.
 3. Keep goldens green: `tests/run_tests.ps1` / `tests/run_tests.sh`.
-4. Demo app check: `tests/run_myapp_check.ps1` (needs Node).
-5. Update docs when the language surface changes (`docs/REACT.md`, `SVELTE.md`, `AI.md`).
+4. **Bug fixes:** add `tests/regression/<slug>/` with `input.cord` + expected outputs (see `tests/regression/README.md`).
+5. Demo app check: `tests/run_myapp_check.ps1` (needs Node).
+6. Update docs when the language surface changes (`docs/REACT.md`, `SVELTE.md`, `AI.md`, `ARCHITECTURE.md`, `SPEC.md`).
 
 ---
 
@@ -75,6 +76,7 @@ tests/run_myapp_check.ps1
 | `examples/` | Single-file samples |
 | `my-app/` | Multi-file demo |
 | `tests/fixtures` + `golden` | Snapshot tests |
+| `tests/regression/` | Per-bug regression pins |
 | `skills/write-cord/` | **Portable** AI skill (canonical) |
 
 ---
