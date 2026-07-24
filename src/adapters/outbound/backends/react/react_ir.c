@@ -1277,6 +1277,12 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
       }
     } else if (strcmp(child->name, "ref") == 0 && child->value) {
       sb_appendf(sb, " ref={%s}", child->value);
+    } else if (strncmp(child->name, "aria-", 5) == 0 ||
+               strcmp(child->name, "role") == 0) {
+      /* a11y attrs: string literals (role=group must not become {group}) */
+      char *esc = js_escape_dq_dup(child->value ? child->value : "");
+      sb_appendf(sb, " %s=\"%s\"", child->name, esc ? esc : "");
+      free(esc);
     } else {
       sb_appendf(sb, " %s=", child->name);
       emit_jsx_value(sb, child->value, 0);
