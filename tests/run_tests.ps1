@@ -466,24 +466,24 @@ if ($LASTEXITCODE -eq 0) {
   $failed = $failed + 1
 }
 
-# valid my-app → zero
-$myApp = Join-Path $Root "my-app"
-if (Test-Path -LiteralPath (Join-Path $myApp "cordlang.json")) {
-  Push-Location $myApp
+# valid stock template → zero
+$tpl = Join-Path $Root "templates\counter"
+if (Test-Path -LiteralPath (Join-Path $tpl "cordlang.json")) {
+  Push-Location $tpl
   try {
     & $Cordlang check 2>&1 | Out-Null
     if ($LASTEXITCODE -eq 0) {
-      Write-Host "PASS: check my-app (zero)" -ForegroundColor Green
+      Write-Host "PASS: check templates/counter (zero)" -ForegroundColor Green
       $passed = $passed + 1
     } else {
-      Write-Host "FAIL: check my-app expected zero exit" -ForegroundColor Red
+      Write-Host "FAIL: check templates/counter expected zero exit" -ForegroundColor Red
       $failed = $failed + 1
     }
   } finally {
     Pop-Location
   }
 } else {
-  Write-Host "SKIP: my-app project not present" -ForegroundColor Yellow
+  Write-Host "SKIP: templates/counter not present" -ForegroundColor Yellow
 }
 
 Write-Host ""

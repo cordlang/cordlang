@@ -419,16 +419,16 @@ for be in react svelte; do
 done
 rm -rf "$preset_tmp"
 
-if [[ -f "$ROOT/my-app/cordlang.json" ]]; then
-  if (cd "$ROOT/my-app" && "$CORDLANG" check >/dev/null 2>&1); then
-    echo "PASS: check my-app (zero)"
+if [[ -f "$ROOT/templates/counter/cordlang.json" ]]; then
+  if (cd "$ROOT/templates/counter" && "$CORDLANG" check >/dev/null 2>&1); then
+    echo "PASS: check templates/counter (zero)"
     passed=$((passed + 1))
   else
-    echo "FAIL: check my-app expected zero exit"
+    echo "FAIL: check templates/counter expected zero exit"
     failed=$((failed + 1))
   fi
 else
-  echo "SKIP: my-app project not present"
+  echo "SKIP: templates/counter not present"
 fi
 
 echo ""

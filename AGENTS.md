@@ -14,7 +14,7 @@ ESM native preview: [docs/PREVIEW.md](./docs/PREVIEW.md)
 ## What this project is
 
 - **Source of truth:** `src/**/*.cord` (language) and `src/` C compiler.
-- **Not source of truth:** `my-app/dist/**`, generated JSX/Svelte (may be gitignored).
+- **Not source of truth:** generated `dist/**`, JSX/Svelte scaffolds (gitignored).
 - **Pipeline:** `.cord` → AST → **IR** → backends (`generate_from_ir`).
 
 ---
@@ -25,7 +25,7 @@ ESM native preview: [docs/PREVIEW.md](./docs/PREVIEW.md)
 2. Do not put I/O in `domain/`.
 3. Keep goldens green: `tests/run_tests.ps1` / `tests/run_tests.sh`.
 4. **Bug fixes:** add `tests/regression/<slug>/` with `input.cord` + expected outputs (see `tests/regression/README.md`).
-5. Demo app check: `tests/run_myapp_check.ps1` (needs Node).
+5. Template smoke: `tests/run_template_check.ps1` (needs Node; uses `templates/counter`).
 6. Update docs when the language surface changes (`docs/REACT.md`, `SVELTE.md`, `AI.md`, `ARCHITECTURE.md`, `SPEC.md`, `PREVIEW.md`).
 
 ---
@@ -71,7 +71,7 @@ cordlang compile f.cord --backend react
 cordlang compile f.cord --ir
 cordlang check
 tests/run_tests.ps1
-tests/run_myapp_check.ps1
+tests/run_template_check.ps1
 ```
 
 ---
@@ -85,7 +85,8 @@ tests/run_myapp_check.ps1
 | `src/adapters/.../backends/` | react / svelte / html / **esm** / vue / solid / … |
 | `docs/` | Human + AI docs ([PREVIEW.md](./docs/PREVIEW.md) for ESM run) |
 | `examples/` | Single-file samples |
-| `my-app/` | Multi-file demo |
+| `templates/` | Multi-file starters (`init --template`) |
+| `editor/vscode/` | VS Code / Cursor extension |
 | `tests/fixtures` + `golden` | Snapshot tests |
 | `tests/regression/` | Per-bug regression pins |
 | `skills/write-cord/` | **Portable** AI skill (canonical) |

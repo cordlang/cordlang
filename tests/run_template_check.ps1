@@ -1,6 +1,11 @@
-# G4: scaffold my-app + vite build for react and svelte
+# Scaffold a stock template + vite build for react and svelte.
 # Usage (from repo root, after building cordlang.exe):
-#   powershell -ExecutionPolicy Bypass -File tests\run_myapp_check.ps1
+#   powershell -ExecutionPolicy Bypass -File tests\run_template_check.ps1
+# Optional: -Template counter|landing|dashboard|form-fetch|docs-shell
+
+param(
+  [string]$Template = "counter"
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -20,22 +25,22 @@ if (-not (Test-Path -LiteralPath $Cordlang)) {
   exit 1
 }
 
-$MyApp = Join-Path $Root "my-app"
-if (-not (Test-Path -LiteralPath (Join-Path $MyApp "cordlang.json"))) {
-  Write-Host "FAIL: my-app/cordlang.json missing" -ForegroundColor Red
+$App = Join-Path $Root "templates\$Template"
+if (-not (Test-Path -LiteralPath (Join-Path $App "cordlang.json"))) {
+  Write-Host "FAIL: templates/$Template/cordlang.json missing" -ForegroundColor Red
   exit 1
 }
 
-Write-Host "Cordlang my-app --check"
+Write-Host "Cordlang template --check"
 Write-Host "  root: $Root"
 Write-Host "  exe:  $Cordlang"
-Write-Host "  app:  $MyApp"
+Write-Host "  app:  $App"
 
 $failed = 0
 foreach ($backend in @("react", "svelte")) {
   Write-Host ""
   Write-Host "=== cordlang run $backend --check ===" -ForegroundColor Cyan
-  Push-Location $MyApp
+  Push-Location $App
   try {
     & $Cordlang run $backend --check
     if ($LASTEXITCODE -ne 0) {
@@ -56,5 +61,5 @@ if ($failed -gt 0) {
 }
 
 Write-Host ""
-Write-Host "Results: react + svelte --check OK" -ForegroundColor Green
+Write-Host "Results: react + svelte --check OK ($Template)" -ForegroundColor Green
 exit 0

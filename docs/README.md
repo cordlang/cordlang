@@ -8,7 +8,7 @@ Start here for humans and for AI tools.
 |-----|----------|---------|
 | [GUIDE.md](./GUIDE.md) | Everyone | Practical guide **with samples** |
 | [CHEATSHEET.md](./CHEATSHEET.md) | Everyone | One-screen syntax |
-| [EXAMPLES.md](./EXAMPLES.md) | Everyone | Catalog of `examples/` + `my-app/` |
+| [EXAMPLES.md](./EXAMPLES.md) | Everyone | Catalog of `examples/` + `templates/` |
 | [AI_CONTEXT.md](./AI_CONTEXT.md) | **AI models** | Compact contract (start here; token-cheap) |
 | [AI.md](./AI.md) | **AI models** | Full do / don't contract for LLMs |
 | [LANGUAGE.md](./LANGUAGE.md) | Design | Language design notes (ex-`idea.md`) |
@@ -39,13 +39,13 @@ Start here for humans and for AI tools.
 | [../skills/write-cord/SKILL.md](../skills/write-cord/SKILL.md) | Portable AI skill |
 | [../skills/README.md](../skills/README.md) | Skills convention |
 | [../.github/copilot-instructions.md](../.github/copilot-instructions.md) | Copilot brief |
-| [../my-app/](../my-app/) | Multi-file demo |
+| [../templates/](../templates/) | Multi-file starters |
 | [../examples/](../examples/) | Single-file samples |
 
 ## Learning path
 
 1. [GUIDE.md](./GUIDE.md) §1–3 (install + core samples)  
-2. Open `my-app/src/` and `examples/counter.cord`  
+2. Open `templates/counter/` and `examples/counter.cord`  
 3. [CHEATSHEET.md](./CHEATSHEET.md) while coding  
 4. [REACT.md](./REACT.md) / [SVELTE.md](./SVELTE.md) when mapping mental models  
 5. If you are an LLM: [AI_CONTEXT.md](./AI_CONTEXT.md) → [AI.md](./AI.md) + [AGENTS.md](../AGENTS.md)  

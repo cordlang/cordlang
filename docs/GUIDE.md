@@ -35,13 +35,14 @@ cordlang run svelte    # → dist/svelte (Vite + Svelte 5 runes)
 
 See `examples/preview_bind_if.cord`.
 
-Demo multi-file in the repo:
+Multi-file starters in the repo:
 
 ```bash
-cd my-app
-../cordlang.exe run
-../cordlang.exe run react --check
-../cordlang.exe symbols
+cordlang init demo --template counter
+cd demo
+cordlang run
+cordlang run react --check
+cordlang symbols
 ```
 
 ---
@@ -49,7 +50,7 @@ cd my-app
 ## 2. Project shape
 
 ```
-my-app/
+demo/   # or any name from cordlang init
   cordlang.json          # entry, outDir
   public/                # static assets → dist/*/public
   src/
@@ -253,7 +254,7 @@ def Contact
 | React advanced | `examples/phase_d_hooks.cord` | insertionEffect, action, forwardRef… |
 | Svelte advanced | `examples/phase_e_svelte.cord` | await, snippet, store, portal, use: |
 | Context + params | `examples/svelte_ctx_params.cord` | provide/ctx + `:id` |
-| Full multi-file | `my-app/` | production-shaped demo |
+| Full multi-file | `templates/` | stock starters (`init --template`) |
 
 Compile any example:
 

@@ -10,7 +10,7 @@ No es un claim de paridad con React/Svelte ni un target de despliegue
 ## Uso
 
 ```bash
-cd my-app
+cordlang init demo --template counter && cd demo
 cordlang run              # http://127.0.0.1:4173 — abre el navegador
 cordlang run --no-open    # mismo server, sin open
 cordlang run preview      # alias de cordlang run

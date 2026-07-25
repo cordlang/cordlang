@@ -8,7 +8,7 @@ on:
 
 jobs:
   test-windows:
-    name: Build + goldens + my-app (Windows)
+    name: Build + goldens + template (Windows)
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
@@ -24,16 +24,16 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Cache npm (my-app scaffolds)
+      - name: Cache npm (template scaffolds)
         uses: actions/cache@v4
         with:
           path: |
             ~\AppData\Local\npm-cache
-            my-app\dist\react\node_modules
-            my-app\dist\svelte\node_modules
-          key: ${{ runner.os }}-myapp-v1-${{ hashFiles('my-app/src/**/*.cord', 'my-app/cordlang.json', 'my-app/public/**') }}
+            templates\counter\dist\react\node_modules
+            templates\counter\dist\svelte\node_modules
+          key: ${{ runner.os }}-tpl-v1-${{ hashFiles('templates/counter/**/*.cord', 'templates/counter/cordlang.json') }}
           restore-keys: |
-            ${{ runner.os }}-myapp-v1-
+            ${{ runner.os }}-tpl-v1-
 
       - name: Build
         shell: cmd
@@ -45,14 +45,14 @@ jobs:
           powershell -ExecutionPolicy Bypass -File tests\run_tests.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: my-app react + svelte --check (G4)
+      - name: Template react + svelte --check
         shell: pwsh
         run: |
-          powershell -ExecutionPolicy Bypass -File tests\run_myapp_check.ps1
+          powershell -ExecutionPolicy Bypass -File tests\run_template_check.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   test-ubuntu:
-    name: Build + goldens + my-app (Ubuntu)
+    name: Build + goldens + template (Ubuntu)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -66,30 +66,30 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Cache npm (my-app scaffolds)
+      - name: Cache npm (template scaffolds)
         uses: actions/cache@v4
         with:
           path: |
             ~/.npm
-            my-app/dist/react/node_modules
-            my-app/dist/svelte/node_modules
-          key: ${{ runner.os }}-myapp-v1-${{ hashFiles('my-app/src/**/*.cord', 'my-app/cordlang.json', 'my-app/public/**') }}
+            templates/counter/dist/react/node_modules
+            templates/counter/dist/svelte/node_modules
+          key: ${{ runner.os }}-tpl-v1-${{ hashFiles('templates/counter/**/*.cord', 'templates/counter/cordlang.json') }}
           restore-keys: |
-            ${{ runner.os }}-myapp-v1-
+            ${{ runner.os }}-tpl-v1-
 
       - name: Build (-Werror)
         run: make -j"$(nproc)"
 
       - name: Golden tests
         run: |
-          chmod +x tests/run_tests.sh tests/run_myapp_check.sh tests/run_smoke_examples.sh
+          chmod +x tests/run_tests.sh tests/run_template_check.sh tests/run_smoke_examples.sh
           ./tests/run_tests.sh
 
       - name: Smoke templates + examples
         run: ./tests/run_smoke_examples.sh
 
-      - name: my-app react + svelte --check (G4)
-        run: ./tests/run_myapp_check.sh
+      - name: Template react + svelte --check
+        run: ./tests/run_template_check.sh
 
   test-ubuntu-asan:
     name: ASAN/UBSAN goldens (Ubuntu)
@@ -109,6 +109,6 @@ jobs:
           chmod +x tests/run_tests.sh
           ASAN_OPTIONS=detect_leaks=1 ./tests/run_tests.sh
 
-      - name: my-app check under ASAN leaks
+      - name: Template check under ASAN leaks
         run: |
-          ASAN_OPTIONS=detect_leaks=1 ./cordlang check my-app/src/app.cord
+          ASAN_OPTIONS=detect_leaks=1 ./cordlang check templates/counter

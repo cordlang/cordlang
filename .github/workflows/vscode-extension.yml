@@ -1,0 +1,64 @@
+name: VS Code extension
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "editor/vscode/**"
+      - ".github/workflows/vscode-extension.yml"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "editor/vscode/**"
+      - ".github/workflows/vscode-extension.yml"
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: editor/vscode
+
+jobs:
+  package:
+    name: Install + package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: editor/vscode/package-lock.json
+
+      - name: npm ci
+        run: npm ci
+
+      - name: Syntax-check extension entry
+        run: node --check extension.js
+
+      - name: Load extension module
+        run: node -e "require('./extension.js'); console.log('extension module ok')"
+
+      - name: Validate package.json contributes
+        run: |
+          node -e "
+          const p = require('./package.json');
+          if (p.name !== 'cordlang') throw new Error('bad name');
+          if (!p.main) throw new Error('missing main');
+          if (!p.contributes || !p.contributes.languages) throw new Error('no languages');
+          const langs = p.contributes.languages.map(l => l.id);
+          if (!langs.includes('cordlang')) throw new Error('cordlang language missing');
+          console.log('package.json ok', p.version);
+          "
+
+      - name: Package VSIX
+        run: npx --yes @vscode/vsce@3 package --no-update-package-json --allow-missing-repository
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cordlang-vscode
+          path: editor/vscode/*.vsix
+          if-no-files-found: error

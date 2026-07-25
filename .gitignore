@@ -17,11 +17,10 @@ out/
 # Root-level dist (if any)
 /dist/
 
-# Scaffold output inside demos (keep source; ignore build)
+# Scaffold output (keep sources; ignore generated builds)
 **/node_modules/
-my-app/dist/
-examples/**/dist/
-
+**/dist/
+*.vsix
 # ── IDE / OS ─────────────────────────────────────────────
 .vscode/
 .idea/

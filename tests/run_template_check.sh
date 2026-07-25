@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# G4: scaffold my-app + vite build for react and svelte
+# Scaffold a stock template + vite build for react and svelte.
 # Usage (from repo root, after `make`):
-#   ./tests/run_myapp_check.sh
+#   ./tests/run_template_check.sh [counter|landing|dashboard|…]
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+TEMPLATE="${1:-counter}"
 
 if [[ -x "$ROOT/cordlang" ]]; then
   CORDLANG="$ROOT/cordlang"
@@ -17,22 +18,22 @@ else
   exit 1
 fi
 
-MYAPP="$ROOT/my-app"
-if [[ ! -f "$MYAPP/cordlang.json" ]]; then
-  echo "FAIL: my-app/cordlang.json missing"
+APP="$ROOT/templates/$TEMPLATE"
+if [[ ! -f "$APP/cordlang.json" ]]; then
+  echo "FAIL: templates/$TEMPLATE/cordlang.json missing"
   exit 1
 fi
 
-echo "Cordlang my-app --check"
+echo "Cordlang template --check"
 echo "  root: $ROOT"
 echo "  exe:  $CORDLANG"
-echo "  app:  $MYAPP"
+echo "  app:  $APP"
 
 failed=0
 for backend in react svelte; do
   echo ""
   echo "=== cordlang run $backend --check ==="
-  if (cd "$MYAPP" && "$CORDLANG" run "$backend" --check); then
+  if (cd "$APP" && "$CORDLANG" run "$backend" --check); then
     echo "PASS: run $backend --check"
   else
     echo "FAIL: run $backend --check"
@@ -47,5 +48,5 @@ if [[ "$failed" -gt 0 ]]; then
 fi
 
 echo ""
-echo "Results: react + svelte --check OK"
+echo "Results: react + svelte --check OK ($TEMPLATE)"
 exit 0

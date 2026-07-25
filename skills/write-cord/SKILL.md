@@ -26,7 +26,7 @@ You are authoring **Cordlang** — a dense UI DSL optimized for **vibecode / AI 
 ## Default behavior
 
 1. Deliver **`.cord` source** as the primary artifact.  
-2. For apps: structure like `my-app/` (`app.cord` + `pages/` + `components/` + `layouts/`).  
+2. For apps: structure like `templates/` (`app.cord` + `pages/` + `components/` + `layouts/`).  
 3. Mention how to run: `cordlang run`, `cordlang run react`, `cordlang run svelte`, `cordlang check`, `cordlang analyze`.  
 4. Prefer typed props: `props title: string = ""` (`string` \| `number` \| `boolean` \| `any`).  
 5. Only show generated React/Svelte if the user asks for emitted code.  
@@ -109,6 +109,6 @@ route /about => pages/AboutPage
 - `docs/AI.md` · `docs/AI_WORKFLOW.md` · `docs/schema/attrs.json` · `docs/DESIGN.md`  
 - `docs/EXAMPLES.md` — file catalog  
 - `templates/` — Cord-native seeds  
-- `examples/counter.cord`, `examples/fetch_form.cord`, `my-app/`  
+- `examples/counter.cord`, `examples/fetch_form.cord`, `templates/counter/`  
 - `docs/REACT.md` / `docs/SVELTE.md` — backend maps  
 - `editor/vscode/` — snippets + check problem matcher  

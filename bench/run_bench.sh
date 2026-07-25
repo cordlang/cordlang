@@ -56,7 +56,7 @@ echo ""
 run_case "S" "$ROOT/bench/fixtures/small.cord"
 run_case "M" "$ROOT/tests/fixtures/nested_routes.cord"
 run_case "L" "$ROOT/bench/fixtures/large.cord"
-run_case "my-app" "$ROOT/my-app/src/app.cord"
+run_case "template-counter" "$ROOT/templates/counter/src/app.cord"
 
 echo ""
 echo "Done. (Wall time of cordlang compile only; not Vite/runtime.)"

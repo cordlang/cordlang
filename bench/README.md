@@ -21,7 +21,7 @@ Reports median / min / max milliseconds per fixture size:
 - **S** — `bench/fixtures/small.cord` (single component)
 - **M** — `tests/fixtures/nested_routes.cord` (routes + layout surface)
 - **L** — `bench/fixtures/large.cord` (generated many nodes)
-- **my-app** — `my-app/src/app.cord` when present (multi-file project parse)
+- **template-counter** — `templates/counter/src/app.cord` (multi-file project parse)
 
 ## Compare suite
 

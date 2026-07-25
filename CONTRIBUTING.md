@@ -22,11 +22,11 @@ make         # Unix
 ```bash
 # Windows
 powershell -ExecutionPolicy Bypass -File tests\run_tests.ps1
-powershell -ExecutionPolicy Bypass -File tests\run_myapp_check.ps1   # needs Node.js
+powershell -ExecutionPolicy Bypass -File tests\run_template_check.ps1   # needs Node.js
 
 # Unix
 ./tests/run_tests.sh
-./tests/run_myapp_check.sh   # needs Node.js
+./tests/run_template_check.sh   # needs Node.js
 ```
 
 ## Workflow
@@ -57,13 +57,14 @@ powershell -ExecutionPolicy Bypass -File tests\run_tests.ps1 -UpdateGoldens
 3. **Emit** from IR (`generate_from_ir`) for React/Svelte  
 4. No I/O in `domain/`  
 
-## Demo app
+## Templates
 
-`my-app/` is the multi-file showcase. Source lives in git; `my-app/dist/` and `node_modules` are ignored.
+Multi-file starters live under `templates/` (`cordlang init --template counter`).
+Generated `dist/` and `node_modules` are gitignored.
 
 ```bash
-cd my-app
-../cordlang.exe run react --check
+cd templates/counter
+../../cordlang.exe run react --check
 ```
 
 ## Code of collaboration

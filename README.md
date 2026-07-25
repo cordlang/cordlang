@@ -53,7 +53,7 @@ Same multi-file `src/**/*.cord` for every backend.
 - Multi-file modules (`use` / routes by path)
 - Canonical **IR** (React + Svelte emit from `IrNode`)
 - DX: `check`, `fmt`, `symbols`, `goto`, `--watch`, `--check` (vite build)
-- Demo app: [`my-app/`](./my-app/)
+- Starters: [`templates/`](./templates/) (`cordlang init --template …`)
 
 ### Docs
 
@@ -127,14 +127,15 @@ cordlang run react --check   # npm install if needed + vite build
 cordlang run react --watch   # rebuild on .cord changes
 ```
 
-### Or use the included demo
+### Or start from a template
 
 ```bash
-cd my-app
-..\cordlang.exe run
-..\cordlang.exe run react
-..\cordlang.exe check
-..\cordlang.exe symbols
+cordlang init demo --template counter
+cd demo
+cordlang run
+cordlang run react
+cordlang check
+cordlang symbols
 ```
 
 ### Compile a single file
@@ -197,14 +198,15 @@ cordlang/
 │   ├── SVELTE.md        # Cordlang ↔ Svelte map
 │   └── IR.md            # IR pipeline
 ├── examples/            # single-file samples
-├── my-app/              # multi-file demo (source only in git)
+├── templates/           # multi-file starters (init --template)
+├── editor/vscode/       # VS Code / Cursor extension
 ├── tests/               # fixtures + golden + regression
 │   ├── fixtures/
 │   ├── golden/
 │   ├── regression/
 │   ├── run_tests.ps1
 │   ├── run_tests.sh
-│   └── run_tests.bat
+│   └── run_template_check.ps1
 ├── build.bat
 ├── Makefile
 └── CMakeLists.txt
@@ -224,18 +226,18 @@ cordlang/
 # Windows
 build.bat
 powershell -ExecutionPolicy Bypass -File tests\run_tests.ps1
-# Demo app: scaffold + vite build (react + svelte)
-powershell -ExecutionPolicy Bypass -File tests\run_myapp_check.ps1
+# Template: scaffold + vite build (react + svelte)
+powershell -ExecutionPolicy Bypass -File tests\run_template_check.ps1
 
 # Update goldens after intentional codegen changes:
 powershell -ExecutionPolicy Bypass -File tests\run_tests.ps1 -UpdateGoldens
 
 # Unix
 make && ./tests/run_tests.sh
-./tests/run_myapp_check.sh   # needs Node.js / npm
+./tests/run_template_check.sh   # needs Node.js / npm
 ```
 
-CI (`.github/workflows/ci.yml`) runs goldens **and** `my-app` `--check` on Windows and Ubuntu, with npm/`node_modules` cache.
+CI (`.github/workflows/ci.yml`) runs goldens **and** `templates/counter` `--check` on Windows and Ubuntu. Extension CI: `.github/workflows/vscode-extension.yml`.
 
 ---
 

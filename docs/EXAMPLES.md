@@ -25,24 +25,23 @@ cordlang compile <file> --ir
 | [`svelte_ctx_params.cord`](../examples/svelte_ctx_params.cord) | Context + route `:id` params |
 | [`public/api/products.json`](../examples/public/api/products.json) | Static API for fetch demos |
 
-## Multi-file demo (`my-app/`)
+## Multi-file starters (`templates/`)
 
 | Path | Role |
 |------|------|
-| [`my-app/src/app.cord`](../my-app/src/app.cord) | theme + routes |
-| [`my-app/src/layouts/default.cord`](../my-app/src/layouts/default.cord) | shell + slot |
-| [`my-app/src/pages/*`](../my-app/src/pages/) | pages |
-| [`my-app/src/components/*`](../my-app/src/components/) | Counter, ProductCard |
-| [`my-app/public/`](../my-app/public/) | static assets |
+| [`templates/counter/`](../templates/counter/) | Minimal multi-page + Counter component |
+| [`templates/landing/`](../templates/landing/) | Marketing landing |
+| [`templates/dashboard/`](../templates/dashboard/) | Shell layout + settings |
+| [`templates/docs-shell/`](../templates/docs-shell/) | Docs navigation shell |
+| [`templates/form-fetch/`](../templates/form-fetch/) | Form + fetch sample |
 
 ```bash
-cd my-app
-../cordlang.exe run
-../cordlang.exe run react --check
-../cordlang.exe run svelte --check
-../cordlang.exe check
-../cordlang.exe symbols
-../cordlang.exe goto Counter
+cordlang init demo --template counter
+cd demo
+cordlang run
+cordlang run react --check
+cordlang check
+cordlang symbols
 ```
 
 ## Golden fixtures (`tests/fixtures/`)

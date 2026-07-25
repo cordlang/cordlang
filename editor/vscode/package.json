@@ -3,10 +3,20 @@
   "displayName": "Cordlang",
   "description": "Cordlang language support (snippets, check tasks, LSP via cordlang lsp)",
   "version": "1.0.0",
+  "publisher": "cordlang",
   "engines": { "vscode": "^1.80.0" },
   "categories": ["Programming Languages"],
   "main": "./extension.js",
   "activationEvents": ["onLanguage:cordlang"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cordlang/cordlang.git",
+    "directory": "editor/vscode"
+  },
+  "scripts": {
+    "check": "node --check extension.js && node -e \"require('./extension.js')\"",
+    "package": "vsce package --no-update-package-json"
+  },
   "contributes": {
     "languages": [
       {
