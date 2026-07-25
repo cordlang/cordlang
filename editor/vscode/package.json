@@ -14,7 +14,7 @@
     "directory": "editor/vscode"
   },
   "scripts": {
-    "check": "node --check extension.js && node -e \"require('./extension.js')\"",
+    "check": "node --check extension.js && node scripts/check.mjs",
     "package": "vsce package --no-update-package-json"
   },
   "contributes": {
