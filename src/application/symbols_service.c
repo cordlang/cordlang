@@ -1,6 +1,7 @@
 #include "application/symbols_service.h"
 #include "application/ports/compiler_port.h"
 #include "application/ports/fs_port.h"
+#include "adapters/outbound/json/json_mini.h"
 #include "domain/ast.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,26 +16,7 @@ static char *read_entry_from_config(const char *project_dir) {
   free(cfg);
   if (!json) return NULL;
 
-  char *entry = NULL;
-  char *key = strstr(json, "\"entry\"");
-  if (key) {
-    char *colon = strchr(key, ':');
-    if (colon) {
-      char *q1 = strchr(colon, '"');
-      if (q1) {
-        q1++;
-        char *q2 = strchr(q1, '"');
-        if (q2) {
-          size_t n = (size_t)(q2 - q1);
-          entry = malloc(n + 1);
-          if (entry) {
-            memcpy(entry, q1, n);
-            entry[n] = '\0';
-          }
-        }
-      }
-    }
-  }
+  char *entry = json_object_get_string(json, "entry");
   free(json);
   if (!entry) entry = strdup("src/app.cord");
   return entry;

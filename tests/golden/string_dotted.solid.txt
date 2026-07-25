@@ -1,0 +1,25 @@
+// ===== src/components/X.jsx =====
+/* cordlang: source=src/components/X.cord */
+
+export default function X({  }) {
+  return (
+    <>
+      <div class="flex flex-col">
+        <p>
+          {'build.bat'}
+        </p>
+        <p>
+          {'say "hi" please'}
+        </p>
+      </div>
+    </>
+  );
+}
+
+// ===== src/App.jsx =====
+/* cordlang: source=src/app.cord */
+import X from './components/X';
+
+export default function App() {
+  return <X />;
+}

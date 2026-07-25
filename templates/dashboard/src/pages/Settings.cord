@@ -1,0 +1,4 @@
+col gap=16 max-w=md
+  h1 "Settings" size=2xl bold
+  p "Placeholder settings page." muted
+  btn "Save" variant=primary

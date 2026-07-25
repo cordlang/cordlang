@@ -1,0 +1,8 @@
+<!-- ===== src/router.js ===== -->
+export const router = null;
+
+<!-- ===== src/App.vue ===== -->
+<!-- cordlang: source=src/app.cord -->
+<template>
+  <p>Empty Cordlang app</p>
+</template>

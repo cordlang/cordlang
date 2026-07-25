@@ -334,7 +334,7 @@ backend React:
 | `link to=/x` | `<a href="#/x">` |
 | `params id` | props desde `matchRoute` |
 | `lazy Page = pages/Heavy` | `() => import(...)` + `{#await}` |
-| **SvelteKit** file routing / SSR | roadmap backend `kit` (Fase E6) |
+| **SvelteKit** file routing / SSR | meta-backend MVP `sveltekit` (SPA wrap; not full Kit) |
 
 ---
 
@@ -451,9 +451,36 @@ dist/svelte/
 
 ---
 
+## 15. Checklist de paridad React ↔ Svelte (A3)
+
+Objetivo: la misma app (`my-app` / `doc`) compila a ambos backends con UI equivalente en features **soportadas**.
+
+| Feature | React | Svelte | Notas / gap |
+|---------|-------|--------|-------------|
+| state / props / computed | ✅ | ✅ | props tipadas: contrato check, emit JS |
+| if / for + key | ✅ | ✅ | |
+| layout + slot | ✅ | ✅ | |
+| route + link to= | ✅ | ✅ hash router | |
+| bind inputs / forms | ✅ | ✅ | |
+| fetch | ✅ | ✅ | |
+| context / provide / ctx | ✅ | ✅ | |
+| theme → CSS vars | ✅ | ✅ | |
+| lazy / suspense-ish | ✅ | ✅ | import() + await UI |
+| stores / writable | — | ✅ | React: state/context |
+| await / snippet | — | ✅ | React: fetch/if |
+| String props `title="…"` | ✅ | ✅ | |
+| Style attrs w/h/mx/px… | ✅ | ✅ | |
+| Escape `\#{` | ✅ | ✅ | |
+
+**DoD A3:** checklist arriba revisada; goldens verdes; `cordlang run react --check` y `svelte --check` en `my-app`.
+
+Gaps abiertos (no bloquean A3 MVP): `$bindable`, `{#key}`, Kit SSR, attachments `@attach`.
+
+---
+
 ## Ejemplo kitchen-sink
 
 Ver `examples/phase_e_svelte.cord`, `examples/svelte_ctx_params.cord`,
 `examples/fetch_form.cord` y `my-app/src/**/*.cord`.
 
-Roadmap: [`docs/ROADMAP.md`](./ROADMAP.md) — Fase E.
+Roadmap: [`docs/ROADMAP.md`](./ROADMAP.md) — Horizonte A3 + histórico Fase E.

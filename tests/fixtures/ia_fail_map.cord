@@ -1,0 +1,4 @@
+def Bad
+  state items = 0
+  col
+    p "#{items.map(x => x)}"

@@ -1,0 +1,42 @@
+// ===== src/components/Counter.jsx =====
+/* cordlang: source=src/components/Counter.cord */
+import { createSignal } from 'solid-js';
+
+export default function Counter({ label = "Counter" }) {
+  const [count, setCount] = createSignal(0);
+  return (
+    <>
+      <div class="flex flex-col gap-16 p-24 flex items-center justify-center">
+        <h1 class="text-2xl font-bold">
+          {label}
+        </h1>
+        <p class="text-lg text-muted">
+          {'Count: '}
+          {count()}
+        </p>
+        <div class="flex flex-row gap-8 flex items-center justify-center">
+          <button class="btn btn-outline" onClick={() => setCount(count() - 1)}>
+            {'-'}
+          </button>
+          <span class="text-4xl font-bold">
+            {count()}
+          </span>
+          <button class="btn btn-primary" onClick={() => setCount(count() + 1)}>
+            {'+'}
+          </button>
+        </div>
+        <button class="btn btn-ghost" onClick={() => setCount(0)}>
+          {'Reset'}
+        </button>
+      </div>
+    </>
+  );
+}
+
+// ===== src/App.jsx =====
+/* cordlang: source=src/app.cord */
+import Counter from './components/Counter';
+
+export default function App() {
+  return <Counter />;
+}

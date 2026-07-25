@@ -1,36 +1,49 @@
-# Cordlang Super Roadmap — React + Svelte
+# Cordlang Super Roadmap — IR para IA (no otro React)
 
-> Filosofía: **el lenguaje `.cord` modela UI una sola vez**. React y Svelte son *backends* que emiten código idiomático. Primero paridad de producto (apps SPA reales); después meta-frameworks y escape hatches de librería.
+> **Posicionamiento (no negociable):** Cordlang es un **lenguaje intermedio** optimizado para **vibecode/IA y ahorro de tokens** que describe UI y compila a destinos reales. **No** es otro framework (router/estado/bundler/Vite/Next propios): reutiliza ecosistemas (Vite, React Router, Svelte runes). Si otras docs priorizan amplitud de backends, **gana este contrato**.
+
+Mensaje público:
+
+> La forma más rápida de construir UI con IA — un `.cord` denso (pocos tokens) → IR → React / Svelte / HTML (y más después).
 
 Documentos relacionados:
 
-- [`docs/REACT.md`](./REACT.md) — mapa React → Cordlang (estado actual)
-- [`docs/SVELTE.md`](./SVELTE.md) — mapa Svelte → Cordlang (estado actual)
+- [`docs/REACT.md`](./REACT.md) — mapa React → Cordlang
+- [`docs/SVELTE.md`](./SVELTE.md) — mapa Svelte → Cordlang + checklist de paridad
+- [`docs/IR.md`](./IR.md) — contrato del IR para backends
+- [`docs/AI.md`](./AI.md) — contrato para modelos + schema de attrs
+- [`docs/TEMPLATES.md`](./TEMPLATES.md) — plantillas Cord-nativas
+- [`docs/LSP.md`](./LSP.md) — editor / LSP mínimo
 
 ---
 
 ## 0. Norte (visión)
 
 ```
-.cord (fuente única, multi-archivo)
+src/**/*.cord
    │
    ├─► AST / IR canónico
    │
    ├──► Backend React   → dist/react  (Vite + RR)
    ├──► Backend Svelte  → dist/svelte (Vite + runes)
-   ├──► Backend HTML    → preview nativo en el .exe
-   └──► (futuro) Vue / Solid / RSC targets
+   ├──► Backend HTML    → preview nativo en el CLI
+   └──► (Horizonte B) Vue / Solid / email / …
+
+IA / skills / cordlang ai  ──escribe──►  .cord
+check / fmt / LSP / analyze ──valida──►  .cord
 ```
 
-**Éxito:** un monorepo de app en Cordlang puede hacer:
+**Éxito 12 meses (Horizonte A):** IA escribe `.cord` → `check`/`analyze` atrapan traps (incl. `jsx-hook`/`jsx-map`/`jsx-tag`) → LSP buffer diags + hints → `run react|svelte --check` verde; preview HTML honest (state/bind/if); paridad SPA documentada; 3+ templates Cord.
+
+**Éxito producto:** el mismo `src/**/*.cord` sin reescribir UI:
 
 ```bash
-cordlang run              # preview instantáneo
-cordlang run react        # app React production-ready
-cordlang run svelte       # app Svelte production-ready
+cordlang run              # preview limitado (state · setX · #{x} · bind)
+cordlang run react        # app React (default)
+cordlang run svelte       # app Svelte (default)
 ```
 
-con el **mismo** `src/**/*.cord` y sin reescribir UI.
+Vue / Solid / email / PDF / Next / Kit son **meta / experimental** — no el contrato IA default.
 
 ---
 
@@ -48,14 +61,14 @@ con el **mismo** `src/**/*.cord` y sin reescribir UI.
 | Módulos `use` / `import` / rutas por path | ✅ |
 | `layout` + `slot` | ✅ |
 | `route` | ✅ |
-| `theme` (parse parcial) | 🟡 parse; codegen incompleto |
-| Preview HTML nativo en el `.exe` | ✅ (state reactivo básico C8) |
+| `theme` → CSS vars | ✅ parse + `theme_css` IR (G1) |
+| Preview HTML nativo en el `.exe` | ✅ state + setX + `#{x}` + bind + live if (contrato limitado) |
 | IR canónico + dump `--ir` | ✅ |
 | Expr mini-parser | ✅ |
 | `cordlang check` + diagnostics | ✅ |
 | `cordlang fmt` / `fmt --check` | ✅ |
 | `cordlang symbols` / `goto` | ✅ |
-| Source attribution + `.map` stub | ✅ |
+| Source maps VLQ + attribution | ✅ (G7) |
 
 ### 1.2 Backend React
 
@@ -69,10 +82,10 @@ con el **mismo** `src/**/*.cord` y sin reescribir UI.
 | useActionState + form action | ✅ |
 | Suspense / lazy / portal / errorBoundary | ✅ |
 | bind controlado | ✅ |
-| RSC / Next / Remix | ❌ |
+| RSC / Next / Remix | 🟡 meta-backend `next` (client wrap; no full RSC) |
 | useSyncExternalStore / useInsertionEffect / useEffectEvent | ✅ |
 | useImperativeHandle + forwardRef | ✅ |
-| Tests de snapshot del codegen | ❌ |
+| Tests de snapshot del codegen | ✅ |
 
 ### 1.3 Backend Svelte
 
@@ -83,12 +96,12 @@ con el **mismo** `src/**/*.cord` y sin reescribir UI.
 | `$state` / `$props` / `$derived` / `$effect` | ✅ |
 | if / each / interpolación / eventos / bind | ✅ |
 | Hash router propio + links `#/…` | ✅ |
-| setContext / getContext | ❌ |
-| Snippets avanzados / actions | ❌ |
-| SvelteKit (SSR/SSG/file routing) | ❌ |
-| Paridad con Suspense/lazy/portal/EB de React | 🟡 parcial o N/A |
-| Transitions / animations nativas | ❌ |
-| Stores / runes extras | 🟡 parcial via state |
+| setContext / getContext | ✅ |
+| Snippets / actions / await / portal | ✅ (Fase E) |
+| SvelteKit (SSR/SSG/file routing) | 🟡 MVP meta-backend `sveltekit` (wrap SPA emit) |
+| Lazy routes (`import()` + `{#await}`) | ✅ |
+| Transitions / animations (`transition=` / in/out) | ✅ |
+| Stores (`store` / `writable`) | ✅ |
 
 ---
 
@@ -110,19 +123,20 @@ Leyenda: ✅ hecho · 🟡 parcial · ❌ no · ≈ equivalente idiomático · �
 | Refs / DOM | ✅ useRef | ✅ bind:this | P0 done |
 | Context | ✅ createContext/Provider | ✅ setContext/getContext | P0 done |
 | Routes + layout | ✅ React Router | ✅ hash router | P0 done |
-| Nested routes / params | 🟡 params OK, nested 🟡 | ✅ path params, nested 🟡 | **P1** nested |
-| Lazy / code-split | ✅ lazy+Suspense | ❌ import() dinámico | **P1** |
-| Portals | ✅ createPortal | ≈ `teleport` pattern / attach | **P2** |
-| Error boundaries | ✅ class EB | ≈ +boundary o onerror | **P2** |
-| Forms / actions | ✅ useActionState | ≈ enhance / form actions | **P1** |
-| Transitions UI | 🟡 useTransition | ❌ transition: | **P2** |
+| Nested routes / params | ✅ params + nested layouts | ✅ path params + nested | P1 done |
+| Lazy / code-split | ✅ lazy+Suspense | ✅ import() + `{#await}` | P1 done |
+| Portals | ✅ createPortal | ✅ `portal` / `use:portal` | P2 done |
+| Error boundaries | ✅ class EB | ≈ onerror / boundary | P2 ≈ |
+| Forms / actions | ✅ useActionState | ✅ formAction helper | P1 done |
+| Transitions UI | ✅ useTransition | ✅ `transition=` / in/out | P2 done |
 | Theme tokens | ✅ CSS vars | ✅ CSS vars | P0 done |
-| Accessibility attrs | 🟡 passthrough | 🟡 passthrough | **P1** |
-| Preview = same AST live | 🟡 HTML + state básico | 🟡 HTML + state básico | **P1** done-ish |
-| Typecheck / diagnostics | ✅ `cordlang check` | ✅ shared | **P1** done |
-| Source maps .cord→out | 🟡 comment + stub `.map` | 🟡 comment + stub `.map` | **P2** partial |
-| Hot reload .cord | ✅ `--watch` | ✅ `--watch` | **P1** done |
-| Vue / Solid backends | ❌ | — | P3 |
+| Accessibility attrs | ✅ `aria-*`/`data-*` + img alt check | ✅ same | P1 done |
+| Preview = same AST live | 🟡 state/bind/if (limited) | 🟡 same | P1 honest |
+| Typecheck / diagnostics | ✅ `cordlang check` | ✅ shared | P1 done |
+| Source maps .cord→out | ✅ VLQ from markers | ✅ VLQ from markers | P2 done |
+| Hot reload .cord | ✅ `--watch` | ✅ `--watch` | P1 done |
+| Vue / Solid backends | ✅ Vue 3 + Solid (IR-first) | — | F1/F2 done |
+| email / PDF / Next / Kit | ✅ estáticos + meta | ✅ | F8–F11 |
 
 ---
 
@@ -191,7 +205,7 @@ Ejemplos: `examples/phase_b_lazy_head.cord`, `examples/fetch_form.cord`, `tests/
 | C2 | Expr language | ✅ | `domain/expr.{c,h}` normalize/validate; usado al bajar expr al IR |
 | C3 | Type checker liviano | ✅ | `check_service`: unknown components, routes, dups, use vacío |
 | C4 | Diagnostics con span | ✅ | `domain/diag` → `file:line:col: error\|warning: …` |
-| C5 | Source maps | 🟡 | comments `cordlang: source=…` + stub Source Map v3 `--sourcemap` |
+| C5 | Source maps | ✅ | VLQ mappings from `cordlang: source=` markers (`--sourcemap`) |
 | C6 | Formatter `cordlang fmt` | ✅ | in-place + `--check`; whitespace/tabs/blanks |
 | C7 | Symbols / goto | ✅ | CLI `symbols` + `goto <Name>` (LSP full = post-C) |
 | C8 | Preview con state | ✅ | HTML runtime: `var count` + `setCount` + `data-bind` + `clUpdate` |
@@ -201,7 +215,7 @@ Ejemplos: `examples/phase_b_lazy_head.cord`, `examples/fetch_form.cord`, `tests/
 - DX: check, fmt, symbols/goto, preview state, source attribution  
 - Suite: **16/16** (`tests\run_tests.ps1`)  
 - **Post-C IR-1 + IR-2 ✅:** services → IR; React (`react_ir.c`) y Svelte emiten body **solo desde `IrNode`**.  
-Residual: theme.css scaffold puede usar origin; HTML preview no es IR-puro.
+Residual: theme.css scaffold puede usar origin. HTML preview body es IR-first (G2); contrato limitado documentado (state/bind/if).
 
 ```bash
 cordlang compile file.cord --ir
@@ -242,7 +256,7 @@ Mapa completo: [`docs/SVELTE.md`](./SVELTE.md) (basado en [svelte.dev/docs/svelt
 | E3 | Transitions / animations | ✅ | `transition=` / `in=` / `out=` / `animate=` + imports |
 | E4 | `{#await}` async UI | ✅ | `await expr then=v` + `loading` / `error` |
 | E5 | Snippets reutilizables | ✅ | `snippet name(args)` + `render name(...)` |
-| E6 | **SvelteKit** backend | ❌ | roadmap (SSR / file routes) |
+| E6 | **SvelteKit** backend | ✅ MVP | `backends/sveltekit/` + `docs/SVELTEKIT.md` |
 | E7 | Stores (`writable`) | ✅ | `store count = 0` → `writable` + `{$count}` |
 | E8 | Attach/portal DOM | ✅ | `portal to=document.body` → `use:portal` helper |
 
@@ -255,58 +269,97 @@ Mapa completo: [`docs/SVELTE.md`](./SVELTE.md) (basado en [svelte.dev/docs/svelt
 
 | # | Item | Notas |
 |---|------|-------|
-| F1 | Backend **Vue 3** | Tras IR residual limpio |
-| F2 | Backend **Solid** | Idem |
-| F3 | Package registry de componentes `.cord` | |
+| F1 | Backend **Vue 3** | ✅ `backends/vue/` + goldens + `docs/VUE.md` |
+| F2 | Backend **Solid** | ✅ `backends/solid/` + goldens + `docs/SOLID.md` |
+| F3 | Package registry de componentes `.cord` | ✅ MVP local: `cordlang add` → `src/vendor|lib/` + [`PACKAGES.md`](./PACKAGES.md) (sin registry remoto) |
 | F4 | AI prompts / skill “write cord not jsx” | ✅ `docs/AI.md` + `AGENTS.md` + `skills/write-cord` |
-| F5 | Playground web (WASM compile) | |
+| F5 | Playground web (WASM compile) | ✅ stub: `playground/` + [`PLAYGROUND.md`](./PLAYGROUND.md) (WASM real pendiente) |
 | F6 | CI multi-backend | ✅ goldens Win/Linux; demo `--check` = G4 |
-| F7 | Versionado del lenguaje (0.x → 1.0 freeze) | |
+| F7 | Versionado del lenguaje (0.x → 1.0 freeze) | ✅ [`VERSIONING.md`](./VERSIONING.md) + `CORDLANG_VERSION` / `cordlang --version` |
+| F8 | Backend **email** HTML estático | ✅ `backends/email/` + `static_html` + `docs/EMAIL.md` |
+| F9 | Backend **pdf** (HTML + conversión externa) | ✅ `backends/pdf/` + `docs/PDF.md` |
+| F10 | Meta **Next** (wrap React) | ✅ `backends/next/` + `docs/NEXT.md` + smoke |
+| F11 | Meta **SvelteKit** (wrap Svelte) | ✅ `backends/sveltekit/` + `docs/SVELTEKIT.md` + smoke |
+| F12 | Native Flutter/SwiftUI/Compose | 🟡 spike docs + [`NATIVE.md`](./NATIVE.md) + `examples/native/` (sin backend registrado) |
 
 ---
 
-## 4. Priorización recomendada (orden de ataque)
+## 4. Priorización — Horizonte A (12 meses) / B (visión)
+
+### Principios de ejecución
+
+1. **IA en el workflow, no en el AST de build** — nada de `@ai` / `@generate` en el path crítico de compilación.
+2. **Primero DX determinista** — errores claros > magia.
+3. **Paridad React/Svelte antes de 10 backends.**
+4. **Stdlib/templates Cord-nativos** antes de marketplace grande.
+5. **Semántica / AI-score LLM** solo cuando el núcleo sea aburridamente sólido.
 
 ```
-Hecho ──► Fase A (A1–A6) ✅  core + goldens + --check
-Hecho ──► Fase B (B1–B8) ✅  nested / lazy / forms / fetch / watch
-Hecho ──► Fase C (C1–C8) ✅  IR dump + DX (check/fmt/symbols/preview state)
-Hecho ──► Fase D / E (MVP) ✅  hooks React avanzados + surface Svelte docs
-Hecho ──► IR-1 + IR-2 ✅     services + walkers React/Svelte sobre IrNode
-
-AHORA ──► Fase G — pulir plataforma + repo público (ver §4.1)
-DESPUÉS ► Meta-frameworks (Kit / Next)  ·  F* ecosistema  ·  LSP
+Hecho ──► Fases A–E MVP + IR-1/IR-2 + Fase G/H + traps/LSP buffer/preview bind
+AHORA ──► Horizonte A residual (loop IA): polish LSP + preview honest + traps
+DESPUÉS ► Meta backends / WASM playground / registry remoto (no diluir A)
 ```
 
-### 4.1 Fase G — Próximo sprint (acordado)
+### 4.1 Horizonte A — épicas ejecutables
 
-Objetivo: dejar el hilo **claro** y el repo **listo para GitHub**, luego cerrar residuales IR y CI de verdad.
+| # | Épica | P | Entregables | Criterio |
+|---|-------|---|-------------|----------|
+| **A1** | DX `.cord` | P0 | Diagnósticos; LSP buffer+completion+hover+fmt; skill al día | Agente edita con `check` verde sin inventar keywords |
+| **A2** | Contratos anti-alucinación | P0 | `jsx-attr`/`jsx-hook`/`jsx-tag`/`jsx-map`/`bad-interp` + schema | Schema + check + fixtures `ia_fail_*` |
+| **A3** | IR + paridad React/Svelte | P0–P1 | Checklist; goldens; IR.md | Misma app → React y Svelte |
+| **A4** | Tooling IA | P1 | `cordlang ai` + skill; traps en LSP hints | Sin LLM en `compile` · ✅ |
+| **A5** | Templates Cord | P1–P2 | templates/; docs | Repo + TEMPLATES.md |
+| **A6** | Analyze determinista | P2 | `cordlang analyze` | Heurísticas sin LLM · ✅ |
+| **A7** | Preview honest | P1 | bind + if live + contrato documentado | No claim SPA parity |
 
-| # | Item | Prioridad | Descripción | DoD |
-|---|------|-----------|-------------|-----|
-| **G0** | Repo público | **P0** | README, docs, `.gitignore`, CI skeleton, sin basura (`templates/` vacío, `idea.md` → docs) | ✅ |
-| **G1** | Theme desde IR | **P0** | `theme.css` en scaffold sin `ir_project_origin` / AST | ✅ `theme_css_generate_from_ir` |
-| **G2** | HTML preview IR-puro | **P0** | `html_generate_from_ir` camina solo `IrNode` | ✅ walk `ir->root` only |
-| **G3** | CI estable | **P0** | GitHub Action: build + goldens (Win/Linux) | ✅ Win + Ubuntu verdes |
-| **G4** | Demo `my-app` en CI | **P1** | `cordlang run react --check` y `svelte --check` en CI (cache npm) | ✅ `tests/run_myapp_check.*` + workflow |
-| **G5** | Docs 1.0-ish + AI skill | **P1** | GUIDE/CHEATSHEET/EXAMPLES + AI.md + AGENTS + write-cord skill | ✅ |
-| **G6** | License | **P1** | Elegir y commitear LICENSE (p. ej. MIT) | ✅ MIT + AUTHORS.md |
-| **G7** | Source maps reales | **P2** | mappings no stub `.cord` → out | stack traces útiles |
-| **G8** | LSP / editor | **P2** | hover + goto sobre `symbols` | extensión o server mínimo |
+**Nota:** gate syntax 1.0 (SPEC) cerrado; el **loop IA** (A1/A2/A7) es residual activo — no mezclar con amplitud de backends.
 
-**Definition of Done G:**  
-IR residuales cerrados (G1–G2), CI verde (G3), demo documentada y versionable en GitHub (G0/G5/G6).
+### 4.2 Fase G — hecho (histórico)
 
-### 4.2 Después de G (elige un carril)
+| # | Item | Estado |
+|---|------|--------|
+| G0–G6 | Repo público, theme/HTML IR, CI, my-app `--check`, docs/AI skill, MIT | ✅ |
+| G7 | Source maps reales | ✅ VLQ from source= markers |
+| G8 | LSP full | ✅ usable: buffer diags + hint/code, completion contextual, hover, formatting, codeAction (`jsx-attr`/`bad-interp`); rename/references abiertos |
 
-| Carril | Items | Cuándo |
-|--------|-------|--------|
-| **Producto SPA meta** | SvelteKit backend (E6); Next/RSC (D5) como backend aparte | Tras G1–G3 |
-| **DX editor** | G7 source maps, G8 LSP | Si el dolor es escribir `.cord` |
-| **Ecosistema** | Vue/Solid (F1–F2), playground WASM (F5) | Cuando IR + CI estén aburridos de tan estables |
+### 4.2b Fase H — Madurez del proyecto ✅ (2026-07-24)
 
-**Hecho en G:** G0–G6 (docs + AI skill incluidos).  
-**Siguiente:** Kit (E6) **o** LSP/source maps (G7/G8) — elige carril producto vs editor.
+Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza → evidencia → extensibilidad).
+
+| # | Item | Estado | Notas |
+|---|------|--------|-------|
+| H1.1 | Tests de regresión por bug | ✅ | `tests/regression/` + runners; política en CONTRIBUTING/AGENTS |
+| H1.2 | Arquitectura interna | ✅ | [`ARCHITECTURE.md`](./ARCHITECTURE.md) |
+| H2.1 | Spec formal v0.x | ✅ | [`SPEC.md`](./SPEC.md) |
+| H2.2 | Benchmarks de compile | ✅ | `make bench` / `bench/run_bench.sh`; CI opcional `bench.yml` |
+| H2.3 | Comparación Cord vs JSX/Svelte | ✅ | `bench/compare/` + `RESULTS.md` (tamaño / compile, no FPS) |
+| H3 | IR passes (plugins v1) | ✅ | `domain/ir_pass` + `--pass` / `passes` en json; `strip-debug` |
+
+**DoD H:** ✅ suite de regresión en CI; docs de arquitectura + SPEC; benches locales; passes opt-in sin romper goldens por defecto.
+
+### 4.3 Horizonte B — meta / experimental (no diluir A)
+
+| Tema | Notas |
+|------|--------|
+| Metadata semántica (`purpose`, `importance`) | ✅ vocabulario + check |
+| AI eval harness | ✅ `bench/ai_eval/` |
+| Marketplace `cord add` | 🟡 MVP local; **registry remoto pendiente** |
+| Capabilities / presets multi-backend | ✅ `presets` + adapters React/Svelte/Vue/Solid · [`LIBRARIES.md`](./LIBRARIES.md) |
+| Design system (tokens / type / elevate / composition) | ✅ MVP · [`DESIGN.md`](./DESIGN.md) |
+| Email HTML / PDF | ✅ **meta** — no contrato IA default |
+| Vue / Solid | ✅ **meta** — secundarios vs React/Svelte |
+| SvelteKit / Next | ✅ **meta** client wrap; no RSC/SSR real |
+| Flutter / SwiftUI / Compose | 🟡 spike [`NATIVE.md`](./NATIVE.md) |
+| Playground WASM | 🟡 **stub aplazado** (F5 fuera del loop IA) |
+| MCP Cordlang | ⏳ post-plan |
+| `@ai` en fuente | Evitar en build |
+
+### 4.4 No haremos
+
+- Router / store / bundler / Vite / Next / servidor propios.
+- Presentar Cord como “JSX más corto”.
+- Priorizar 10 platforms antes de DX + contratos + paridad React/Svelte.
+- Convertir templates React de internet a Cord como estrategia de UI/docs.
 
 ---
 
@@ -316,21 +369,27 @@ IR residuales cerrados (G1–G2), CI verde (G3), demo documentada y versionable 
 
 1. ~~IR compartido~~ ✅ IR-2 (`react_ir.c`)  
 2. Nested routes más profundos + loaders  
-3. Adapter **Next/RSC** (backend `next`, no ensuciar SPA)  
-4. Más goldens Phase D  
+3. ~~Adapter **Next** (backend `next`, no ensuciar SPA)~~ ✅ MVP client wrap  
+4. Más goldens Phase D / RSC profundo (fuera de MVP)
 
 ### Svelte
 
 1. ~~IR compartido~~ ✅ IR-2  
 2. `$bindable` / `{#key}` / special elements  
-3. Backend **SvelteKit** (SSR + file routing) — post-G  
+3. ~~Backend **SvelteKit**~~ ✅ MVP (`sveltekit` meta)  
 4. Attachments `@attach` (Svelte 5 modern path)  
+
+### Email / PDF
+
+1. ~~HTML estático compartido~~ ✅ `static_html` + backends `email` / `pdf`  
+2. Conversión PDF externa documentada (`run pdf --check` soft)
 
 ### HTML preview
 
-1. State básico ✅ (C8)  
-2. **IR-puro** (G2)  
-3. Paridad limitada con events/bind  
+1. State básico ✅ (C8) + IR path (G2)  
+2. `bind` inputs + live `if` + assign handlers ✅  
+3. `for` = lista **estática** explícita (no fingir each)  
+4. Contrato documentado en GUIDE / badge runtime — **no** paridad SPA  
 
 ---
 
@@ -341,9 +400,9 @@ IR residuales cerrados (G1–G2), CI verde (G3), demo documentada y versionable 
 - [x] Preview nativo con state básico  
 - [x] CI build + goldens Win/Linux (G3)  
 - [x] Un solo proyecto demo pasa React + Svelte build en **CI** (G4)  
-- [ ] Paridad documentada ≥ 90% de la matriz P0/P1  
-- [ ] `docs/REACT.md` + `docs/SVELTE.md` 100% al día con codegen  
-- [ ] Syntax freeze del subset 1.0 (`docs/LANGUAGE.md`)  
+- [x] Paridad documentada ≥ 90% de la matriz P0/P1  
+- [x] `docs/REACT.md` + `docs/SVELTE.md` al día con codegen (gaps residuales explícitos)  
+- [x] Syntax freeze del subset 1.0 ([`docs/SPEC.md`](./SPEC.md) **1.0**)  
 - [x] Theme + HTML sin residual AST en path IR (G1–G2)  
 - [x] LICENSE publicada (MIT)  
 
@@ -353,7 +412,8 @@ IR residuales cerrados (G1–G2), CI verde (G3), demo documentada y versionable 
 
 - No clonar el 100% de cada API de framework (libs internas, experimental flags).  
 - No mantener class components React salvo ErrorBoundary.  
-- No hacer Cordlang un lenguaje JS general-purpose.  
+- No hacer Cordlang un lenguaje JS general-purpose **ni otro React/Vite**.  
+- No meter LLM en el path de `compile` / CI.  
 - No bloquear Svelte hasta “React perfecto”: **paridad por fases**, no por monolitismo.  
 - No commitear `node_modules/`, `dist/` generados ni binarios locales.
 
@@ -369,8 +429,10 @@ IR residuales cerrados (G1–G2), CI verde (G3), demo documentada y versionable 
 | **M3 — Deep React** | D* selecto | 🟡 MVP |
 | **M4 — Deep Svelte** | E* selecto | 🟡 MVP (sin Kit) |
 | **M5 — IR platform** | IR-1 + IR-2 | ✅ |
-| **M6 — Public + polish** | Fase G (G0–G6 ✅) | ✅ done-ish |
-| **M7 — Meta / ecosystem** | Kit/Next, F* | después |
+| **M6 — Public + polish** | Fase G (G0–G6 ✅) | ✅ |
+| **M7 — Horizonte A** | A1–A6 (DX, contratos, paridad, IA workflow, templates, analyze) | ✅ gate 1.0 |
+| **M8 — Madurez** | Fase H (regresión, ARCHITECTURE, SPEC, bench, IR passes) | ✅ |
+| **M9 — Horizonte B / meta** | Platform → Vue → Solid → email/PDF → Next/Kit → ecosystem (`add`, templates, versioning, playground stub) → native spike | 🟡 en curso |
 
 Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `ir`, `dx`, `ci`, `docs`.
 
@@ -385,4 +447,4 @@ Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `ir`, `dx`, `ci`
 
 ---
 
-*Última actualización: alineado al estado del repo con backends React (hooks + Suspense/lazy/portal/EB) y Svelte 5 (runes + hash router multi-file).*
+*Última actualización: tooling IA (check --json / hints / ai context|doctor / fix-cord-check / analyze ampliado / LSP codeAction / ai_eval); playground WASM real y MCP Cordlang = pendientes.*

@@ -1,0 +1,14 @@
+def Overview
+  state sales = 0
+  section density=comfortable md:p=32 p=16
+    stack density=spacious gap=24
+      h1 "Overview" type=title
+      p "App shell with design tokens — metrics use elevation." type=body muted
+      row gap=16
+        card elevate=1 p=20 flex-1
+          span "Active" type=caption muted
+          h2 "128" type=display
+        card elevate=1 p=20 flex-1
+          span "Errors" type=caption muted
+          h2 "3" type=display
+      chart type=bar data=sales

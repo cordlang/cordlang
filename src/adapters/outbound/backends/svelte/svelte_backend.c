@@ -2,6 +2,7 @@
 #include "adapters/outbound/backends/ir_walk.h"
 #include "adapters/outbound/backends/source_attr.h"
 #include "adapters/outbound/backends/theme_css.h"
+#include "adapters/outbound/html_escape.h"
 #include "domain/interp.h"
 #include "domain/ir.h"
 #include <ctype.h>
@@ -29,12 +30,22 @@ static void sb_init(StrBuf *sb) {
   sb->buf = calloc(sb->cap, 1);
 }
 
+static void sb_oom(void) {
+  fprintf(stderr, "fatal: out of memory (StrBuf)\n");
+  exit(1);
+}
+
 static void sb_append(StrBuf *sb, const char *s) {
   if (!s) return;
   size_t slen = strlen(s);
   if (sb->len + slen + 1 >= sb->cap) {
-    while (sb->len + slen + 1 >= sb->cap) sb->cap *= 2;
-    sb->buf = realloc(sb->buf, sb->cap);
+    while (sb->len + slen + 1 >= sb->cap) {
+      if (sb->cap > (size_t)-1 / 2) sb_oom();
+      sb->cap *= 2;
+    }
+    char *nbuf = realloc(sb->buf, sb->cap);
+    if (!nbuf) sb_oom();
+    sb->buf = nbuf;
   }
   memcpy(sb->buf + sb->len, s, slen);
   sb->len += slen;
@@ -48,8 +59,13 @@ static void sb_appendf(StrBuf *sb, const char *fmt, ...) {
   va_end(args);
   if (n < 0) return;
   if (sb->len + (size_t)n + 1 >= sb->cap) {
-    while (sb->len + (size_t)n + 1 >= sb->cap) sb->cap *= 2;
-    sb->buf = realloc(sb->buf, sb->cap);
+    while (sb->len + (size_t)n + 1 >= sb->cap) {
+      if (sb->cap > (size_t)-1 / 2) sb_oom();
+      sb->cap *= 2;
+    }
+    char *nbuf = realloc(sb->buf, sb->cap);
+    if (!nbuf) sb_oom();
+    sb->buf = nbuf;
   }
   va_start(args, fmt);
   vsnprintf(sb->buf + sb->len, sb->cap - sb->len, fmt, args);
@@ -78,6 +94,35 @@ static int looks_like_js_expr(const char *s) {
     after_dot = 0;
   }
   return !after_dot;
+}
+
+/* Mirror React emit_jsx_value: PascalCase / Title Case strings stay quoted. */
+static void emit_svelte_prop_value(StrBuf *sb, const char *val) {
+  if (!val) {
+    sb_append(sb, "{undefined}");
+    return;
+  }
+  if (irw_looks_number(val) || irw_looks_bool(val)) {
+    sb_appendf(sb, "{%s}", val);
+    return;
+  }
+  if ((isalpha((unsigned char)val[0]) || val[0] == '_') &&
+      strchr(val, ' ') == NULL && strchr(val, '"') == NULL) {
+    int has_dot = strchr(val, '.') != NULL;
+    int all_ident = 1;
+    for (const char *p = val; *p; p++) {
+      if (!(isalnum((unsigned char)*p) || *p == '_' || *p == '.' || *p == '$')) {
+        all_ident = 0;
+        break;
+      }
+    }
+    if (all_ident &&
+        (has_dot || islower((unsigned char)val[0]) || val[0] == '_')) {
+      sb_appendf(sb, "{%s}", val);
+      return;
+    }
+  }
+  sb_appendf(sb, "\"%s\"", val);
 }
 
 static int is_style_attr(const char *name) {
@@ -210,6 +255,13 @@ static void collect_classes_ir(char *classes, size_t sz, const IrNode *node,
   if (base) strncat(classes, base, sz - 1);
   if (!node) return;
 
+  int has_between = 0;
+  for (size_t i = 0; i < node->n_kids; i++) {
+    IrNode *c = node->kids[i];
+    if (!c || c->kind != IR_ATTR || !c->name) continue;
+    if (strcmp(c->name, "between") == 0) has_between = 1;
+  }
+
   for (size_t i = 0; i < node->n_kids; i++) {
     IrNode *c = node->kids[i];
     if (!c || c->kind != IR_ATTR || !c->name) continue;
@@ -221,14 +273,25 @@ static void collect_classes_ir(char *classes, size_t sz, const IrNode *node,
     /* Bool-like attrs (name is the flag / size token) */
     if (attr_is_true(c) || (!c->value || !c->value[0])) {
       if (strcmp(k, "between") == 0)
-        strncat(classes, " justify-between", sz - strlen(classes) - 1);
+        strncat(classes,
+                strstr(classes, "flex") ? " justify-between"
+                                        : " flex justify-between",
+                sz - strlen(classes) - 1);
       else if (strcmp(k, "center") == 0)
-        strncat(classes, " items-center justify-center",
+        strncat(classes,
+                has_between ? " flex items-center"
+                            : " flex items-center justify-center",
                 sz - strlen(classes) - 1);
       else if (strcmp(k, "bold") == 0)
         strncat(classes, " font-bold", sz - strlen(classes) - 1);
       else if (strcmp(k, "muted") == 0)
-        strncat(classes, " text-gray-500", sz - strlen(classes) - 1);
+        strncat(classes, " text-muted", sz - strlen(classes) - 1);
+      else if (strcmp(k, "font-mono") == 0)
+        strncat(classes, " font-mono", sz - strlen(classes) - 1);
+      else if (strcmp(k, "flex-1") == 0)
+        strncat(classes, " flex-1", sz - strlen(classes) - 1);
+      else if (strcmp(k, "border") == 0)
+        strncat(classes, " border border-gray-200", sz - strlen(classes) - 1);
       else if (strcmp(k, "sticky") == 0)
         strncat(classes, " sticky top-0", sz - strlen(classes) - 1);
       else if (strcmp(k, "primary") == 0)
@@ -250,7 +313,10 @@ static void collect_classes_ir(char *classes, size_t sz, const IrNode *node,
         if (strcmp(k, "variant") && strcmp(k, "size") && strcmp(k, "color") &&
             strcmp(k, "gap") && strcmp(k, "cols") && strcmp(k, "p") &&
             strcmp(k, "bg") && strcmp(k, "shadow") && strcmp(k, "rounded") &&
-            strcmp(k, "max-w"))
+            strcmp(k, "max-w") && strcmp(k, "w") && strcmp(k, "h") &&
+            strcmp(k, "min-h") && strcmp(k, "mx") && strcmp(k, "my") &&
+            strcmp(k, "px") && strcmp(k, "py") && strcmp(k, "m") &&
+            strcmp(k, "border"))
           continue;
       }
     }
@@ -281,6 +347,33 @@ static void collect_classes_ir(char *classes, size_t sz, const IrNode *node,
       strncat(classes, vbuf, sz - strlen(classes) - 1);
     } else if (strcmp(k, "p") == 0) {
       snprintf(vbuf, sizeof(vbuf), " p-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "px") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " px-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "py") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " py-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "m") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " m-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "mx") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " mx-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "my") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " my-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "w") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " w-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "h") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " h-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "min-h") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " min-h-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "border") == 0 && !attr_is_true(c)) {
+      snprintf(vbuf, sizeof(vbuf), " border border-%s", v);
       strncat(classes, vbuf, sz - strlen(classes) - 1);
     } else if (strcmp(k, "bg") == 0) {
       if (theme_is_color_token(v)) {
@@ -326,6 +419,9 @@ typedef struct {
   int use_slot;
   int use_context;
   int use_params;
+  int use_cord_icon;
+  int use_cord_motion;
+  int use_cord_chart;
   char used[SV_MAX_USED][96];
   int n_used;
 } SvelteUnit;
@@ -338,8 +434,11 @@ typedef struct {
   int has_router;
   IrNode *contexts[32]; /* IR_HOOK context */
   int n_contexts;
+  IrNode *foreigns[32];
+  int n_foreigns;
   char lazy_route_names[16][64];
   int n_lazy_routes;
+  int truncated;
 } SvelteProject;
 
 typedef struct {
@@ -406,6 +505,11 @@ static void scan_deps_ir(IrNode *n, SvelteUnit *u) {
     if (irw_is_pascal(n->name)) unit_add_used(u, n->name);
     if (strcmp(n->name, "link") == 0) u->use_link = 1;
     if (strcmp(n->name, "provide") == 0) u->use_context = 1;
+    if (strcmp(n->name, "icon") == 0) u->use_cord_icon = 1;
+    if (strcmp(n->name, "motion") == 0 || strcmp(n->name, "Motion") == 0)
+      u->use_cord_motion = 1;
+    if (strcmp(n->name, "chart") == 0 || strcmp(n->name, "Chart") == 0)
+      u->use_cord_chart = 1;
   }
   for (size_t i = 0; i < n->n_kids; i++) scan_deps_ir(n->kids[i], u);
 }
@@ -508,18 +612,26 @@ static void project_partition_from_ir(SvelteProject *p, IrNode *root) {
     if (!c) continue;
     if (c->kind == IR_COMPONENT) {
       if (n_comp < SV_MAX_UNITS) raw_comps[n_comp++] = c;
+      else p->truncated = 1;
     } else if (c->kind == IR_LAYOUT) {
       if (n_layout < 16) raw_layouts[n_layout++] = c;
+      else p->truncated = 1;
     } else if (c->kind == IR_ROUTE) {
       if (p->n_routes < SV_MAX_ROUTES) p->routes[p->n_routes++] = c;
+      else p->truncated = 1;
     } else if (irw_hook_is(c, "lazy") && c->value) {
       if (p->n_lazy_routes < 16) {
         snprintf(p->lazy_route_names[p->n_lazy_routes],
                  sizeof(p->lazy_route_names[0]), "%s", c->value);
         p->n_lazy_routes++;
+      } else {
+        p->truncated = 1;
       }
     } else if (irw_hook_is(c, "context")) {
       project_add_context_ir(p, c);
+    } else if (c->kind == IR_FOREIGN) {
+      if (p->n_foreigns < 32) p->foreigns[p->n_foreigns++] = c;
+      else p->truncated = 1;
     }
   }
 
@@ -530,12 +642,17 @@ static void project_partition_from_ir(SvelteProject *p, IrNode *root) {
       snprintf(p->lazy_route_names[p->n_lazy_routes],
                sizeof(p->lazy_route_names[0]), "%s", p->routes[r]->value);
       p->n_lazy_routes++;
+    } else {
+      p->truncated = 1;
     }
   }
   p->has_router = (p->n_routes > 0 || n_layout > 0);
 
   for (int i = 0; i < n_comp; i++) {
-    if (p->n_units >= SV_MAX_UNITS) break;
+    if (p->n_units >= SV_MAX_UNITS) {
+      p->truncated = 1;
+      break;
+    }
     SvelteUnit *u = &p->units[p->n_units++];
     memset(u, 0, sizeof(*u));
     snprintf(u->name, sizeof(u->name), "%s",
@@ -549,26 +666,44 @@ static void project_partition_from_ir(SvelteProject *p, IrNode *root) {
       u->kind = SK_COMPONENT;
       snprintf(u->dir, sizeof(u->dir), "components");
     }
-    snprintf(u->rel, sizeof(u->rel), "%s/%s.svelte", u->dir, u->name);
+    {
+      char relbuf[128];
+      snprintf(relbuf, sizeof(relbuf), "%s/%s.svelte", u->dir, u->name);
+      snprintf(u->rel, sizeof(u->rel), "%s", relbuf);
+    }
     cord_guess_source_path(u->name, u->dir, u->source_path,
                            sizeof(u->source_path));
     scan_deps_ir(u->ir_def, u);
   }
 
   for (int i = 0; i < n_layout; i++) {
-    if (p->n_units >= SV_MAX_UNITS) break;
+    if (p->n_units >= SV_MAX_UNITS) {
+      p->truncated = 1;
+      break;
+    }
     SvelteUnit *u = &p->units[p->n_units++];
     memset(u, 0, sizeof(*u));
     layout_name(raw_layouts[i]->name, u->name, sizeof(u->name));
     u->ir_def = raw_layouts[i];
     u->kind = SK_LAYOUT;
     snprintf(u->dir, sizeof(u->dir), "layouts");
-    snprintf(u->rel, sizeof(u->rel), "layouts/%s.svelte", u->name);
+    {
+      char relbuf[128];
+      snprintf(relbuf, sizeof(relbuf), "layouts/%s.svelte", u->name);
+      snprintf(u->rel, sizeof(u->rel), "%s", relbuf);
+    }
     cord_guess_source_path(u->name, u->dir, u->source_path,
                            sizeof(u->source_path));
     u->use_slot = 1;
     p->has_router = 1;
     scan_deps_ir(u->ir_def, u);
+  }
+
+  if (p->truncated) {
+    fprintf(stderr,
+            "error: project exceeds Svelte backend limits "
+            "(max %d units, %d routes) — split the app or raise limits\n",
+            SV_MAX_UNITS, SV_MAX_ROUTES);
   }
 }
 
@@ -599,9 +734,11 @@ static void gen_text_or_interp_ir(StrBuf *sb, IrNode *node, int depth) {
     sb_indent(sb, depth);
     for (size_t i = 0; i < node->n_kids; i++) {
       IrNode *c = node->kids[i];
-      if (c->kind == IR_TEXT && c->value)
-        sb_append(sb, c->value);
-      else if (c->kind == IR_INTERP && c->value)
+      if (c->kind == IR_TEXT && c->value) {
+        char *plain = interp_plain_text(c->value);
+        if (plain) sb_append(sb, plain);
+        free(plain);
+      } else if (c->kind == IR_INTERP && c->value)
         emit_interp_expr(sb, c->value);
     }
     sb_append(sb, "\n");
@@ -615,8 +752,38 @@ static void gen_text_or_interp_ir(StrBuf *sb, IrNode *node, int depth) {
       while (*p) {
         const char *hash = strstr(p, "#{");
         if (!hash) {
-          sb_append(sb, p);
+          char *plain = interp_plain_text(p);
+          if (plain) sb_append(sb, plain);
+          free(plain);
           break;
+        }
+        if (hash > node->value && hash[-1] == '\\') {
+          /* literal \#{…}: emit text before \, then #{…} without '\' */
+          if (hash - 1 > p) {
+            size_t n = (size_t)((hash - 1) - p);
+            char *tmp = malloc(n + 1);
+            if (tmp) {
+              memcpy(tmp, p, n);
+              tmp[n] = '\0';
+              sb_append(sb, tmp);
+              free(tmp);
+            }
+          }
+          const char *end = strchr(hash + 2, '}');
+          if (!end) {
+            sb_append(sb, hash);
+            break;
+          }
+          size_t n = (size_t)(end - hash + 1);
+          char *tmp = malloc(n + 1);
+          if (tmp) {
+            memcpy(tmp, hash, n);
+            tmp[n] = '\0';
+            sb_append(sb, tmp);
+            free(tmp);
+          }
+          p = end + 1;
+          continue;
         }
         if (hash > p) {
           char tmp[512];
@@ -640,11 +807,10 @@ static void gen_text_or_interp_ir(StrBuf *sb, IrNode *node, int depth) {
         p = end + 1;
       }
       sb_append(sb, "\n");
-    } else if (node->value && looks_like_js_expr(node->value) &&
-               strchr(node->value, '.')) {
-      sb_appendf(sb, "{%s}\n", node->value);
     } else {
-      sb_append(sb, node->value ? node->value : "");
+      char *plain = interp_plain_text(node->value);
+      sb_append(sb, plain ? plain : "");
+      free(plain);
       sb_append(sb, "\n");
     }
   }
@@ -670,6 +836,52 @@ static void gen_element_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
     return;
   }
 
+  /* Capability bridges (icon / motion / chart) */
+  {
+    const char *bridge = irw_cord_bridge_name(tag);
+    if (bridge) {
+      sb_indent(sb, depth);
+      sb_appendf(sb, "<%s", bridge);
+      int has_kids = 0;
+      for (size_t i = 0; i < node->n_kids; i++) {
+        IrNode *c = node->kids[i];
+        if (c->kind == IR_ATTR && c->name &&
+            !(c->name[0] == '_' && c->name[1] == '_')) {
+          /* size is a prop for CordIcon, not a Tailwind class */
+          if (is_style_attr(c->name) && strcmp(c->name, "size") != 0 &&
+              strcmp(c->name, "fade") != 0)
+            continue;
+          if (attr_is_true(c) &&
+              (strcmp(c->name, "fade") == 0 || strcmp(c->name, "center") == 0 ||
+               strcmp(c->name, "bold") == 0 || strcmp(c->name, "muted") == 0)) {
+            if (strcmp(c->name, "fade") == 0)
+              sb_append(sb, " fade={true}");
+            continue;
+          }
+          /* Icon/chart string props: quote identifiers as literals */
+          if ((strcmp(c->name, "name") == 0 || strcmp(c->name, "type") == 0) &&
+              c->value && !irw_looks_number(c->value) && !irw_looks_bool(c->value) &&
+              strchr(c->value, '.') == NULL) {
+            sb_appendf(sb, " %s=\"%s\"", c->name, c->value);
+            continue;
+          }
+          sb_appendf(sb, " %s=", c->name);
+          emit_svelte_prop_value(sb, c->value);
+        } else if (is_markup_child_kind(c->kind))
+          has_kids = 1;
+      }
+      if (!has_kids) {
+        sb_append(sb, " />\n");
+        return;
+      }
+      sb_append(sb, ">\n");
+      gen_children_ir(sb, node, depth + 1, is_layout);
+      sb_indent(sb, depth);
+      sb_appendf(sb, "</%s>\n", bridge);
+      return;
+    }
+  }
+
   if (irw_is_pascal(tag)) {
     sb_indent(sb, depth);
     sb_appendf(sb, "<%s", tag);
@@ -678,11 +890,8 @@ static void gen_element_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
       IrNode *c = node->kids[i];
       if (c->kind == IR_ATTR && c->name && !is_style_attr(c->name) &&
           !(c->name[0] == '_' && c->name[1] == '_')) {
-        if (c->value && (irw_looks_number(c->value) || irw_looks_bool(c->value) ||
-                         looks_like_js_expr(c->value)))
-          sb_appendf(sb, " %s={%s}", c->name, c->value);
-        else
-          sb_appendf(sb, " %s=\"%s\"", c->name, c->value ? c->value : "");
+        sb_appendf(sb, " %s=", c->name);
+        emit_svelte_prop_value(sb, c->value);
       } else if (c->kind == IR_EVENT && c->name && c->value) {
         int needs_arrow = strchr(c->value, '(') || strchr(c->value, '+') ||
                           strchr(c->value, '-') || strchr(c->value, ' ');
@@ -719,7 +928,11 @@ static void gen_element_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
   {
     char *cls = classes;
     while (*cls == ' ') cls++;
-    if (*cls) sb_appendf(sb, " class=\"%s\"", cls);
+    if (*cls) {
+      char *esc = js_escape_dq_dup(cls);
+      sb_appendf(sb, " class=\"%s\"", esc ? esc : "");
+      free(esc);
+    }
   }
 
   if (strcmp(tag, "link") == 0) {
@@ -731,10 +944,13 @@ static void gen_element_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
           c->value)
         to = c->value;
     }
+    if (!url_href_is_safe(to)) to = "/";
+    char *esc = js_escape_dq_dup(to);
     if (to[0] == '/')
-      sb_appendf(sb, " href=\"#%s\"", to);
+      sb_appendf(sb, " href=\"#%s\"", esc ? esc : "/");
     else
-      sb_appendf(sb, " href=\"#/%s\"", to);
+      sb_appendf(sb, " href=\"#/%s\"", esc ? esc : "/");
+    free(esc);
   }
 
   for (size_t i = 0; i < node->n_kids; i++) {
@@ -749,6 +965,8 @@ static void gen_element_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
          strcmp(c->name, "bold") == 0 || strcmp(c->name, "muted") == 0 ||
          strcmp(c->name, "sticky") == 0 || strcmp(c->name, "primary") == 0 ||
          strcmp(c->name, "outline") == 0 || strcmp(c->name, "ghost") == 0 ||
+         strcmp(c->name, "font-mono") == 0 || strcmp(c->name, "flex-1") == 0 ||
+         strcmp(c->name, "border") == 0 ||
          strcmp(c->name, "xl") == 0 || strcmp(c->name, "2xl") == 0 ||
          strcmp(c->name, "4xl") == 0 || strcmp(c->name, "lg") == 0 ||
          strcmp(c->name, "sm") == 0 || strcmp(c->name, "3xl") == 0 ||
@@ -789,8 +1007,11 @@ static void gen_element_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
         strcmp(c->name, "rows") == 0) {
       if (c->value && looks_like_js_expr(c->value) && strchr(c->value, '.'))
         sb_appendf(sb, " %s={%s}", c->name, c->value);
-      else
-        sb_appendf(sb, " %s=\"%s\"", c->name, c->value ? c->value : "");
+      else {
+        char *esc = js_escape_dq_dup(c->value ? c->value : "");
+        sb_appendf(sb, " %s=\"%s\"", c->name, esc ? esc : "");
+        free(esc);
+      }
     }
   }
 
@@ -952,10 +1173,12 @@ static void gen_children_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) 
       }
     } else if (irw_hook_is(child, "head")) {
       if (child->value) {
+        char title_e[512];
+        html_escape_to(title_e, sizeof(title_e), child->value);
         sb_indent(sb, depth);
         sb_append(sb, "<svelte:head>\n");
         sb_indent(sb, depth + 1);
-        sb_appendf(sb, "<title>%s</title>\n", child->value);
+        sb_appendf(sb, "<title>%s</title>\n", title_e);
         sb_indent(sb, depth);
         sb_append(sb, "</svelte:head>\n");
       }
@@ -1007,10 +1230,12 @@ static void gen_node_ir(StrBuf *sb, IrNode *node, int depth, int is_layout) {
         }
       } else if (node->name && strcmp(node->name, "head") == 0) {
         if (node->value) {
+          char title_e[512];
+          html_escape_to(title_e, sizeof(title_e), node->value);
           sb_indent(sb, depth);
           sb_append(sb, "<svelte:head>\n");
           sb_indent(sb, depth + 1);
-          sb_appendf(sb, "<title>%s</title>\n", node->value);
+          sb_appendf(sb, "<title>%s</title>\n", title_e);
           sb_indent(sb, depth);
           sb_append(sb, "</svelte:head>\n");
         }
@@ -1163,7 +1388,9 @@ static void emit_js_lit(StrBuf *sb, const char *val) {
     sb_append(sb, val);
     return;
   }
-  sb_appendf(sb, "'%s'", val);
+  char *esc = js_escape_sq_dup(val);
+  sb_appendf(sb, "'%s'", esc ? esc : "");
+  free(esc);
 }
 
 static void foreach_state(IrNode *def,
@@ -1328,14 +1555,36 @@ static char *gen_svelte_module_ir(SvelteProject *proj, SvelteUnit *u) {
 
   for (int i = 0; i < u->n_used; i++) {
     SvelteUnit *dep = find_unit(proj, u->used[i]);
-    if (!dep) continue;
-    if (strcmp(u->dir, dep->dir) == 0)
-      sb_appendf(&script, "  import %s from './%s.svelte';\n", dep->name,
-                 dep->name);
-    else
-      sb_appendf(&script, "  import %s from '../%s/%s.svelte';\n", dep->name,
-                 dep->dir, dep->name);
+    if (dep) {
+      if (strcmp(u->dir, dep->dir) == 0)
+        sb_appendf(&script, "  import %s from './%s.svelte';\n", dep->name,
+                   dep->name);
+      else
+        sb_appendf(&script, "  import %s from '../%s/%s.svelte';\n", dep->name,
+                   dep->dir, dep->name);
+      continue;
+    }
+    for (int f = 0; f < proj->n_foreigns; f++) {
+      IrNode *fn = proj->foreigns[f];
+      if (!fn || !fn->name || strcmp(fn->name, u->used[i]) != 0) continue;
+      const char *mod = fn->value;
+      for (size_t k = 0; k < fn->n_kids; k++) {
+        IrNode *a = fn->kids[k];
+        if (a && a->kind == IR_ATTR && a->name && a->value &&
+            strcmp(a->name, "svelte") == 0)
+          mod = a->value;
+      }
+      if (mod && mod[0])
+        sb_appendf(&script, "  import %s from '%s';\n", fn->name, mod);
+      break;
+    }
   }
+  if (u->use_cord_icon)
+    sb_append(&script, "  import CordIcon from '../CordIcon.svelte';\n");
+  if (u->use_cord_motion)
+    sb_append(&script, "  import CordMotion from '../CordMotion.svelte';\n");
+  if (u->use_cord_chart)
+    sb_append(&script, "  import CordChart from '../CordChart.svelte';\n");
 
   IrNode *params_decl = ir_find_hook(def, "params");
   if (params_decl) u->use_params = 1;
@@ -1545,7 +1794,12 @@ static char *gen_svelte_module_ir(SvelteProject *proj, SvelteUnit *u) {
     sb_append(&script, "    let cancelled = false;\n");
     sb_appendf(&script, "    %sLoading = true;\n", nm);
     sb_appendf(&script, "    %sError = null;\n", nm);
-    sb_appendf(&script, "    fetch(\"%s\")\n", url);
+    {
+      const char *safe_url = url_href_is_safe(url) ? url : "/";
+      char *esc = js_escape_dq_dup(safe_url);
+      sb_appendf(&script, "    fetch(\"%s\")\n", esc ? esc : "/");
+      free(esc);
+    }
     sb_append(&script, "      .then((r) => {\n");
     sb_append(&script, "        if (!r.ok) throw new Error(String(r.status));\n");
     sb_append(&script, "        return r.json();\n");
@@ -1900,6 +2154,10 @@ int svelte_emit_modules_from_ir(IrProgram *ir, SvelteWriteFn write_fn,
   SvelteProject *proj = calloc(1, sizeof(SvelteProject));
   if (!proj) return -1;
   project_partition_from_ir(proj, ir->root);
+  if (proj->truncated) {
+    free(proj);
+    return -1;
+  }
   harvest_contexts_ir(proj, ir->root);
 
   if (proj->n_contexts > 0) {
@@ -1955,6 +2213,10 @@ static char *svelte_generate_impl_ir(IrProgram *ir) {
   SvelteProject *proj = calloc(1, sizeof(SvelteProject));
   if (!proj) return strdup("<!-- empty -->\n");
   project_partition_from_ir(proj, ir->root);
+  if (proj->truncated) {
+    free(proj);
+    return NULL;
+  }
   harvest_contexts_ir(proj, ir->root);
 
   if (proj->n_contexts > 0) {

@@ -1,0 +1,38 @@
+<!-- ===== src/components/Demo.vue ===== -->
+<!-- cordlang: source=src/components/Demo.cord -->
+<script setup>
+import { ref } from 'vue';
+const count = ref(1);
+function setCount(v) { count.value = typeof v === 'function' ? v(count.value) : v; }
+</script>
+
+<template>
+<div class="flex flex-col gap-8">
+  <p>
+    show #{count}
+  </p>
+  <p>
+    live 
+    {{ count }}
+  </p>
+  <p>
+    mix 
+    #{count}
+     and 
+    {{ count }}
+  </p>
+</div>
+</template>
+
+<!-- ===== src/router.js ===== -->
+export const router = null;
+
+<!-- ===== src/App.vue ===== -->
+<!-- cordlang: source=src/app.cord -->
+<script setup>
+import Demo from './components/Demo.vue';
+</script>
+
+<template>
+  <Demo />
+</template>

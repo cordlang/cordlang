@@ -1,0 +1,5 @@
+def Nav
+  props home: string = "/"
+  row gap=16 p=12 between
+    link "Home" to=#{home}
+    slot

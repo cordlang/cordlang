@@ -3,15 +3,32 @@
 #include <stdlib.h>
 #include <string.h>
 
+static void ast_oom(const char *what) {
+  fprintf(stderr, "FATAL: out of memory in %s\n", what ? what : "ast");
+  abort();
+}
+
 Node *node_create(NodeType type, const char *value, int line, int col) {
   Node *n = calloc(1, sizeof(Node));
+  if (!n) ast_oom("node_create");
   n->magic = NODE_MAGIC;
   n->type = type;
-  if (value) n->value = strdup(value);
+  if (value) {
+    n->value = strdup(value);
+    if (!n->value) ast_oom("node_create value");
+  }
   n->line = line;
   n->col = col;
   n->children_cap = 4;
   n->children = calloc(n->children_cap, sizeof(Node *));
+  if (!n->children) ast_oom("node_create children");
+  return n;
+}
+
+/* Like node_create, but takes ownership of `value` (malloc'd or NULL). */
+Node *node_adopt(NodeType type, char *value, int line, int col) {
+  Node *n = node_create(type, NULL, line, col);
+  n->value = value;
   return n;
 }
 
@@ -35,9 +52,12 @@ void node_add_child(Node *parent, Node *child) {
     abort();
   }
   if (parent->children_len >= parent->children_cap) {
-    parent->children_cap *= 2;
-    parent->children =
-        realloc(parent->children, parent->children_cap * sizeof(Node *));
+    size_t ncap = parent->children_cap * 2;
+    Node **nch =
+        realloc(parent->children, ncap * sizeof(Node *));
+    if (!nch) ast_oom("node_add_child realloc");
+    parent->children = nch;
+    parent->children_cap = ncap;
   }
   parent->children[parent->children_len++] = child;
 }
@@ -61,7 +81,10 @@ void node_free(Node *node) {
 Node *node_clone(const Node *node) {
   node_validate((Node *)node);
   Node *n = node_create(node->type, node->value, node->line, node->col);
-  if (node->value2) n->value2 = strdup(node->value2);
+  if (node->value2) {
+    n->value2 = strdup(node->value2);
+    if (!n->value2) ast_oom("node_clone value2");
+  }
   for (size_t i = 0; i < node->children_len; i++) {
     node_add_child(n, node_clone(node->children[i]));
   }
@@ -70,6 +93,7 @@ Node *node_clone(const Node *node) {
 
 AST *ast_create(void) {
   AST *ast = calloc(1, sizeof(AST));
+  if (!ast) ast_oom("ast_create");
   ast->root = node_create(NODE_ROOT, NULL, 0, 0);
   return ast;
 }

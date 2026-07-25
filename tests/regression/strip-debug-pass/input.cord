@@ -1,0 +1,5 @@
+# strip-debug pass removes debug / data-debug* attrs
+
+def Demo
+  col gap=8 debug=1 data-debug-trace=on
+    p "hello" muted

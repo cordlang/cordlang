@@ -2,9 +2,11 @@
  * React IR-2 codegen: pure IrNode walkers (no ir_origin / AST for body emission).
  */
 #include "adapters/outbound/backends/react/react_backend.h"
+#include "adapters/outbound/backends/cord_class.h"
 #include "adapters/outbound/backends/source_attr.h"
 #include "adapters/outbound/backends/theme_css.h"
 #include "adapters/outbound/backends/ir_walk.h"
+#include "adapters/outbound/html_escape.h"
 #include "domain/interp.h"
 #include "domain/ir.h"
 #include <ctype.h>
@@ -27,12 +29,22 @@ static void sb_init(StrBuf *sb) {
   sb->buf = calloc(sb->cap, 1);
 }
 
+static void sb_oom(void) {
+  fprintf(stderr, "fatal: out of memory (StrBuf)\n");
+  exit(1);
+}
+
 static void sb_append(StrBuf *sb, const char *s) {
   if (!s) return;
   size_t slen = strlen(s);
   if (sb->len + slen + 1 >= sb->cap) {
-    while (sb->len + slen + 1 >= sb->cap) sb->cap *= 2;
-    sb->buf = realloc(sb->buf, sb->cap);
+    while (sb->len + slen + 1 >= sb->cap) {
+      if (sb->cap > (size_t)-1 / 2) sb_oom();
+      sb->cap *= 2;
+    }
+    char *nbuf = realloc(sb->buf, sb->cap);
+    if (!nbuf) sb_oom();
+    sb->buf = nbuf;
   }
   memcpy(sb->buf + sb->len, s, slen);
   sb->len += slen;
@@ -46,8 +58,13 @@ static void sb_appendf(StrBuf *sb, const char *fmt, ...) {
   va_end(args);
   if (n < 0) return;
   if (sb->len + (size_t)n + 1 >= sb->cap) {
-    while (sb->len + (size_t)n + 1 >= sb->cap) sb->cap *= 2;
-    sb->buf = realloc(sb->buf, sb->cap);
+    while (sb->len + (size_t)n + 1 >= sb->cap) {
+      if (sb->cap > (size_t)-1 / 2) sb_oom();
+      sb->cap *= 2;
+    }
+    char *nbuf = realloc(sb->buf, sb->cap);
+    if (!nbuf) sb_oom();
+    sb->buf = nbuf;
   }
   va_start(args, fmt);
   vsnprintf(sb->buf + sb->len, sb->cap - sb->len, fmt, args);
@@ -66,21 +83,14 @@ static int is_pascal_case(const char *s) {
   return s && s[0] && isupper((unsigned char)s[0]);
 }
 
-static int looks_like_number(const char *s) {
-  if (!s || !*s) return 0;
-  const char *p = s;
-  if (*p == '-' || *p == '+') p++;
-  int digits = 0;
-  while (*p) {
-    if (isdigit((unsigned char)*p)) digits++;
-    else if (*p != '.') return 0;
-    p++;
-  }
-  return digits > 0;
-}
+/* Attr/class lowering is shared with the ESM preview — see cord_class.h. */
+static int looks_like_number(const char *s) { return cord_looks_like_number(s); }
 
-static int looks_like_bool(const char *s) {
-  return s && (strcmp(s, "true") == 0 || strcmp(s, "false") == 0);
+static int looks_like_bool(const char *s) { return cord_looks_like_bool(s); }
+
+/* DOM a11y / data attrs must never become implicit {name} children */
+static int is_dom_a11y_or_data_attr(const char *name) {
+  return cord_is_dom_a11y_or_data_attr(name);
 }
 
 static int looks_like_js_expr(const char *s) {
@@ -100,6 +110,14 @@ static int looks_like_js_expr(const char *s) {
   return 1;
 }
 
+/* Props that are almost always string literals in Cord UIs (avoid title={theme}). */
+static int is_stringish_prop_name(const char *name) {
+  return name &&
+         (strcmp(name, "title") == 0 || strcmp(name, "text") == 0 ||
+          strcmp(name, "label") == 0 || strcmp(name, "placeholder") == 0 ||
+          strcmp(name, "alt") == 0 || strcmp(name, "name") == 0);
+}
+
 static int needs_js_arrow(const char *handler) {
   if (!handler || !*handler) return 0;
   if (strchr(handler, '(') || strchr(handler, '+') || strchr(handler, '-') ||
@@ -109,64 +127,22 @@ static int needs_js_arrow(const char *handler) {
   return 0;
 }
 
-static int attr_is_true(const char *v) {
-  return !v || !*v || strcmp(v, "true") == 0;
-}
+static int attr_is_true(const char *v) { return cord_attr_is_true(v); }
 
 static int is_style_attr_name(const char *name) {
-  return name &&
-         (strcmp(name, "variant") == 0 || strcmp(name, "size") == 0 ||
-          strcmp(name, "color") == 0 || strcmp(name, "gap") == 0 ||
-          strcmp(name, "cols") == 0 || strcmp(name, "p") == 0 ||
-          strcmp(name, "bg") == 0 || strcmp(name, "shadow") == 0 ||
-          strcmp(name, "rounded") == 0 || strcmp(name, "max-w") == 0 ||
-          strcmp(name, "overflow") == 0 || strcmp(name, "fit") == 0 ||
-          strcmp(name, "aspect") == 0 || strcmp(name, "lines") == 0 ||
-          strcmp(name, "w") == 0 || strcmp(name, "h") == 0 ||
-          strcmp(name, "mx") == 0 || strcmp(name, "my") == 0 ||
-          strcmp(name, "px") == 0 || strcmp(name, "py") == 0 ||
-          strcmp(name, "m") == 0 || strcmp(name, "op") == 0 ||
-          strcmp(name, "z") == 0);
+  return cord_is_style_attr_name(name);
 }
 
 static int is_style_bool_name(const char *name) {
-  return name &&
-         (strcmp(name, "between") == 0 || strcmp(name, "center") == 0 ||
-          strcmp(name, "around") == 0 || strcmp(name, "evenly") == 0 ||
-          strcmp(name, "bold") == 0 || strcmp(name, "muted") == 0 ||
-          strcmp(name, "sticky") == 0 || strcmp(name, "primary") == 0 ||
-          strcmp(name, "outline") == 0 || strcmp(name, "ghost") == 0 ||
-          strcmp(name, "secondary") == 0 || strcmp(name, "xs") == 0 ||
-          strcmp(name, "sm") == 0 || strcmp(name, "lg") == 0 ||
-          strcmp(name, "xl") == 0 || strcmp(name, "2xl") == 0 ||
-          strcmp(name, "3xl") == 0 || strcmp(name, "4xl") == 0);
+  return cord_is_style_bool_name(name);
 }
 
 static const char *tag_to_div_plus_class(const char *tag) {
-  if (!tag) return NULL;
-  if (strcmp(tag, "col") == 0) return "flex flex-col";
-  if (strcmp(tag, "row") == 0) return "flex flex-row";
-  if (strcmp(tag, "stack") == 0) return "flex flex-col";
-  if (strcmp(tag, "grid") == 0) return "grid";
-  if (strcmp(tag, "page") == 0) return "min-h-screen";
-  if (strcmp(tag, "btn") == 0) return "btn";
-  if (strcmp(tag, "card") == 0) return "card";
-  return NULL;
+  return cord_tag_base_class(tag);
 }
 
 static const char *html_tag_for(const char *tag) {
-  if (!tag) return "div";
-  if (strcmp(tag, "col") == 0 || strcmp(tag, "row") == 0 ||
-      strcmp(tag, "stack") == 0 || strcmp(tag, "page") == 0 ||
-      strcmp(tag, "card") == 0 || strcmp(tag, "grid") == 0 ||
-      strcmp(tag, "group") == 0)
-    return "div";
-  if (strcmp(tag, "btn") == 0 || strcmp(tag, "button") == 0) return "button";
-  if (strcmp(tag, "link") == 0) return "a";
-  if (strcmp(tag, "fragment") == 0) return NULL;
-  if (strcmp(tag, "checkbox") == 0 || strcmp(tag, "radio") == 0) return "input";
-  if (strcmp(tag, "icon") == 0) return "span";
-  return tag;
+  return cord_html_tag_for(tag);
 }
 
 /* ── generation context ─────────────────────────────────── */
@@ -197,6 +173,9 @@ typedef struct {
   int use_portal;
   int use_error_boundary;
   int use_children;
+  int use_cord_icon;
+  int use_cord_motion;
+  int use_cord_chart;
   int in_component;
   int is_layout;
   char action_pending[64];
@@ -234,7 +213,9 @@ static void emit_jsx_value(StrBuf *sb, const char *val, int force_expr) {
       return;
     }
   }
-  sb_appendf(sb, "\"%s\"", val);
+  char *esc = js_escape_dq_dup(val);
+  sb_appendf(sb, "\"%s\"", esc ? esc : "");
+  free(esc);
 }
 
 static void emit_js_literal(StrBuf *sb, const char *val) {
@@ -246,175 +227,17 @@ static void emit_js_literal(StrBuf *sb, const char *val) {
     sb_append(sb, val);
     return;
   }
-  sb_appendf(sb, "\"%s\"", val);
+  char *esc = js_escape_dq_dup(val);
+  sb_appendf(sb, "\"%s\"", esc ? esc : "");
+  free(esc);
 }
 
-/* Style map entries under IR_ATTR "style" or direct style keys */
-static void append_style_entry_class(char *classes, size_t classes_sz,
-                                     const char *key, const char *val) {
-  char vbuf[96];
-  if (!key) return;
-  if (!val) val = "";
-  if (strcmp(key, "between") == 0)
-    strncat(classes, " justify-between", classes_sz - strlen(classes) - 1);
-  else if (strcmp(key, "center") == 0)
-    strncat(classes, " items-center justify-center",
-            classes_sz - strlen(classes) - 1);
-  else if (strcmp(key, "around") == 0)
-    strncat(classes, " justify-around", classes_sz - strlen(classes) - 1);
-  else if (strcmp(key, "evenly") == 0)
-    strncat(classes, " justify-evenly", classes_sz - strlen(classes) - 1);
-  else if (strcmp(key, "sticky") == 0)
-    strncat(classes, " sticky top-0", classes_sz - strlen(classes) - 1);
-  else if (strcmp(key, "bold") == 0)
-    strncat(classes, " font-bold", classes_sz - strlen(classes) - 1);
-  else if (strcmp(key, "muted") == 0)
-    strncat(classes, " text-gray-500", classes_sz - strlen(classes) - 1);
-  else if (strcmp(key, "overflow") == 0) {
-    snprintf(vbuf, sizeof(vbuf), " overflow-%s", val);
-    strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-  } else if (strcmp(key, "bg") == 0 || strcmp(key, "text") == 0 ||
-             strcmp(key, "p") == 0 || strcmp(key, "px") == 0 ||
-             strcmp(key, "py") == 0 || strcmp(key, "m") == 0 ||
-             strcmp(key, "mx") == 0 || strcmp(key, "my") == 0 ||
-             strcmp(key, "gap") == 0 || strcmp(key, "rounded") == 0 ||
-             strcmp(key, "shadow") == 0 || strcmp(key, "size") == 0 ||
-             strcmp(key, "w") == 0 || strcmp(key, "h") == 0 ||
-             strcmp(key, "max-w") == 0 || strcmp(key, "z") == 0 ||
-             strcmp(key, "op") == 0 || strcmp(key, "leading") == 0 ||
-             strcmp(key, "tracking") == 0) {
-    const char *prefix = key;
-    if (strcmp(key, "size") == 0) prefix = "text";
-    if (strcmp(key, "op") == 0) prefix = "opacity";
-    snprintf(vbuf, sizeof(vbuf), " %s-%s", prefix, val);
-    strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-  }
-}
-
+/* Style-attr -> class lowering lives in cord_class.c (shared with ESM). */
 static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
                                const char *base_class) {
-  classes[0] = '\0';
-  if (base_class) strncat(classes, base_class, classes_sz - 1);
-  if (!node) return;
-
-  for (size_t i = 0; i < node->n_kids; i++) {
-    IrNode *child = node->kids[i];
-    if (!child || child->kind != IR_ATTR || !child->name) continue;
-    if (strcmp(child->name, "style") == 0) {
-      for (size_t j = 0; j < child->n_kids; j++) {
-        IrNode *e = child->kids[j];
-        if (e && e->kind == IR_ATTR && e->name)
-          append_style_entry_class(classes, classes_sz, e->name,
-                                   e->value ? e->value : "");
-      }
-    }
-  }
-
-  for (size_t i = 0; i < node->n_kids; i++) {
-    IrNode *child = node->kids[i];
-    char vbuf[96];
-    if (!child || child->kind != IR_ATTR || !child->name) continue;
-    if (strcmp(child->name, "style") == 0 || strcmp(child->name, "__file__") == 0)
-      continue;
-    const char *k = child->name;
-    const char *v = child->value ? child->value : "";
-
-    if (attr_is_true(v)) {
-      if (strcmp(k, "between") == 0)
-        strncat(classes, " justify-between", classes_sz - strlen(classes) - 1);
-      else if (strcmp(k, "center") == 0)
-        strncat(classes, " items-center justify-center",
-                classes_sz - strlen(classes) - 1);
-      else if (strcmp(k, "around") == 0)
-        strncat(classes, " justify-around", classes_sz - strlen(classes) - 1);
-      else if (strcmp(k, "evenly") == 0)
-        strncat(classes, " justify-evenly", classes_sz - strlen(classes) - 1);
-      else if (strcmp(k, "bold") == 0)
-        strncat(classes, " font-bold", classes_sz - strlen(classes) - 1);
-      else if (strcmp(k, "muted") == 0)
-        strncat(classes, " text-gray-500", classes_sz - strlen(classes) - 1);
-      else if (strcmp(k, "sticky") == 0)
-        strncat(classes, " sticky top-0", classes_sz - strlen(classes) - 1);
-      else if (strcmp(k, "primary") == 0)
-        strncat(classes, " btn-primary", classes_sz - strlen(classes) - 1);
-      else if (strcmp(k, "outline") == 0)
-        strncat(classes, " btn-outline", classes_sz - strlen(classes) - 1);
-      else if (strcmp(k, "ghost") == 0)
-        strncat(classes, " btn-ghost", classes_sz - strlen(classes) - 1);
-      else if (strcmp(k, "secondary") == 0)
-        strncat(classes, " btn-secondary", classes_sz - strlen(classes) - 1);
-      else if (strcmp(k, "xs") == 0)
-        strncat(classes, " text-xs", classes_sz - strlen(classes) - 1);
-      else if (strcmp(k, "sm") == 0)
-        strncat(classes, " text-sm", classes_sz - strlen(classes) - 1);
-      else if (strcmp(k, "lg") == 0)
-        strncat(classes, " text-lg", classes_sz - strlen(classes) - 1);
-      else if (strcmp(k, "xl") == 0)
-        strncat(classes, " text-xl", classes_sz - strlen(classes) - 1);
-      else if (strcmp(k, "2xl") == 0)
-        strncat(classes, " text-2xl", classes_sz - strlen(classes) - 1);
-      else if (strcmp(k, "3xl") == 0)
-        strncat(classes, " text-3xl", classes_sz - strlen(classes) - 1);
-      else if (strcmp(k, "4xl") == 0)
-        strncat(classes, " text-4xl", classes_sz - strlen(classes) - 1);
-      continue;
-    }
-
-    if (strcmp(k, "variant") == 0) {
-      snprintf(vbuf, sizeof(vbuf), " btn-%s", v);
-      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-    } else if (strcmp(k, "size") == 0) {
-      snprintf(vbuf, sizeof(vbuf), " text-%s", v);
-      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-    } else if (strcmp(k, "color") == 0) {
-      if (theme_is_color_token(v)) {
-        char tok[64];
-        if (theme_token_name(v, tok, sizeof(tok))) {
-          snprintf(vbuf, sizeof(vbuf), " text-[var(--color-%s)]", tok);
-          strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-        }
-      } else {
-        snprintf(vbuf, sizeof(vbuf), " text-%s", v);
-        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-      }
-    } else if (strcmp(k, "gap") == 0) {
-      snprintf(vbuf, sizeof(vbuf), " gap-%s", v);
-      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-    } else if (strcmp(k, "cols") == 0) {
-      snprintf(vbuf, sizeof(vbuf), " grid-cols-%s", v);
-      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-    } else if (strcmp(k, "p") == 0) {
-      snprintf(vbuf, sizeof(vbuf), " p-%s", v);
-      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-    } else if (strcmp(k, "bg") == 0) {
-      if (theme_is_color_token(v)) {
-        char tok[64];
-        if (theme_token_name(v, tok, sizeof(tok))) {
-          snprintf(vbuf, sizeof(vbuf), " bg-[var(--color-%s)]", tok);
-          strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-        }
-      } else {
-        snprintf(vbuf, sizeof(vbuf), " bg-%s", v);
-        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-      }
-    } else if (strcmp(k, "shadow") == 0) {
-      snprintf(vbuf, sizeof(vbuf), " shadow-%s", v);
-      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-    } else if (strcmp(k, "rounded") == 0) {
-      snprintf(vbuf, sizeof(vbuf), " rounded-%s", v);
-      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-    } else if (strcmp(k, "max-w") == 0) {
-      snprintf(vbuf, sizeof(vbuf), " max-w-%s", v);
-      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-    } else if (strcmp(k, "w") == 0) {
-      snprintf(vbuf, sizeof(vbuf), " w-%s", v);
-      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-    } else if (strcmp(k, "h") == 0) {
-      snprintf(vbuf, sizeof(vbuf), " h-%s", v);
-      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
-    }
-  }
+  cord_collect_classes(classes, classes_sz, node, base_class);
 }
+
 
 static int ir_hook_is(const IrNode *n, const char *kind) {
   return n && n->kind == IR_HOOK && n->name && kind && strcmp(n->name, kind) == 0;
@@ -502,20 +325,16 @@ typedef struct {
   int n_page_nodes;
   IrNode *contexts[32]; /* IR_HOOK "context" */
   int n_contexts;
+  IrNode *foreigns[32];
+  int n_foreigns;
   int has_router;
   char lazy_route_names[16][64];
   int n_lazy_routes;
+  int truncated; /* hard limit hit — emit must fail */
 } ReactProject;
 
 static int route_has_lazy_attr_ir(IrNode *route) {
-  if (!route) return 0;
-  for (size_t i = 0; i < route->n_kids; i++) {
-    IrNode *c = route->kids[i];
-    if (c && c->kind == IR_ATTR && c->name && strcmp(c->name, "lazy") == 0 &&
-        attr_is_true(c->value))
-      return 1;
-  }
-  return 0;
+  return irw_route_has_lazy(route);
 }
 
 static int project_is_lazy_route_name(ReactProject *proj, const char *name) {
@@ -703,20 +522,30 @@ static void project_partition_from_ir(ReactProject *p, IrProgram *ir) {
     if (!c) continue;
     if (c->kind == IR_COMPONENT) {
       if (n_comp < REACT_MAX_UNITS) raw_comps[n_comp++] = c;
+      else p->truncated = 1;
     } else if (c->kind == IR_LAYOUT) {
       if (n_layout < 16) raw_layouts[n_layout++] = c;
+      else p->truncated = 1;
     } else if (c->kind == IR_ROUTE) {
       if (p->n_routes < REACT_MAX_ROUTES) p->routes[p->n_routes++] = c;
+      else p->truncated = 1;
     } else if (ir_hook_is(c, "lazy") && c->value) {
       if (p->n_lazy_routes < 16) {
         snprintf(p->lazy_route_names[p->n_lazy_routes],
                  sizeof(p->lazy_route_names[0]), "%s", c->value);
         p->n_lazy_routes++;
+      } else {
+        p->truncated = 1;
       }
     } else if (ir_hook_is(c, "context")) {
       if (p->n_contexts < 32) p->contexts[p->n_contexts++] = c;
+      else p->truncated = 1;
+    } else if (c->kind == IR_FOREIGN) {
+      if (p->n_foreigns < 32) p->foreigns[p->n_foreigns++] = c;
+      else p->truncated = 1;
     } else if (!ir_hook_is(c, "theme")) {
       if (p->n_page_nodes < 64) p->page_nodes[p->n_page_nodes++] = c;
+      else p->truncated = 1;
     }
   }
 
@@ -727,13 +556,18 @@ static void project_partition_from_ir(ReactProject *p, IrProgram *ir) {
       snprintf(p->lazy_route_names[p->n_lazy_routes],
                sizeof(p->lazy_route_names[0]), "%s", p->routes[r]->value);
       p->n_lazy_routes++;
+    } else {
+      p->truncated = 1;
     }
   }
 
   p->has_router = (p->n_routes > 0 || n_layout > 0);
 
   for (int i = 0; i < n_comp; i++) {
-    if (p->n_units >= REACT_MAX_UNITS) break;
+    if (p->n_units >= REACT_MAX_UNITS) {
+      p->truncated = 1;
+      break;
+    }
     ReactUnit *u = &p->units[p->n_units++];
     memset(u, 0, sizeof(*u));
     snprintf(u->name, sizeof(u->name), "%s",
@@ -758,7 +592,10 @@ static void project_partition_from_ir(ReactProject *p, IrProgram *ir) {
   }
 
   for (int i = 0; i < n_layout; i++) {
-    if (p->n_units >= REACT_MAX_UNITS) break;
+    if (p->n_units >= REACT_MAX_UNITS) {
+      p->truncated = 1;
+      break;
+    }
     ReactUnit *u = &p->units[p->n_units++];
     memset(u, 0, sizeof(*u));
     layout_export_name(raw_layouts[i]->name, u->name, sizeof(u->name));
@@ -777,6 +614,13 @@ static void project_partition_from_ir(ReactProject *p, IrProgram *ir) {
     u->use_outlet = 1;
     p->has_router = 1;
     scan_tree_deps_ir(u->ir_def, u);
+  }
+
+  if (p->truncated) {
+    fprintf(stderr,
+            "error: project exceeds React backend limits "
+            "(max %d units, %d routes) — split the app or raise limits\n",
+            REACT_MAX_UNITS, REACT_MAX_ROUTES);
   }
 }
 
@@ -884,7 +728,14 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
         } else if (!attr_is_true(child->value) ||
                    (child->value && strcmp(child->value, "true") != 0)) {
           sb_appendf(sb, " %s=", child->name);
-          emit_jsx_value(sb, child->value, 0);
+          if (is_stringish_prop_name(child->name) && child->value &&
+              !interp_has(child->value)) {
+            char *esc = js_escape_dq_dup(child->value);
+            sb_appendf(sb, "\"%s\"", esc ? esc : "");
+            free(esc);
+          } else {
+            emit_jsx_value(sb, child->value, 0);
+          }
         } else if (child->value && strcmp(child->value, "false") == 0) {
           sb_appendf(sb, " %s={false}", child->name);
         }
@@ -967,8 +818,14 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
   if (strcmp(tag, "link") == 0) {
     if (ctx && ctx->use_router) {
       use_link = 1;
-      html_tag = "Link";
+      /* NavLink sets aria-current="page" for active-route styling */
+      html_tag = "NavLink";
     }
+  }
+  if (ctx) {
+    if (strcmp(html_tag, "CordIcon") == 0) ctx->use_cord_icon = 1;
+    if (strcmp(html_tag, "CordMotion") == 0) ctx->use_cord_motion = 1;
+    if (strcmp(html_tag, "CordChart") == 0) ctx->use_cord_chart = 1;
   }
 
   sb_indent(sb, depth);
@@ -977,7 +834,13 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
   sb_appendf(sb, "<%s", html_tag);
 
   char classes[2048];
-  collect_classes_ir(classes, sizeof(classes), node, base_class);
+  int skip_style_size = (strcmp(html_tag, "CordIcon") == 0 ||
+                         strcmp(html_tag, "CordMotion") == 0 ||
+                         strcmp(html_tag, "CordChart") == 0);
+  if (!skip_style_size)
+    collect_classes_ir(classes, sizeof(classes), node, base_class);
+  else
+    classes[0] = '\0';
   {
     char *cls = classes;
     while (*cls == ' ') cls++;
@@ -987,7 +850,10 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
   for (size_t i = 0; i < node->n_kids; i++) {
     IrNode *child = node->kids[i];
     if (!child || child->kind != IR_ATTR || !child->name) continue;
-    if (is_style_attr_name(child->name)) continue;
+    if (is_style_attr_name(child->name) &&
+        !(skip_style_size &&
+          (strcmp(child->name, "size") == 0 || strcmp(child->name, "fade") == 0)))
+      continue;
     if (is_style_bool_name(child->name) && attr_is_true(child->value)) continue;
     if (strcmp(child->name, "__file__") == 0) continue;
     if (strcmp(child->name, "style") == 0) continue;
@@ -1007,6 +873,9 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
     /* bare identifier content (bool true non-style) skipped for attrs */
     if (attr_is_true(child->value) && !is_style_attr_name(child->name) &&
         !is_style_bool_name(child->name) &&
+        !is_dom_a11y_or_data_attr(child->name) &&
+        !(skip_style_size &&
+          (strcmp(child->name, "fade") == 0 || strcmp(child->name, "data") == 0)) &&
         strcmp(child->name, "lazy") != 0 &&
         strcmp(child->name, "forwardRef") != 0 &&
         strcmp(child->name, "action") != 0 &&
@@ -1027,10 +896,17 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
         (strcmp(child->name, "to") == 0 || strcmp(child->name, "href") == 0)) {
       sb_append(sb, " to=");
       emit_jsx_value(sb, child->value ? child->value : "/", 0);
+      /* Exact match for home so "/" does not mark every route active */
+      if (child->value && strcmp(child->value, "/") == 0)
+        sb_append(sb, " end");
       continue;
     }
     if (strcmp(child->name, "to") == 0) {
-      sb_appendf(sb, " href=\"%s\"", child->value ? child->value : "/");
+      const char *href = child->value ? child->value : "/";
+      if (!url_href_is_safe(href)) href = "#";
+      char *esc = js_escape_dq_dup(href);
+      sb_appendf(sb, " href=\"%s\"", esc ? esc : "#");
+      free(esc);
       continue;
     }
     if (strcmp(child->name, "action") == 0 && child->value) {
@@ -1056,6 +932,14 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
                strcmp(child->name, "value") == 0 ||
                strcmp(child->name, "id") == 0 ||
                strcmp(child->name, "key") == 0) {
+      /* type=display|title|… is typography, not HTML type */
+      if (strcmp(child->name, "type") == 0 && child->value &&
+          (strcmp(child->value, "display") == 0 ||
+           strcmp(child->value, "title") == 0 ||
+           strcmp(child->value, "body") == 0 ||
+           strcmp(child->value, "caption") == 0 ||
+           strcmp(child->value, "code") == 0))
+        continue;
       const char *an = child->name;
       if (child->value && interp_has(child->value)) {
         char *body = interp_to_js_template_body(child->value);
@@ -1090,6 +974,11 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
       }
     } else if (strcmp(child->name, "ref") == 0 && child->value) {
       sb_appendf(sb, " ref={%s}", child->value);
+    } else if (is_dom_a11y_or_data_attr(child->name)) {
+      /* a11y / data attrs: string literals (role=group, aria-hidden=true) */
+      char *esc = js_escape_dq_dup(child->value ? child->value : "");
+      sb_appendf(sb, " %s=\"%s\"", child->name, esc ? esc : "");
+      free(esc);
     } else {
       sb_appendf(sb, " %s=", child->name);
       emit_jsx_value(sb, child->value, 0);
@@ -1195,13 +1084,16 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
     if (!attr_is_true(child->value)) continue;
     const char *v = child->name;
     if (is_style_bool_name(v) || is_style_attr_name(v) ||
+        is_dom_a11y_or_data_attr(v) ||
         strcmp(v, "required") == 0 || strcmp(v, "disabled") == 0 ||
         strcmp(v, "readonly") == 0 || strcmp(v, "checked") == 0 ||
         strcmp(v, "text") == 0 || strcmp(v, "email") == 0 ||
         strcmp(v, "password") == 0 || strcmp(v, "search") == 0 ||
         strcmp(v, "number") == 0 || strcmp(v, "lazy") == 0 ||
         strcmp(v, "forwardRef") == 0 || strcmp(v, "__file__") == 0 ||
-        strcmp(v, "style") == 0)
+        strcmp(v, "style") == 0 ||
+        (skip_style_size &&
+         (strcmp(v, "fade") == 0 || strcmp(v, "data") == 0)))
       continue;
     sb_indent(sb, depth + 1);
     sb_appendf(sb, "{%s}\n", v);
@@ -1285,8 +1177,13 @@ static void gen_ir_children(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
       }
     } else if (child->kind == IR_SLOT) {
       sb_indent(sb, depth);
-      sb_append(sb, "<Outlet />\n");
-      if (ctx) ctx->use_router = 1;
+      if (ctx && ctx->is_layout) {
+        sb_append(sb, "<Outlet />\n");
+        if (ctx) ctx->use_router = 1;
+      } else {
+        sb_append(sb, "{children}\n");
+        if (ctx) ctx->use_children = 1;
+      }
     } else if (child->kind == IR_INTERP) {
       gen_ir_interpolation(sb, child, depth);
     } else if (child->kind == IR_TEXT) {
@@ -1296,19 +1193,18 @@ static void gen_ir_children(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
         char *body = interp_to_js_template_body(child->value);
         sb_appendf(sb, "{`%s`}\n", body ? body : "");
         free(body);
-      } else if (child->value && looks_like_js_expr(child->value) &&
-                 strchr(child->value, '.')) {
-        sb_appendf(sb, "{%s}\n", child->value);
       } else {
+        char *plain = interp_plain_text(child->value);
         sb_append(sb, "{'");
-        if (child->value) {
-          for (const char *p = child->value; *p; p++) {
+        if (plain) {
+          for (const char *p = plain; *p; p++) {
             if (*p == '\'' || *p == '\\') sb_append(sb, "\\");
             char ch[2] = {*p, 0};
             sb_append(sb, ch);
           }
         }
         sb_append(sb, "'}\n");
+        free(plain);
       }
     } else if (child->kind != IR_ATTR && child->kind != IR_EVENT &&
                child->kind != IR_PROP && child->kind != IR_STATE &&
@@ -1446,9 +1342,8 @@ static void gen_ir_node(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
             fb_node = c;
         }
         sb_indent(sb, depth);
-        sb_append(sb, "<ErrorBoundary fallback={");
         if (fb_node) {
-          sb_append(sb, "(\n");
+          sb_append(sb, "<ErrorBoundary fallback={(\n");
           sb_indent(sb, depth + 1);
           sb_append(sb, "<>\n");
           for (size_t i = 0; i < fb_node->n_kids; i++)
@@ -1456,11 +1351,11 @@ static void gen_ir_node(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
           sb_indent(sb, depth + 1);
           sb_append(sb, "</>\n");
           sb_indent(sb, depth);
-          sb_append(sb, ")");
+          sb_append(sb, ")}>\n");
         } else {
-          sb_append(sb, "<div>Something went wrong.</div>");
+          /* Default UI lives in ErrorBoundary.jsx (message + stack in DEV) */
+          sb_append(sb, "<ErrorBoundary>\n");
         }
-        sb_append(sb, "}>\n");
         for (size_t i = 0; i < node->n_kids; i++) {
           IrNode *c = node->kids[i];
           if (c->kind == IR_ELEMENT && c->name &&
@@ -1483,7 +1378,17 @@ static void gen_ir_node(StrBuf *sb, IrNode *node, int depth, GenCtx *ctx) {
           sb_appendf(sb, "{`%s`}\n", body ? body : "");
           free(body);
         } else {
-          sb_appendf(sb, "{'%s'}\n", node->value);
+          char *plain = interp_plain_text(node->value);
+          sb_append(sb, "{'");
+          if (plain) {
+            for (const char *p = plain; *p; p++) {
+              if (*p == '\'' || *p == '\\') sb_append(sb, "\\");
+              char ch[2] = {*p, 0};
+              sb_append(sb, ch);
+            }
+          }
+          sb_append(sb, "'}\n");
+          free(plain);
         }
       }
       break;
@@ -1835,7 +1740,12 @@ static void gen_component_fn_ir(StrBuf *sb, IrNode *def, const char *name,
     sb_append(sb, "    let cancelled = false;\n");
     sb_appendf(sb, "    %s(true);\n", set_load);
     sb_appendf(sb, "    %s(null);\n", set_err);
-    sb_appendf(sb, "    fetch(\"%s\")\n", url);
+    {
+      const char *safe_url = url_href_is_safe(url) ? url : "/";
+      char *esc = js_escape_dq_dup(safe_url);
+      sb_appendf(sb, "    fetch(\"%s\")\n", esc ? esc : "/");
+      free(esc);
+    }
     sb_append(sb, "      .then((r) => {\n");
     sb_append(sb, "        if (!r.ok) throw new Error(String(r.status));\n");
     sb_append(sb, "        return r.json();\n");
@@ -1976,6 +1886,12 @@ static char *gen_unit_module_ir(ReactProject *proj, ReactUnit *u) {
 
   if (u->use_error_boundary || ctx.use_error_boundary)
     sb_append(&out, "import ErrorBoundary from '../ErrorBoundary';\n");
+  if (ctx.use_cord_icon)
+    sb_append(&out, "import CordIcon from '../CordIcon';\n");
+  if (ctx.use_cord_motion)
+    sb_append(&out, "import CordMotion from '../CordMotion';\n");
+  if (ctx.use_cord_chart)
+    sb_append(&out, "import CordChart from '../CordChart';\n");
 
   for (int i = 0; i < u->n_lazy; i++) {
     char ipath[256];
@@ -1998,7 +1914,7 @@ static char *gen_unit_module_ir(ReactProject *proj, ReactUnit *u) {
     sb_append(&out, "import { ");
     int first = 1;
     if (u->use_link) {
-      sb_append(&out, "Link");
+      sb_append(&out, "NavLink");
       first = 0;
     }
     if (u->use_outlet) {
@@ -2030,10 +1946,27 @@ static char *gen_unit_module_ir(ReactProject *proj, ReactUnit *u) {
 
   for (int i = 0; i < u->n_used; i++) {
     ReactUnit *dep = project_find_unit(proj, u->used[i]);
-    if (!dep) continue;
-    char ipath[256];
-    import_path_between(u, dep, ipath, sizeof(ipath));
-    sb_appendf(&out, "import %s from '%s';\n", dep->name, ipath);
+    if (dep) {
+      char ipath[256];
+      import_path_between(u, dep, ipath, sizeof(ipath));
+      sb_appendf(&out, "import %s from '%s';\n", dep->name, ipath);
+      continue;
+    }
+    /* foreign multi-target: prefer react binding */
+    for (int f = 0; f < proj->n_foreigns; f++) {
+      IrNode *fn = proj->foreigns[f];
+      if (!fn || !fn->name || strcmp(fn->name, u->used[i]) != 0) continue;
+      const char *mod = fn->value; /* default module */
+      for (size_t k = 0; k < fn->n_kids; k++) {
+        IrNode *a = fn->kids[k];
+        if (a && a->kind == IR_ATTR && a->name && a->value &&
+            strcmp(a->name, "react") == 0)
+          mod = a->value;
+      }
+      if (mod && mod[0])
+        sb_appendf(&out, "import %s from '%s';\n", fn->name, mod);
+      break;
+    }
   }
 
   if (out.len > 0) sb_append(&out, "\n");
@@ -2331,6 +2264,10 @@ int react_emit_modules_from_ir(IrProgram *ir, ReactWriteFn write_fn,
   ReactProject *proj = calloc(1, sizeof(ReactProject));
   if (!proj) return -1;
   project_partition_from_ir(proj, ir);
+  if (proj->truncated) {
+    free(proj);
+    return -1;
+  }
   attach_root_lazies_ir(proj, ir->root);
 
   for (int i = 0; i < proj->n_units; i++) {
@@ -2397,6 +2334,10 @@ static char *react_generate_impl_ir(IrProgram *ir) {
   ReactProject *proj = calloc(1, sizeof(ReactProject));
   if (!proj) return strdup("export default function App(){return null}\n");
   project_partition_from_ir(proj, ir);
+  if (proj->truncated) {
+    free(proj);
+    return NULL;
+  }
   attach_root_lazies_ir(proj, ir->root);
 
   for (int i = 0; i < proj->n_units; i++) {

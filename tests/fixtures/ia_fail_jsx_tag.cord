@@ -1,0 +1,3 @@
+def Bad
+  col
+    p "<div>hello</div>"

@@ -1,0 +1,8 @@
+theme app
+  primary: "#7c3aed"
+  bg: "#fff"
+  text: "#111"
+  muted: "#6b7280"
+  radius: 10
+
+route / => pages/Contact

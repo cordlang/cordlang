@@ -4,10 +4,18 @@
 #include "application/ports/backend_port.h"
 #include "application/ports/compiler_port.h"
 #include "application/ports/fs_port.h"
+#include "adapters/outbound/process/process_spawn.h"
+#include "adapters/outbound/json/json_mini.h"
 #include "domain/ir.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
+#define NPM_CMD "npm.cmd"
+#else
+#define NPM_CMD "npm"
+#endif
 
 static char *read_entry_from_config(const char *project_dir) {
   char *cfg = fs_join(project_dir, "cordlang.json");
@@ -18,25 +26,7 @@ static char *read_entry_from_config(const char *project_dir) {
   free(cfg);
   if (!json) return NULL;
 
-  /* Minimal parse: look for "entry": "..." */
-  char *entry = NULL;
-  char *key = strstr(json, "\"entry\"");
-  if (key) {
-    char *colon = strchr(key, ':');
-    if (colon) {
-      char *q1 = strchr(colon, '"');
-      if (q1) {
-        q1++;
-        char *q2 = strchr(q1, '"');
-        if (q2) {
-          size_t n = (size_t)(q2 - q1);
-          entry = malloc(n + 1);
-          memcpy(entry, q1, n);
-          entry[n] = '\0';
-        }
-      }
-    }
-  }
+  char *entry = json_object_get_string(json, "entry");
   free(json);
 
   if (!entry) entry = strdup("src/app.cord");
@@ -63,15 +53,13 @@ static int run_vite_check(const char *project_dir, const char *backend_name) {
   printf("\n--check: verifying build in %s\n", dist);
   fflush(stdout);
 
-  char cmd[2048];
   int rc = 0;
 
-#ifdef _WIN32
   if (need_install) {
     printf("--check: node_modules missing, running npm install...\n");
     fflush(stdout);
-    snprintf(cmd, sizeof(cmd), "cmd /c \"cd /d \"%s\" && npm install\"", dist);
-    rc = system(cmd);
+    char *argv_install[] = {NPM_CMD, "install", "--prefix", dist, NULL};
+    rc = process_run(NULL, argv_install, 1);
     if (rc != 0) {
       fprintf(stderr, "Error: --check: npm install failed (exit %d)\n", rc);
       free(dist);
@@ -80,36 +68,26 @@ static int run_vite_check(const char *project_dir, const char *backend_name) {
   } else {
     printf("--check: node_modules present, skipping npm install\n");
   }
-  printf("--check: running npx vite build...\n");
+
+  /* Prefer package.json "build" (Vite / Next / SvelteKit). Fallback: vite. */
+  printf("--check: running npm run build...\n");
   fflush(stdout);
-  snprintf(cmd, sizeof(cmd), "cmd /c \"cd /d \"%s\" && npx vite build\"", dist);
-  rc = system(cmd);
-#else
-  if (need_install) {
-    printf("--check: node_modules missing, running npm install...\n");
+  char *argv_build[] = {NPM_CMD, "run", "build", NULL};
+  rc = process_run(dist, argv_build, 1);
+  if (rc != 0 && strcmp(backend_name, "next") != 0 &&
+      strcmp(backend_name, "sveltekit") != 0) {
+    printf("--check: npm run build failed; trying vite build...\n");
     fflush(stdout);
-    snprintf(cmd, sizeof(cmd), "cd \"%s\" && npm install", dist);
-    rc = system(cmd);
-    if (rc != 0) {
-      fprintf(stderr, "Error: --check: npm install failed (exit %d)\n", rc);
-      free(dist);
-      return 1;
-    }
-  } else {
-    printf("--check: node_modules present, skipping npm install\n");
+    char *argv_vite[] = {NPM_CMD, "exec", "--", "vite", "build", NULL};
+    rc = process_run(dist, argv_vite, 1);
   }
-  printf("--check: running npx vite build...\n");
-  fflush(stdout);
-  snprintf(cmd, sizeof(cmd), "cd \"%s\" && npx vite build", dist);
-  rc = system(cmd);
-#endif
 
   free(dist);
   if (rc != 0) {
-    fprintf(stderr, "Error: --check: vite build failed (exit %d)\n", rc);
+    fprintf(stderr, "Error: --check: build failed (exit %d)\n", rc);
     return 1;
   }
-  printf("--check: vite build OK\n");
+  printf("--check: build OK\n");
   return 0;
 }
 
@@ -197,7 +175,18 @@ int run_service_run(const char *backend_name, const char *project_dir,
   const BackendPort *backend = backend_find(backend_name);
   if (!backend) {
     fprintf(stderr, "Error: unknown backend '%s'\n", backend_name);
-    fprintf(stderr, "Available: react, svelte | preview: cordlang run\n");
+    {
+      const char *names[16];
+      int n = backend_list(names, 16);
+      fprintf(stderr, "Available:");
+      int first = 1;
+      for (int i = 0; i < n; i++) {
+        if (!names[i] || strcmp(names[i], "html") == 0) continue;
+        fprintf(stderr, "%s%s", first ? " " : ", ", names[i]);
+        first = 0;
+      }
+      fprintf(stderr, " | preview: cordlang run\n");
+    }
     return 1;
   }
 
@@ -213,19 +202,43 @@ int run_service_run(const char *backend_name, const char *project_dir,
   if (run_scaffold_once(backend, dir, 0) != 0) return 1;
 
   if (check) {
-    /* Only Node-based scaffolds support vite check; only on first build. */
-    if (strcmp(backend->name, "react") != 0 &&
-        strcmp(backend->name, "svelte") != 0) {
-      fprintf(stderr, "Error: --check is only supported for react and svelte\n");
+    /* PDF: soft external-tool hint (no hard failure if converter missing). */
+    if (strcmp(backend->name, "pdf") == 0) {
+      printf("\n--check (pdf): looking for HTML→PDF converters...\n");
+#ifdef _WIN32
+      printf("--check (pdf): convert dist/pdf/index.html externally "
+             "(weasyprint / playwright / wkhtmltopdf). See docs/PDF.md\n");
+#else
+      {
+        char *which_w[] = {"which", "weasyprint", NULL};
+        char *which_n[] = {"which", "npx", NULL};
+        int has_weasy = process_run(NULL, which_w, 1) == 0;
+        int has_npx = process_run(NULL, which_n, 1) == 0;
+        if (has_weasy) {
+          printf("--check (pdf): weasyprint found. Example:\n");
+          printf("  weasyprint dist/pdf/index.html dist/pdf/out.pdf\n");
+        } else if (has_npx) {
+          printf("--check (pdf): npx found. Example:\n");
+          printf("  npx playwright pdf dist/pdf/index.html dist/pdf/out.pdf\n");
+        } else {
+          printf("--check (pdf): no converter on PATH — skip. "
+                 "See dist/pdf/README.md and docs/PDF.md\n");
+        }
+      }
+#endif
+    } else if (!backend->needs_node_check) {
+      fprintf(stderr, "Error: --check is not supported for backend '%s'\n",
+              backend->name);
+      return 1;
+    } else if (run_vite_check(dir, backend->name) != 0) {
       return 1;
     }
-    if (run_vite_check(dir, backend->name) != 0) return 1;
   }
 
   if (watch) {
-    if (strcmp(backend->name, "react") != 0 &&
-        strcmp(backend->name, "svelte") != 0) {
-      fprintf(stderr, "Error: --watch is only supported for react and svelte\n");
+    if (!backend->needs_node_check) {
+      fprintf(stderr, "Error: --watch is not supported for backend '%s'\n",
+              backend->name);
       return 1;
     }
     WatchCtx ctx = {.backend = backend, .dir = dir};

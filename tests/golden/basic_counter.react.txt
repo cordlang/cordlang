@@ -6,15 +6,15 @@ export default function Counter({ label = "Counter" }) {
   const [count, setCount] = useState(0);
   return (
     <>
-      <div className="flex flex-col gap-16 p-24 items-center justify-center">
+      <div className="flex flex-col gap-16 p-24 flex items-center justify-center">
         <h1 className="text-2xl font-bold">
           {label}
         </h1>
-        <p className="text-lg text-gray-500">
+        <p className="text-lg text-muted">
           {'Count: '}
           {count}
         </p>
-        <div className="flex flex-row gap-8 items-center justify-center">
+        <div className="flex flex-row gap-8 flex items-center justify-center">
           <button className="btn btn-outline" onClick={() => setCount(count - 1)}>
             {'-'}
           </button>

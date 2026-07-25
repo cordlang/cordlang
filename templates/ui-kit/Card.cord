@@ -1,0 +1,6 @@
+def Card
+  props title: string = ""
+  card elevate=1 p=16 rounded=12
+    if title
+      h3 "#{title}" type=title
+    slot

@@ -1,0 +1,46 @@
+{
+  "Cord def component": {
+    "prefix": "def",
+    "body": [
+      "def ${1:Name}",
+      "  props ${2:title}: string = \"${3:}\"",
+      "  state ${4:open}=false",
+      "  col gap=16 p=24",
+      "    h1 \"#{${2:title}}\" size=xl bold",
+      "    $0"
+    ],
+    "description": "Component with typed props"
+  },
+  "Cord route": {
+    "prefix": "route",
+    "body": ["route ${1:/} => pages/${2:HomePage}"],
+    "description": "Route declaration"
+  },
+  "Cord if/for": {
+    "prefix": "iffor",
+    "body": [
+      "if ${1:items}",
+      "  for ${2:x} in ${1:items} key=${2:x}.id",
+      "    $0"
+    ]
+  },
+  "Cord fetch form": {
+    "prefix": "fetchform",
+    "body": [
+      "fetch ${1:data} = \"${2:/api/...}\"",
+      "form action=${3:formAction}",
+      "  input text bind=${4:field} name=${4:field}",
+      "  btn \"${5:Send}\" variant=primary"
+    ]
+  },
+  "Cord layout": {
+    "prefix": "layout",
+    "body": [
+      "layout ${1:default}",
+      "  header p=16",
+      "    span \"${2:App}\" bold",
+      "  main p=24",
+      "    slot"
+    ]
+  }
+}

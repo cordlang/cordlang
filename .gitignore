@@ -36,3 +36,13 @@ Desktop.ini
 *.log
 npm-debug.log*
 yarn-error.log*
+
+# ── Secrets / credentials ────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.key
+credentials.json
+**/secrets.json

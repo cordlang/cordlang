@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <title>Cordlang Static</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f4f6;padding:24px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#ffffff;border-collapse:collapse;">
+          <tr>
+            <td style="padding:24px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;padding:24px;width:100%;max-width:560px;border-collapse:collapse;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;">
+      <tr>
+        <td style="padding:8px 0;">
+          <h1 style="font-weight:700;font-size:24px;">
+            Welcome
+          </h1>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;">
+          <p style="color:#6b7280;font-size:18px;">
+            Thanks for trying Cordlang email HTML.
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;">
+          <a href="https://example.com/docs">
+            Read the docs
+          </a>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;">
+          <img src="https://example.com/logo.png" alt="Logo" width="120" />
+        </td>
+      </tr>
+    </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+  <!-- Cordlang static HTML: no reactive JS -->
+</body>
+</html>

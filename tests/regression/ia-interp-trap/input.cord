@@ -1,0 +1,4 @@
+def BadInterp
+  state count=0
+  col
+    p "{count}"

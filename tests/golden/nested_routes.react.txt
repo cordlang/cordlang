@@ -1,6 +1,6 @@
 // ===== src/pages/HomePage.jsx =====
 /* cordlang: source=src/pages/HomePage.cord */
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 
 export default function HomePage({  }) {
   return (
@@ -9,12 +9,12 @@ export default function HomePage({  }) {
         <h1 className="text-2xl font-bold">
           {'Home'}
         </h1>
-        <p className="text-gray-500">
+        <p className="text-muted">
           {'Welcome home.'}
         </p>
-        <Link to="/shop">
+        <NavLink to="/shop">
           {'Go to Shop'}
-        </Link>
+        </NavLink>
       </div>
     </>
   );
@@ -22,7 +22,7 @@ export default function HomePage({  }) {
 
 // ===== src/pages/ShopPage.jsx =====
 /* cordlang: source=src/pages/ShopPage.cord */
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 
 export default function ShopPage({  }) {
   return (
@@ -31,12 +31,12 @@ export default function ShopPage({  }) {
         <h1 className="text-2xl font-bold">
           {'Products'}
         </h1>
-        <p className="text-gray-500">
+        <p className="text-muted">
           {'Browse the shop.'}
         </p>
-        <Link to="/shop/1">
+        <NavLink to="/shop/1">
           {'Product 1'}
-        </Link>
+        </NavLink>
       </div>
     </>
   );
@@ -44,7 +44,7 @@ export default function ShopPage({  }) {
 
 // ===== src/pages/ProductPage.jsx =====
 /* cordlang: source=src/pages/ProductPage.cord */
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 
 export default function ProductPage({ id }) {
   return (
@@ -54,12 +54,12 @@ export default function ProductPage({ id }) {
           {'Product '}
           {id}
         </h1>
-        <p className="text-gray-500">
+        <p className="text-muted">
           {'Details for item.'}
         </p>
-        <Link to="/shop">
+        <NavLink to="/shop">
           {'Back to shop'}
-        </Link>
+        </NavLink>
       </div>
     </>
   );
@@ -67,24 +67,24 @@ export default function ProductPage({ id }) {
 
 // ===== src/layouts/DefaultLayout.jsx =====
 /* cordlang: source=src/layouts/default.cord */
-import { Link, Outlet } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 
 export default function DefaultLayout({  }) {
   return (
     <>
       <header className="sticky top-0 bg-white shadow-sm">
-        <div className="flex flex-row justify-between items-center justify-center p-16">
+        <div className="flex flex-row justify-between flex items-center p-16">
           <h1 className="text-xl font-bold">
             {'App'}
           </h1>
           <nav>
-            <div className="flex flex-row gap-16 items-center justify-center">
-              <Link to="/">
+            <div className="flex flex-row gap-16 flex items-center justify-center">
+              <NavLink to="/" end>
                 {'Home'}
-              </Link>
-              <Link to="/shop">
+              </NavLink>
+              <NavLink to="/shop">
                 {'Shop'}
-              </Link>
+              </NavLink>
             </div>
           </nav>
         </div>
@@ -98,24 +98,24 @@ export default function DefaultLayout({  }) {
 
 // ===== src/layouts/Shop.jsx =====
 /* cordlang: source=src/layouts/Shop.cord */
-import { Link, Outlet } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 
 export default function Shop({  }) {
   return (
     <>
       <header className="sticky top-0 bg-blue-600">
-        <div className="flex flex-row justify-between items-center justify-center p-16">
+        <div className="flex flex-row justify-between flex items-center p-16">
           <h1 className="text-xl font-bold text-white">
             {'Shop'}
           </h1>
           <nav>
-            <div className="flex flex-row gap-16 items-center justify-center">
-              <Link to="/shop">
+            <div className="flex flex-row gap-16 flex items-center justify-center">
+              <NavLink to="/shop">
                 {'All'}
-              </Link>
-              <Link to="/">
+              </NavLink>
+              <NavLink to="/" end>
                 {'Home'}
-              </Link>
+              </NavLink>
             </div>
           </nav>
         </div>

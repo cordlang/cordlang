@@ -1,0 +1,7 @@
+def Ok
+  props title: string = "Hi"
+  props n: number = 0
+  props open: boolean = false
+  col gap=8
+    h1 "#{title}"
+    p "#{n}"

@@ -1,0 +1,34 @@
+name: Bench
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"  # Mondays 06:00 UTC
+
+jobs:
+  bench-ubuntu:
+    name: Compile bench + compare (Ubuntu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y build-essential
+
+      - name: Build
+        run: make -j"$(nproc)"
+
+      - name: Run bench
+        run: |
+          chmod +x bench/run_bench.sh bench/compare/run_compare.sh
+          BENCH_ITERS=10 ./bench/run_bench.sh
+
+      - name: Run compare
+        run: ./bench/compare/run_compare.sh
+
+      - name: Upload RESULTS.md
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-compare-results
+          path: bench/compare/RESULTS.md

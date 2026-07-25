@@ -7,7 +7,7 @@ One-screen reference. Full guide: [GUIDE.md](./GUIDE.md).
 ```cord
 def Name
   state n=0
-  props title=""
+  props title: string = ""
   col gap=16 p=24
     h1 "#{title}" bold
     btn "+" @click=setN(n + 1)
@@ -18,7 +18,7 @@ def Name
 | Cord | React-ish | Svelte-ish |
 |------|-----------|------------|
 | `state x=0` | `useState` + `setX` | `$state` + `setX` |
-| `props a=""` | props default | `$props()` |
+| `props a=""` / `props a: string = ""` | props (+ `check` types) | `$props()` |
 | `computed y = x*2` | `useMemo` | `$derived` |
 | `effect` / `layoutEffect` | `useEffect` / `useLayoutEffect` | `$effect` / `$effect.pre` |
 | `ref el` | `useRef` | `$state` + `bind:this` |
@@ -69,6 +69,6 @@ route /p/:id => pages/ProductPage
 
 ```
 run | run react|svelte [--check] [--watch]
-check | fmt | symbols | goto Name
+check [--json] | analyze [--json] | ai [check|context|doctor] | fmt | symbols | goto Name
 compile file.cord --backend react|svelte|html|--ir
 ```

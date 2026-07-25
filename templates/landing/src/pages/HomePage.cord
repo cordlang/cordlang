@@ -1,0 +1,13 @@
+# Landing — one composition hero (brand + headline + lede + CTAs)
+
+def HomePage
+  page
+    section density=spacious md:p=64 p=32 center
+      motion fade
+        stack density=comfortable gap=20 center max-w=720
+          h1 "Cordlang" type=display color=primary
+          h2 "Un .cord. Varios backends." type=title
+          p "Dense intermediate UI for vibecode — React, Svelte, and more without framework noise in source." type=body muted
+          row gap=12 center
+            btn "Get started" variant=primary purpose=action
+            btn "View source" variant=outline purpose=action

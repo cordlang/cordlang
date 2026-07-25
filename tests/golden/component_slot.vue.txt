@@ -1,0 +1,44 @@
+<!-- ===== src/components/Card.vue ===== -->
+<!-- cordlang: source=src/components/Card.cord -->
+<script setup>
+const props = defineProps({
+  title: { },
+});
+const title = props.title;
+</script>
+
+<template>
+<div class="flex flex-col p-16">
+  <h3 class="font-bold">
+    {{ title }}
+  </h3>
+  <slot />
+</div>
+</template>
+
+<!-- ===== src/components/App.vue ===== -->
+<!-- cordlang: source=src/components/App.cord -->
+<script setup>
+  import Card from './Card.vue';
+</script>
+
+<template>
+<Card :title="Hola">
+  <p>
+    cuerpo
+  </p>
+</Card>
+</template>
+
+<!-- ===== src/router.js ===== -->
+export const router = null;
+
+<!-- ===== src/App.vue ===== -->
+<!-- cordlang: source=src/app.cord -->
+<script setup>
+import Card from './components/Card.vue';
+</script>
+
+<template>
+  <Card />
+</template>

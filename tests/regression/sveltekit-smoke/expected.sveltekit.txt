@@ -1,0 +1,40 @@
+<!-- Cordlang SvelteKit meta-backend (wraps Svelte IR emit) -->
+<!-- ===== src/components/Counter.svelte ===== -->
+<!-- cordlang: source=src/components/Counter.cord -->
+<script>
+  let { label = 'Counter' } = $props();
+  let count = $state(0);
+  function setCount(v) { count = typeof v === 'function' ? v(count) : v; }
+</script>
+
+<div class="flex flex-col gap-16 p-24 flex items-center justify-center">
+  <h1 class="text-2xl font-bold">
+    {label}
+  </h1>
+  <p class="text-lg text-muted">
+    Count: 
+    {count}
+  </p>
+  <div class="flex flex-row gap-8 flex items-center justify-center">
+    <button class="btn btn-outline" onclick={() => setCount(count - 1)}>
+      -
+    </button>
+    <span class="text-4xl font-bold">
+      {count}
+    </span>
+    <button class="btn btn-primary" onclick={() => setCount(count + 1)}>
+      +
+    </button>
+  </div>
+  <button class="btn btn-ghost" onclick={() => setCount(0)}>
+    Reset
+  </button>
+</div>
+
+<!-- ===== src/App.svelte ===== -->
+<!-- cordlang: source=src/app.cord -->
+<script>
+  import Counter from './components/Counter.svelte';
+</script>
+
+<Counter />

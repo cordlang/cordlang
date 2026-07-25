@@ -1,0 +1,15 @@
+theme brand
+  primary: "#0f766e"
+  bg: "#fafaf9"
+  text: "#1c1917"
+  muted: "#78716c"
+  radius: 12
+  font: "IBM Plex Sans"
+
+def DesignDemo
+  section density=comfortable md:p=48 p=24
+    stack density=spacious gap=16
+      h1 "Design tokens" type=display
+      p "Type scale and elevation from theme.css" type=body muted
+      card elevate=2 p=24
+        span "Elevated surface" type=caption

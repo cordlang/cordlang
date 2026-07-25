@@ -1,0 +1,16 @@
+# Regression: semantic attr words must not compile to identifier references.
+#
+# `type=button`, `id=forma`, `purpose=action` are plain words. Emitting them as
+# JS identifiers makes the component die with ReferenceError at render time.
+# Only names actually declared in the component are expressions.
+
+def AttrWords
+  state count=0
+  props label="Enviar"
+
+  col gap=16
+    btn "Buscar" type=button purpose=action
+    col gap=8 id=forma
+      p "Etiqueta: #{label}" muted
+      span "#{count}" size=lg bold
+      btn "+" @click=setCount(count + 1) variant=primary

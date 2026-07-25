@@ -1,0 +1,30 @@
+<!-- ===== src/components/Demo.svelte ===== -->
+<!-- cordlang: source=src/components/Demo.cord -->
+<script>
+  let count = $state(1);
+  function setCount(v) { count = typeof v === 'function' ? v(count) : v; }
+</script>
+
+<div class="flex flex-col gap-8">
+  <p>
+    show #{count}
+  </p>
+  <p>
+    live 
+    {count}
+  </p>
+  <p>
+    mix 
+    #{count}
+     and 
+    {count}
+  </p>
+</div>
+
+<!-- ===== src/App.svelte ===== -->
+<!-- cordlang: source=src/app.cord -->
+<script>
+  import Demo from './components/Demo.svelte';
+</script>
+
+<Demo />

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 56" fill="none" role="img" aria-label="Cordlang">
+  <title>Cordlang</title>
+  <rect x="0" y="4" width="48" height="48" rx="11" fill="#14181e"/>
+  <path d="M10 28h4.5l3-10.5 4.5 21 3.75-13.5 3 7.5h8.25"
+        stroke="#3DFFB5"
+        stroke-width="2.75"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"/>
+  <circle cx="37.5" cy="28" r="2.4" fill="#3DFFB5"/>
+  <text x="64" y="37"
+        font-family="Syne, IBM Plex Sans, system-ui, sans-serif"
+        font-size="28"
+        font-weight="700"
+        letter-spacing="-0.04em"
+        fill="#ffffff">Cordlang</text>
+</svg>

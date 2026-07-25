@@ -1,5 +1,8 @@
 #include "adapters/outbound/backends/react/react_backend.h"
+#include "adapters/outbound/backends/preset_registry.h"
 #include "adapters/outbound/backends/theme_css.h"
+#include "adapters/outbound/html_escape.h"
+#include "adapters/outbound/json/json_mini.h"
 #include "application/ports/fs_port.h"
 #include "domain/ir.h"
 #include <stdio.h>
@@ -38,7 +41,41 @@ static int scaffold_write_src(const char *rel_from_src, const char *content,
   return 0;
 }
 
-static int write_vite_skeleton(const char *out) {
+/* Best-effort string from cordlang.json via json_mini. */
+static int cfg_string(const char *json, const char *key, char *out, size_t outsz) {
+  return json_object_copy_string(json, key, out, outsz);
+}
+
+static void load_html_meta(const char *project_dir, char *lang, size_t lang_sz,
+                           char *title, size_t title_sz) {
+  snprintf(lang, lang_sz, "en");
+  snprintf(title, title_sz, "Cordlang App");
+  if (!project_dir) return;
+  char *cfg_path = fs_join(project_dir, "cordlang.json");
+  if (!cfg_path) return;
+  size_t len = 0;
+  char *json = fs_read_file(cfg_path, &len);
+  free(cfg_path);
+  if (!json) return;
+  char buf[256];
+  if (cfg_string(json, "lang", buf, sizeof(buf)))
+    snprintf(lang, lang_sz, "%s", buf);
+  if (cfg_string(json, "title", buf, sizeof(buf)))
+    snprintf(title, title_sz, "%s", buf);
+  else if (cfg_string(json, "name", buf, sizeof(buf)))
+    snprintf(title, title_sz, "%s", buf);
+  free(json);
+}
+
+static int write_vite_skeleton(const char *project_dir, const char *out) {
+  char lang[32];
+  char title[256];
+  load_html_meta(project_dir, lang, sizeof(lang), title, sizeof(title));
+  char lang_e[64];
+  char title_e[512];
+  html_escape_to(lang_e, sizeof(lang_e), lang);
+  html_escape_to(title_e, sizeof(title_e), title);
+
   const char *pkg =
       "{\n"
       "  \"name\": \"cordlang-react-app\",\n"
@@ -72,29 +109,131 @@ static int write_vite_skeleton(const char *out) {
       "  plugins: [react()],\n"
       "})\n";
 
-  const char *html =
-      "<!doctype html>\n"
-      "<html lang=\"en\">\n"
-      "  <head>\n"
-      "    <meta charset=\"UTF-8\" />\n"
-      "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
-      "    <title>Cordlang App</title>\n"
-      "  </head>\n"
-      "  <body>\n"
-      "    <div id=\"root\"></div>\n"
-      "    <script type=\"module\" src=\"/src/main.jsx\"></script>\n"
-      "  </body>\n"
-      "</html>\n";
+  char html[4096];
+  int has_site_css = 0, has_site_js = 0;
+  int has_favicon = 0, has_logo_svg = 0, has_apple = 0, has_manifest = 0,
+      has_og = 0;
+  {
+    char *css_p = fs_join(project_dir, "public/site.css");
+    char *js_p = fs_join(project_dir, "public/site.js");
+    char *ico_p = fs_join(project_dir, "public/favicon.ico");
+    char *svg_p = fs_join(project_dir, "public/logo.svg");
+    char *apple_p = fs_join(project_dir, "public/apple-touch-icon.png");
+    char *man_p = fs_join(project_dir, "public/site.webmanifest");
+    char *og_p = fs_join(project_dir, "public/og.png");
+    if (css_p) {
+      has_site_css = fs_exists(css_p);
+      free(css_p);
+    }
+    if (js_p) {
+      has_site_js = fs_exists(js_p);
+      free(js_p);
+    }
+    if (ico_p) {
+      has_favicon = fs_exists(ico_p);
+      free(ico_p);
+    }
+    if (svg_p) {
+      has_logo_svg = fs_exists(svg_p);
+      free(svg_p);
+    }
+    if (apple_p) {
+      has_apple = fs_exists(apple_p);
+      free(apple_p);
+    }
+    if (man_p) {
+      has_manifest = fs_exists(man_p);
+      free(man_p);
+    }
+    if (og_p) {
+      has_og = fs_exists(og_p);
+      free(og_p);
+    }
+  }
+  char head_extra[1536];
+  {
+    size_t o = 0;
+    head_extra[0] = '\0';
+#define HEAD_APPEND(s)                                                         \
+  do {                                                                         \
+    size_t _n = strlen(s);                                                     \
+    if (o + _n + 1 < sizeof(head_extra)) {                                     \
+      memcpy(head_extra + o, s, _n);                                           \
+      o += _n;                                                                 \
+      head_extra[o] = '\0';                                                    \
+    }                                                                          \
+  } while (0)
+    if (has_site_css)
+      HEAD_APPEND("    <link rel=\"stylesheet\" href=\"/site.css\" />\n");
+    if (has_favicon)
+      HEAD_APPEND("    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\" />\n");
+    if (has_logo_svg)
+      HEAD_APPEND(
+          "    <link rel=\"icon\" href=\"/logo.svg\" type=\"image/svg+xml\" />\n");
+    if (has_apple)
+      HEAD_APPEND(
+          "    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" />\n");
+    if (has_manifest)
+      HEAD_APPEND("    <link rel=\"manifest\" href=\"/site.webmanifest\" />\n");
+    HEAD_APPEND("    <meta name=\"theme-color\" content=\"#0c0f12\" />\n");
+    if (has_site_js) {
+      HEAD_APPEND("    <script>\n");
+      HEAD_APPEND("(function(){try{var t=localStorage.getItem(\"cord-docs-theme\");");
+      HEAD_APPEND("if(t!==\"dark\"&&t!==\"light\")");
+      HEAD_APPEND("t=window.matchMedia(\"(prefers-color-scheme: dark)\").matches?");
+      HEAD_APPEND("\"dark\":\"light\";");
+      HEAD_APPEND("document.documentElement.setAttribute(\"data-theme\",t);");
+      HEAD_APPEND("document.documentElement.style.colorScheme=t;");
+      HEAD_APPEND("}catch(e){}})();\n");
+      HEAD_APPEND("    </script>\n");
+    }
+    if (has_og) {
+      HEAD_APPEND("    <meta property=\"og:type\" content=\"website\" />\n");
+      HEAD_APPEND("    <meta property=\"og:title\" content=\"");
+      HEAD_APPEND(title_e);
+      HEAD_APPEND("\" />\n");
+      HEAD_APPEND("    <meta property=\"og:image\" content=\"/og.png\" />\n");
+      HEAD_APPEND(
+          "    <meta name=\"twitter:card\" content=\"summary_large_image\" />\n");
+      HEAD_APPEND("    <meta name=\"twitter:image\" content=\"/og.png\" />\n");
+    }
+#undef HEAD_APPEND
+  }
+  snprintf(html, sizeof(html),
+           "<!doctype html>\n"
+           "<html lang=\"%s\">\n"
+           "  <head>\n"
+           "    <meta charset=\"UTF-8\" />\n"
+           "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
+           "    <title>%s</title>\n"
+           "    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n"
+           "    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n"
+           "    <link href=\"https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Syne:wght@600;700;800&display=swap\" rel=\"stylesheet\" />\n"
+           "%s"
+           "  </head>\n"
+           "  <body>\n"
+           "    <div id=\"root\"></div>\n"
+           "    <script type=\"module\" src=\"/src/main.jsx\"></script>\n"
+           "%s"
+           "  </body>\n"
+           "</html>\n",
+           lang_e, title_e, head_extra,
+           has_site_js
+               ? "    <script type=\"module\" src=\"/site.js\"></script>\n"
+               : "");
 
   const char *main_jsx =
       "import React from 'react'\n"
       "import { createRoot } from 'react-dom/client'\n"
       "import App from './App.jsx'\n"
+      "import ErrorBoundary from './ErrorBoundary.jsx'\n"
       "import './index.css'\n"
       "\n"
       "createRoot(document.getElementById('root')).render(\n"
       "  <React.StrictMode>\n"
-      "    <App />\n"
+      "    <ErrorBoundary>\n"
+      "      <App />\n"
+      "    </ErrorBoundary>\n"
       "  </React.StrictMode>\n"
       ")\n";
 
@@ -135,22 +274,164 @@ static int write_vite_skeleton(const char *out) {
       "\n"
       "body {\n"
       "  @apply m-0 min-h-screen antialiased;\n"
-      "  background-color: var(--color-bg, #f9fafb);\n"
-      "  color: var(--color-text, #111827);\n"
+      "  background-color: var(--color-bg, #fafaf9);\n"
+      "  color: var(--color-text, #1c1917);\n"
+      "  line-height: 1.6;\n"
+      "  font-family: var(--font-sans, \"IBM Plex Sans\", system-ui, sans-serif);\n"
+      "  --ui-container: 80rem;\n"
+      "  --ui-header-height: 4rem;\n"
       "}\n"
       "\n"
+      ".font-display {\n"
+      "  font-family: var(--font-display, Syne, \"IBM Plex Sans\", sans-serif);\n"
+      "}\n"
+      "\n"
+      ".font-mono,\n"
+      ".font-mono * {\n"
+      "  font-family: var(--font-mono, \"IBM Plex Mono\", ui-monospace, monospace);\n"
+      "}\n"
+      "\n"
+      ".text-muted {\n"
+      "  color: var(--color-muted, #57534e);\n"
+      "}\n"
+      "\n"
+      "/* Links: content uses primary; chrome stays quiet */\n"
       "a {\n"
-      "  color: var(--color-primary, #2563eb);\n"
+      "  color: var(--color-primary, #0f766e);\n"
+      "  text-decoration: none;\n"
       "}\n"
       "a:hover {\n"
+      "  color: var(--color-accent, #0d9488);\n"
       "  text-decoration: underline;\n"
+      "}\n"
+      "header a,\n"
+      "aside a,\n"
+      "footer a {\n"
+      "  color: var(--color-text, #1c1917);\n"
+      "}\n"
+      "header a:hover,\n"
+      "aside a:hover,\n"
+      "footer a:hover {\n"
+      "  color: var(--color-primary, #0f766e);\n"
+      "}\n"
+      "aside a {\n"
+      "  display: block;\n"
+      "  padding: 0.35rem 0.5rem;\n"
+      "  margin: 0 -0.5rem;\n"
+      "  border-radius: 6px;\n"
+      "  font-size: 0.925rem;\n"
+      "  line-height: 1.35;\n"
+      "}\n"
+      "aside a:hover {\n"
+      "  background-color: color-mix(in srgb, var(--color-primary, #0f766e) 10%, transparent);\n"
+      "  text-decoration: none;\n"
+      "}\n"
+      "aside a[aria-current=\"page\"],\n"
+      "nav a[aria-current=\"page\"] {\n"
+      "  color: var(--color-primary, #0f766e);\n"
+      "  font-weight: 600;\n"
+      "  background-color: color-mix(in srgb, var(--color-accent, #3DFFB5) 18%, transparent);\n"
+      "  text-decoration: none;\n"
+      "}\n"
+      "header.sticky {\n"
+      "  min-height: var(--ui-header-height);\n"
+      "  backdrop-filter: blur(8px);\n"
+      "  background-color: color-mix(in srgb, var(--color-surface, #fff) 92%, transparent);\n"
+      "  border-bottom: 1px solid var(--color-border, #e7e5e4);\n"
+      "}\n"
+      "header .max-w-1280,\n"
+      "footer .max-w-1280,\n"
+      ".max-w-1280 {\n"
+      "  width: 100%;\n"
+      "  max-width: var(--ui-container);\n"
+      "  margin-left: auto;\n"
+      "  margin-right: auto;\n"
+      "}\n"
+      "main {\n"
+      "  min-width: 0;\n"
+      "}\n"
+      "main h1 {\n"
+      "  line-height: 1.2;\n"
+      "  letter-spacing: -0.02em;\n"
+      "}\n"
+      "main h2 {\n"
+      "  line-height: 1.3;\n"
+      "  margin-top: 0.25rem;\n"
+      "}\n"
+      "aside.sticky {\n"
+      "  top: var(--ui-header-height);\n"
+      "  align-self: flex-start;\n"
+      "  max-height: calc(100vh - var(--ui-header-height));\n"
+      "  overflow-y: auto;\n"
+      "  border-right: 1px solid var(--color-border, #e7e5e4);\n"
+      "}\n"
+      ".bg-codebg,\n"
+      ".bg-stone-900 {\n"
+      "  color: var(--color-codefg, #e7e5e4);\n"
+      "  background-color: var(--color-codebg, #1c1917);\n"
+      "  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);\n"
+      "}\n"
+      ".bg-codebg .text-muted,\n"
+      ".bg-stone-900 .text-muted {\n"
+      "  color: #a8a29e;\n"
+      "}\n"
+      "footer {\n"
+      "  border-top: 1px solid var(--color-border, #e7e5e4);\n"
+      "}\n"
+      "\n"
+      "/* Stack sidebar shells on narrow viewports */\n"
+      "@media (max-width: 768px) {\n"
+      "  body .flex.flex-row:has(> aside) {\n"
+      "    flex-direction: column;\n"
+      "  }\n"
+      "  body aside.w-240 {\n"
+      "    width: 100%;\n"
+      "    position: relative;\n"
+      "    top: auto;\n"
+      "    max-height: none;\n"
+      "    min-height: 0;\n"
+      "    border-right: none;\n"
+      "    border-bottom: 1px solid var(--color-border, #e7e5e4);\n"
+      "  }\n"
+      "  body header.sticky {\n"
+      "    z-index: 40;\n"
+      "  }\n"
       "}\n";
 
+  /* Cord attrs like p=16 / gap=16 / max-w=640 map to class names p-16, etc.
+   * Stock Tailwind treats p-16 as 4rem; Cord's HTML preview uses ~1rem.
+   * Align React Tailwind with that Cord scale so demos aren't huge/broken. */
   const char *tailwind =
       "/** @type {import('tailwindcss').Config} */\n"
       "export default {\n"
       "  content: ['./index.html', './src/**/*.{js,jsx}'],\n"
-      "  theme: { extend: {} },\n"
+      "  theme: {\n"
+      "    extend: {\n"
+      "      spacing: {\n"
+      "        8: '0.5rem',\n"
+      "        12: '0.75rem',\n"
+      "        16: '1rem',\n"
+      "        24: '1.5rem',\n"
+      "        32: '2rem',\n"
+      "        40: '2.5rem',\n"
+      "        48: '3rem',\n"
+      "        64: '4rem',\n"
+      "        240: '15rem',\n"
+      "      },\n"
+      "      width: {\n"
+      "        240: '15rem',\n"
+      "      },\n"
+      "      maxWidth: {\n"
+      "        640: '40rem',\n"
+      "        720: '45rem',\n"
+      "        1280: '80rem',\n"
+      "      },\n"
+      "      borderRadius: {\n"
+      "        8: '8px',\n"
+      "        12: '12px',\n"
+      "      },\n"
+      "    },\n"
+      "  },\n"
       "  plugins: [],\n"
       "}\n";
 
@@ -185,20 +466,54 @@ static int write_vite_skeleton(const char *out) {
   const char *eb =
       "import { Component } from 'react';\n"
       "\n"
+      "const shell = {\n"
+      "  fontFamily: 'var(--font-sans, system-ui, sans-serif)',\n"
+      "  color: 'var(--color-text, #eef2f0)',\n"
+      "  background: 'var(--color-bg, #0c0f12)',\n"
+      "  border: '1px solid var(--color-border, #2a323c)',\n"
+      "  borderRadius: 12,\n"
+      "  padding: '1.25rem 1.35rem',\n"
+      "  maxWidth: '42rem',\n"
+      "  margin: '1.5rem auto',\n"
+      "};\n"
+      "\n"
       "export default class ErrorBoundary extends Component {\n"
       "  constructor(props) {\n"
       "    super(props);\n"
-      "    this.state = { hasError: false };\n"
+      "    this.state = { hasError: false, error: null, componentStack: '' };\n"
       "  }\n"
-      "  static getDerivedStateFromError() {\n"
-      "    return { hasError: true };\n"
+      "  static getDerivedStateFromError(error) {\n"
+      "    return { hasError: true, error };\n"
       "  }\n"
       "  componentDidCatch(error, info) {\n"
+      "    const componentStack = info && info.componentStack ? info.componentStack : '';\n"
+      "    this.setState({ componentStack });\n"
       "    if (typeof console !== 'undefined') console.error(error, info);\n"
       "  }\n"
+      "  handleRetry = () => {\n"
+      "    this.setState({ hasError: false, error: null, componentStack: '' });\n"
+      "  };\n"
       "  render() {\n"
       "    if (this.state.hasError) {\n"
-      "      return this.props.fallback ?? <div>Something went wrong.</div>;\n"
+      "      if (this.props.fallback != null) return this.props.fallback;\n"
+      "      const err = this.state.error;\n"
+      "      const name = err && err.name ? err.name : 'Error';\n"
+      "      const message = err && err.message ? err.message : 'Error desconocido';\n"
+      "      const stack = err && err.stack ? err.stack : '';\n"
+      "      const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;\n"
+      "      return (\n"
+      "        <div role=\"alert\" style={shell}>\n"
+      "          <p style={{ margin: 0, fontFamily: 'var(--font-mono, ui-monospace, monospace)', fontSize: '0.72rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--signal-ink, var(--color-accent, #3dffb5))' }}>Error de render</p>\n"
+      "          <h2 style={{ margin: '0.45rem 0 0.35rem', fontFamily: 'var(--font-display, var(--font-sans, system-ui))', fontSize: '1.25rem', letterSpacing: '-0.03em' }}>Algo falló al renderizar</h2>\n"
+      "          <p style={{ margin: 0, color: 'var(--color-muted, #a8b0b8)', fontSize: '0.95rem', lineHeight: 1.5 }}><strong style={{ color: 'var(--color-text, #eef2f0)' }}>{name}</strong>: {message}</p>\n"
+      "          {isDev && (stack || this.state.componentStack) ? (\n"
+      "            <pre style={{ marginTop: '0.9rem', padding: '0.75rem', overflow: 'auto', maxHeight: '18rem', fontSize: '0.75rem', lineHeight: 1.45, background: 'var(--color-codebg, #080a0c)', color: 'var(--color-codefg, #d7e0dc)', borderRadius: 8, border: '1px solid var(--color-border, #2a323c)' }}>\n"
+      "              {[stack, this.state.componentStack ? '\\n— componentStack —\\n' + this.state.componentStack : ''].filter(Boolean).join('\\n')}\n"
+      "            </pre>\n"
+      "          ) : null}\n"
+      "          <button type=\"button\" onClick={this.handleRetry} style={{ marginTop: '1rem', appearance: 'none', border: 'none', borderRadius: 999, padding: '0.55rem 1.1rem', fontWeight: 600, cursor: 'pointer', background: 'var(--color-accent, #3dffb5)', color: 'var(--ink, #0c0f12)' }}>Reintentar</button>\n"
+      "        </div>\n"
+      "      );\n"
       "    }\n"
       "    return this.props.children;\n"
       "  }\n"
@@ -261,68 +576,12 @@ static void scaffold_public_assets(const char *project_dir, const char *out) {
 }
 
 int react_scaffold_from_ast(const char *project_dir, Node *root) {
-  char *out = fs_join(project_dir, "dist/react");
-  if (!out) return -1;
-
-  if (fs_mkdir_p(out) != 0) {
-    free(out);
-    return -1;
-  }
-
-  /* ensure subdirs exist */
-  char *p1 = fs_join(out, "src/pages");
-  char *p2 = fs_join(out, "src/components");
-  char *p3 = fs_join(out, "src/layouts");
-  if (p1) {
-    fs_mkdir_p(p1);
-    free(p1);
-  }
-  if (p2) {
-    fs_mkdir_p(p2);
-    free(p2);
-  }
-  if (p3) {
-    fs_mkdir_p(p3);
-    free(p3);
-  }
-
-  int rc = write_vite_skeleton(out);
-  if (rc != 0) {
-    fprintf(stderr, "Error: failed writing Vite skeleton\n");
-    free(out);
-    return rc;
-  }
-
-  scaffold_public_assets(project_dir, out);
-
-  /* theme.css from NODE_THEME (first → :root) */
-  {
-    char *theme_css = theme_css_generate(root);
-    if (theme_css) {
-      rc |= write_path(out, "src/theme.css", theme_css);
-      free(theme_css);
-    }
-    if (rc != 0) {
-      fprintf(stderr, "Error: failed writing theme.css\n");
-      free(out);
-      return rc;
-    }
-  }
-
-  ScaffoldCtx ctx;
-  memset(&ctx, 0, sizeof(ctx));
-  ctx.out_root = out;
-
-  rc = react_emit_modules(root, scaffold_write_src, &ctx);
-  if (rc != 0 || ctx.rc != 0) {
-    fprintf(stderr, "Error: failed writing React modules\n");
-    free(out);
-    return -1;
-  }
-
-  print_tree(&ctx);
-  free(out);
-  return 0;
+  if (!root) return -1;
+  IrProgram *ir = ir_from_ast(root, NULL);
+  if (!ir) return -1;
+  int rc = react_scaffold_from_ir(project_dir, ir);
+  ir_free(ir);
+  return rc;
 }
 
 /* Legacy: single blob → App.jsx only (used if someone calls scaffold directly) */
@@ -333,7 +592,14 @@ int react_scaffold(const char *project_dir, const char *app_jsx) {
     free(out);
     return -1;
   }
-  int rc = write_vite_skeleton(out);
+  int rc = write_vite_skeleton(project_dir, out);
+  {
+    char *pj = fs_join(out, "package.json");
+    if (pj) {
+      preset_merge_package_json(pj, project_dir, PRESET_BACKEND_REACT);
+      free(pj);
+    }
+  }
   rc |= write_path(out, "src/App.jsx",
                    app_jsx ? app_jsx
                            : "export default function App(){return null}\n");
@@ -368,12 +634,20 @@ int react_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
     free(p3);
   }
 
-  int rc = write_vite_skeleton(out);
+  int rc = write_vite_skeleton(project_dir, out);
   if (rc != 0) {
     fprintf(stderr, "Error: failed writing Vite skeleton\n");
     free(out);
     return rc;
   }
+  {
+    char *pj = fs_join(out, "package.json");
+    if (pj) {
+      preset_merge_package_json(pj, project_dir, PRESET_BACKEND_REACT);
+      free(pj);
+    }
+  }
+  preset_write_bridges(out, project_dir, PRESET_BACKEND_REACT);
 
   scaffold_public_assets(project_dir, out);
 
@@ -410,6 +684,7 @@ int react_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
 static const BackendPort react_port = {
     .name = "react",
     .extension = ".jsx",
+    .needs_node_check = 1,
     .generate_from_ir = react_generate_from_ir,
     .scaffold_from_ir = react_scaffold_from_ir,
     .generate = react_generate,

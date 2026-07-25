@@ -12,14 +12,14 @@ export default function ListDemo({ title = "Items" }) {
         </h1>
         {showHint && (
           <>
-            <p className="text-gray-500">
+            <p className="text-muted">
               {'Hint: click items'}
             </p>
           </>
         )}
         {(items || []).map((item, idx) => (
           <Fragment key={item.id}>
-            <div className="flex flex-row gap-8 items-center justify-center">
+            <div className="flex flex-row gap-8 flex items-center justify-center">
               <span className="font-bold">
                 {item.name}
               </span>

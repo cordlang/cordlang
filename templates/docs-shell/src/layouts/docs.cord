@@ -1,0 +1,12 @@
+layout docs
+  col min-h
+    header sticky border p=12
+      row between max-w=5xl mx
+        span "Docs" bold
+        link "GitHub" href=https://example.com muted
+    row flex-1 max-w=5xl mx
+      aside w p=16 gap=8 border
+        link "Intro" to=/
+        link "Guide" to=/guide
+      main flex-1 p=24
+        slot

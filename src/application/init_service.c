@@ -12,23 +12,85 @@ static int write_rel(const char *root, const char *rel, const char *content) {
   return rc;
 }
 
-int init_service_run(const char *project_name) {
-  const char *name = project_name && *project_name ? project_name : ".";
-  int in_place = strcmp(name, ".") == 0;
+/* Walk up from start looking for relpath that exists. Caller frees. */
+static char *find_up(const char *start, const char *relpath) {
+  char *cur = fs_norm_path(start);
+  if (!cur) return NULL;
+  for (int depth = 0; depth < 12; depth++) {
+    char *cand = fs_join(cur, relpath);
+    if (cand && fs_exists(cand)) {
+      free(cur);
+      return cand;
+    }
+    free(cand);
+    char *parent = fs_dirname(cur);
+    if (!parent) break;
+    if (strcmp(parent, cur) == 0) {
+      free(parent);
+      break;
+    }
+    free(cur);
+    cur = parent;
+  }
+  free(cur);
+  return NULL;
+}
 
-  if (!in_place) {
-    if (fs_exists(name)) {
-      fprintf(stderr, "Error: '%s' already exists\n", name);
-      return 1;
-    }
-    if (fs_mkdir_p(name) != 0) {
-      fprintf(stderr, "Error: cannot create '%s'\n", name);
-      return 1;
-    }
+static char *resolve_template_dir(const char *template_name) {
+  if (!template_name || !*template_name) return NULL;
+  char *cwd = fs_cwd();
+  if (!cwd) return NULL;
+
+  char rel[512];
+  snprintf(rel, sizeof(rel), "templates/%s", template_name);
+  char *found = find_up(cwd, rel);
+  free(cwd);
+  return found;
+}
+
+static int init_from_template(const char *root, const char *template_name,
+                              int in_place) {
+  char *src = resolve_template_dir(template_name);
+  if (!src) {
+    fprintf(stderr, "Error: unknown template '%s'\n", template_name);
+    fprintf(stderr,
+            "Available (bundled): counter, landing, dashboard, form-fetch, "
+            "docs-shell\n");
+    fprintf(stderr,
+            "Hint: run from a Cordlang checkout so templates/ is visible, "
+            "or set CWD above templates/.\n");
+    return 1;
   }
 
-  const char *root = name;
+  if (!fs_is_dir(src)) {
+    fprintf(stderr, "Error: template path is not a directory: %s\n", src);
+    free(src);
+    return 1;
+  }
 
+  /* Copy tree into root. For in-place, copy children; for new dir, copy into it. */
+  if (fs_copy_tree(src, root) != 0) {
+    fprintf(stderr, "Error: failed to copy template '%s' → '%s'\n",
+            template_name, root);
+    free(src);
+    return 1;
+  }
+
+  printf("Created Cordlang project from template '%s'%s%s\n", template_name,
+         in_place ? "" : " in ", in_place ? "" : root);
+  printf("\n");
+  printf("  Template source: %s\n", src);
+  printf("\n");
+  printf("Next:\n");
+  if (!in_place) printf("  cd %s\n", root);
+  printf("  cordlang check\n");
+  printf("  cordlang run          # preview\n");
+  printf("  cordlang run react    # export React\n");
+  free(src);
+  return 0;
+}
+
+static int init_default(const char *root, int in_place) {
   char *cfg_path = fs_join(root, "cordlang.json");
   if (!cfg_path) return 1;
   if (fs_exists(cfg_path)) {
@@ -159,9 +221,9 @@ int init_service_run(const char *project_name) {
   }
 
   printf("Created Cordlang project%s%s\n", in_place ? "" : " in ",
-         in_place ? "" : name);
+         in_place ? "" : root);
   printf("\n");
-  printf("  %s/\n", in_place ? "." : name);
+  printf("  %s/\n", in_place ? "." : root);
   printf("  +-- cordlang.json\n");
   printf("  +-- public/              # static assets → /file in dist\n");
   printf("  +-- src/\n");
@@ -172,8 +234,39 @@ int init_service_run(const char *project_name) {
   printf("  \\-- README.md\n");
   printf("\n");
   printf("Next:\n");
-  if (!in_place) printf("  cd %s\n", name);
+  if (!in_place) printf("  cd %s\n", root);
   printf("  cordlang run          # preview\n");
   printf("  cordlang run react    # export React\n");
   return 0;
+}
+
+int init_service_run(const char *project_name, const char *template_name) {
+  const char *name = project_name && *project_name ? project_name : ".";
+  int in_place = strcmp(name, ".") == 0;
+
+  if (!in_place) {
+    if (fs_exists(name)) {
+      fprintf(stderr, "Error: '%s' already exists\n", name);
+      return 1;
+    }
+    if (fs_mkdir_p(name) != 0) {
+      fprintf(stderr, "Error: cannot create '%s'\n", name);
+      return 1;
+    }
+  }
+
+  const char *root = name;
+
+  if (template_name && *template_name) {
+    char *cfg_path = fs_join(root, "cordlang.json");
+    if (cfg_path && fs_exists(cfg_path)) {
+      fprintf(stderr, "Error: already a Cordlang project (%s)\n", cfg_path);
+      free(cfg_path);
+      return 1;
+    }
+    free(cfg_path);
+    return init_from_template(root, template_name, in_place);
+  }
+
+  return init_default(root, in_place);
 }

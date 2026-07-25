@@ -1,0 +1,68 @@
+// ===== src/components/FancyInput.jsx =====
+/* cordlang: source=src/components/FancyInput.cord */
+
+export default forwardRef(function FancyInput({  }, ref) {
+  const inputEl = /* ref */(null);
+  useImperativeHandle(inputEl, () => ({
+    focus: () => inputEl.current?.focus()
+  }), []);
+  return (
+    <>
+      <input ref={inputEl} type="text" />
+    </>
+  );
+});
+
+// ===== src/components/PhaseDDemo.jsx =====
+/* cordlang: source=src/components/PhaseDDemo.cord */
+import { createSignal } from 'solid-js';
+import FancyInput from './FancyInput';
+
+/* cordlang: default action stub - replace with your server action */
+async function submitForm(prev, formData) {
+  return null;
+}
+
+export default function PhaseDDemo({  }) {
+  const [count, setCount] = createSignal(0);
+  useInsertionEffect(() => {
+    injectStyles();
+  }, []);
+  const onMsg = /* effectEvent */(handleMessage);
+  const snapshot = /* store */(subscribe, getSnapshot);
+  const [form, formAction, saving] = useActionState(submitForm, null);
+  return (
+    <>
+      <div class="flex flex-col gap-8">
+        <p>
+          {'Count: '}
+          {count()}
+        </p>
+        <button class="btn" onClick={() => setCount(count() + 1)}>
+          {'+'}
+        </button>
+        {saving && (
+          <>
+            <p>
+              {'pending'}
+            </p>
+          </>
+        )}
+        <form action={formAction} aria-busy={saving}>
+          <button class="btn" disabled={saving}>
+            {'Go'}
+          </button>
+        </form>
+        <FancyInput />
+      </div>
+    </>
+  );
+}
+
+// ===== src/App.jsx =====
+/* cordlang: source=src/app.cord */
+import FancyInput from './components/FancyInput';
+
+export default function App() {
+  return <FancyInput />;
+}

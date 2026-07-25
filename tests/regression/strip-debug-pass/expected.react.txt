@@ -1,0 +1,22 @@
+// ===== src/components/Demo.jsx =====
+/* cordlang: source=src/components/Demo.cord */
+
+export default function Demo({  }) {
+  return (
+    <>
+      <div className="flex flex-col gap-8">
+        <p className="text-muted">
+          {'hello'}
+        </p>
+      </div>
+    </>
+  );
+}
+
+// ===== src/App.jsx =====
+/* cordlang: source=src/app.cord */
+import Demo from './components/Demo';
+
+export default function App() {
+  return <Demo />;
+}

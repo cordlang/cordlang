@@ -1,12 +1,18 @@
 #include "adapters/outbound/backends/html/html_backend.h"
+#include "adapters/outbound/backends/theme_css.h"
 #include "application/ports/fs_port.h"
 #include "domain/interp.h"
 #include "domain/ir.h"
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include <stdarg.h>
+#ifdef _WIN32
+#define strcasecmp _stricmp
+#else
+#include <strings.h>
+#endif
 
 typedef struct {
   char *buf;
@@ -20,12 +26,22 @@ static void sb_init(StrBuf *sb) {
   sb->buf = calloc(sb->cap, 1);
 }
 
+static void sb_oom(void) {
+  fprintf(stderr, "fatal: out of memory (StrBuf)\n");
+  exit(1);
+}
+
 static void sb_append(StrBuf *sb, const char *s) {
   if (!s) return;
   size_t slen = strlen(s);
   if (sb->len + slen + 1 >= sb->cap) {
-    while (sb->len + slen + 1 >= sb->cap) sb->cap *= 2;
-    sb->buf = realloc(sb->buf, sb->cap);
+    while (sb->len + slen + 1 >= sb->cap) {
+      if (sb->cap > (size_t)-1 / 2) sb_oom();
+      sb->cap *= 2;
+    }
+    char *nbuf = realloc(sb->buf, sb->cap);
+    if (!nbuf) sb_oom();
+    sb->buf = nbuf;
   }
   memcpy(sb->buf + sb->len, s, slen);
   sb->len += slen;
@@ -40,8 +56,13 @@ static void sb_appendf(StrBuf *sb, const char *fmt, ...) {
   if (n < 0) return;
 
   if (sb->len + (size_t)n + 1 >= sb->cap) {
-    while (sb->len + (size_t)n + 1 >= sb->cap) sb->cap *= 2;
-    sb->buf = realloc(sb->buf, sb->cap);
+    while (sb->len + (size_t)n + 1 >= sb->cap) {
+      if (sb->cap > (size_t)-1 / 2) sb_oom();
+      sb->cap *= 2;
+    }
+    char *nbuf = realloc(sb->buf, sb->cap);
+    if (!nbuf) sb_oom();
+    sb->buf = nbuf;
   }
 
   va_start(args, fmt);
@@ -102,16 +123,22 @@ static const char *RUNTIME_CSS =
   ".min-h-screen{min-height:100vh}\n"
   ".sticky{position:sticky}.top-0{top:0}\n"
   ".overflow-hidden{overflow:hidden}\n"
-  "/* Spacing */\n"
-  ".p-4{padding:1rem}.p-6{padding:1.5rem}.p-8{padding:2rem}.p-16{padding:4rem}.p-24{padding:6rem}\n"
+  "/* Spacing — Cord scale (p=16 → 1rem, aligned with React Tailwind scaffold) */\n"
+  ".p-4{padding:1rem}.p-6{padding:1.5rem}.p-8{padding:.5rem}.p-12{padding:.75rem}\n"
+  ".p-16{padding:1rem}.p-24{padding:1.5rem}.p-32{padding:2rem}\n"
   ".px-4{padding-left:1rem;padding-right:1rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}\n"
-  ".gap-2{gap:.5rem}.gap-4{gap:1rem}.gap-8{gap:2rem}.gap-16{gap:4rem}\n"
+  ".gap-2{gap:.5rem}.gap-4{gap:1rem}.gap-8{gap:.5rem}.gap-12{gap:.75rem}\n"
+  ".gap-16{gap:1rem}.gap-24{gap:1.5rem}\n"
   ".m-0{margin:0}\n"
-  "/* Size helpers used by Cordlang attrs (raw numbers) */\n"
-  ".p-8{padding:2rem}.p-12{padding:3rem}.p-16{padding:1rem}.p-24{padding:1.5rem}\n"
-  ".gap-8{gap:.5rem}.gap-16{gap:1rem}\n"
+  ".w-240{width:15rem}.h-screen{height:100vh}.min-h-screen{min-height:100vh}\n"
+  ".flex-1{flex:1 1 0%}.font-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}\n"
+  ".border{border-width:1px;border-style:solid}.border-gray-200{border-color:#e5e7eb}\n"
+  ".max-w-640{max-width:40rem}.max-w-720{max-width:45rem}.max-w-md{max-width:28rem}\n"
+  ".max-w-lg{max-width:32rem}.max-w-xl{max-width:36rem}.max-w-2xl{max-width:42rem}\n"
+  ".rounded-8{border-radius:8px}.rounded-12{border-radius:12px}\n"
   "/* Text */\n"
   ".font-bold{font-weight:700}.text-gray-500{color:#6b7280}.text-gray-700{color:#374151}\n"
+  ".text-muted{color:var(--color-muted,#57534e)}\n"
   ".text-xs{font-size:.75rem}.text-sm{font-size:.875rem}.text-base{font-size:1rem}\n"
   ".text-lg{font-size:1.125rem}.text-xl{font-size:1.25rem}.text-2xl{font-size:1.5rem}\n"
   ".text-3xl{font-size:1.875rem}.text-4xl{font-size:2.25rem}\n"
@@ -128,8 +155,6 @@ static const char *RUNTIME_CSS =
   ".grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}\n"
   ".grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}\n"
   ".grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}\n"
-  ".max-w-640{max-width:40rem}.max-w-md{max-width:28rem}.max-w-lg{max-width:32rem}\n"
-  ".max-w-xl{max-width:36rem}.max-w-2xl{max-width:42rem}\n"
   "/* Components */\n"
   ".btn{display:inline-flex;align-items:center;justify-content:center;border-radius:.5rem;"
   "padding:.5rem 1rem;font-weight:500;border:1px solid transparent;cursor:pointer;"
@@ -158,25 +183,102 @@ static const char *RUNTIME_CSS =
   "font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}\n"
   "@media (max-width:768px){.grid-cols-3,.grid-cols-4{grid-template-columns:1fr}}\n";
 
-/* Base runtime: toast for unknown handlers; setX(...) is eval'd when state exists.
- * State decls + setters are prepended by html_generate when present. */
+/* Safe preview runtime: no eval. Expressions via clEvalExpr whitelist parser. */
 static const char *RUNTIME_JS_CORE =
+  "function clEvalExpr(src){\n"
+  "  src=String(src==null?'':src);\n"
+  "  var i=0,n=src.length;\n"
+  "  function peek(){return src.charAt(i);}\n"
+  "  function get(){return src.charAt(i++);}\n"
+  "  function skip(){while(i<n&&/\\s/.test(peek()))i++;}\n"
+  "  function parsePrimary(){\n"
+  "    skip();\n"
+  "    var c=peek();\n"
+  "    if(c==='('){get();var v=parseOr();skip();if(peek()===')')get();return v;}\n"
+  "    if(c==='\"'||c===\"'\"){var q=get(),s='';while(i<n&&peek()!==q){if(peek()==='\\\\'){get();s+=get();}else s+=get();}if(peek()===q)get();return s;}\n"
+  "    if(c==='-'||c==='+'){var u=get();var pv=parsePrimary();return u==='-'?-pv:+pv;}\n"
+  "    if(/[0-9]/.test(c)||(c==='.'&&/[0-9]/.test(src.charAt(i+1)))){\n"
+  "      var num='';while(i<n&&/[0-9.]/.test(peek()))num+=get();return Number(num);\n"
+  "    }\n"
+  "    if(/[A-Za-z_]/.test(c)){\n"
+  "      var id='';while(i<n&&/[A-Za-z0-9_]/.test(peek()))id+=get();\n"
+  "      if(id==='true')return true;if(id==='false')return false;\n"
+  "      if(id==='null'||id==='undefined')return null;\n"
+  "      if(typeof window[id]==='undefined')throw new Error('unknown '+id);\n"
+  "      return window[id];\n"
+  "    }\n"
+  "    throw new Error('bad token');\n"
+  "  }\n"
+  "  function parseMul(){var v=parsePrimary();for(;;){skip();var op=peek();if(op!=='*'&&op!=='/'&&op!=='%')break;get();var r=parsePrimary();if(op==='*')v=v*r;else if(op==='/')v=v/r;else v=v%r;}return v;}\n"
+  "  function parseAdd(){var v=parseMul();for(;;){skip();var op=peek();if(op!=='+'&&op!=='-')break;get();var r=parseMul();v=op==='+'?v+r:v-r;}return v;}\n"
+  "  function parseCmp(){var v=parseAdd();for(;;){skip();var op=src.slice(i,i+2);var one=peek();\n"
+  "    if(op==='=='||op==='!='||op==='<='||op==='>='){i+=2;var r=parseAdd();if(op==='==')v=v==r;else if(op==='!=')v=v!=r;else if(op==='<=')v=v<=r;else v=v>=r;}\n"
+  "    else if(one==='<'||one==='>'){get();var r2=parseAdd();v=one==='<'?v<r2:v>r2;}else break;}return v;}\n"
+  "  function parseAnd(){var v=parseCmp();for(;;){skip();if(src.slice(i,i+2)!=='&&')break;i+=2;var r=parseCmp();v=v&&r;}return v;}\n"
+  "  function parseOr(){var v=parseAnd();for(;;){skip();if(src.slice(i,i+2)!=='||')break;i+=2;var r=parseAnd();v=v||r;}return v;}\n"
+  "  var out=parseOr();skip();if(i<n)throw new Error('trailing');\n"
+  "  return out;\n"
+  "}\n"
   "function clUpdate(){\n"
   "  document.querySelectorAll('[data-bind]').forEach(function(el){\n"
   "    var expr=el.getAttribute('data-bind');\n"
   "    if(!expr) return;\n"
   "    try{\n"
-  "      var v=(0,eval)(expr);\n"
+  "      var v=clEvalExpr(expr);\n"
   "      el.textContent=v==null?'':String(v);\n"
   "    }catch(e){ /* leave existing text */ }\n"
+  "  });\n"
+  "  document.querySelectorAll('[data-bind-value]').forEach(function(el){\n"
+  "    var expr=el.getAttribute('data-bind-value');\n"
+  "    if(!expr) return;\n"
+  "    if(document.activeElement===el) return;\n"
+  "    try{\n"
+  "      var v=clEvalExpr(expr);\n"
+  "      el.value=v==null?'':String(v);\n"
+  "    }catch(e){}\n"
+  "  });\n"
+  "  document.querySelectorAll('[data-if]').forEach(function(el){\n"
+  "    var cond=el.getAttribute('data-if');\n"
+  "    try{\n"
+  "      var ok=!!clEvalExpr(cond);\n"
+  "      el.hidden=!ok;\n"
+  "    }catch(e){ el.hidden=true; }\n"
+  "  });\n"
+  "  document.querySelectorAll('[data-else-if]').forEach(function(el){\n"
+  "    var cond=el.getAttribute('data-else-if');\n"
+  "    try{\n"
+  "      var ok=!!clEvalExpr(cond);\n"
+  "      el.hidden=ok;\n"
+  "    }catch(e){ el.hidden=false; }\n"
   "  });\n"
   "}\n"
   "function clPreviewHandler(name, ev){\n"
   "  if(ev && typeof ev.preventDefault==='function') ev.preventDefault();\n"
-  "  /* C8: evaluate setCount(...)-style handlers against preview state */\n"
   "  if(name && /^set[A-Za-z_][\\w]*\\s*\\(/.test(name)){\n"
-  "    try{ (0,eval)(name); return; }catch(e){\n"
-  "      if(window.console) console.warn('[cordlang preview] handler failed', name, e);\n"
+  "    var m=/^(set[A-Za-z_][\\w]*)\\s*\\((.*)\\)\\s*$/.exec(name);\n"
+  "    if(m && typeof window[m[1]]==='function'){\n"
+  "      try{\n"
+  "        var argSrc=(m[2]||'').trim();\n"
+  "        var arg=argSrc===''?undefined:clEvalExpr(argSrc);\n"
+  "        window[m[1]](arg);\n"
+  "        return;\n"
+  "      }catch(e){\n"
+  "        if(window.console) console.warn('[cordlang preview] handler failed', name, e);\n"
+  "      }\n"
+  "    }\n"
+  "  }\n"
+  "  /* Simple assignment: count = count + 1 */\n"
+  "  if(name && /^[A-Za-z_][\\w]*\\s*=/.test(name)){\n"
+  "    var am=/^([A-Za-z_][\\w]*)\\s*=\\s*(.+)$/.exec(name);\n"
+  "    if(am){\n"
+  "      try{\n"
+  "        var lhs=am[1], rhs=clEvalExpr(am[2]);\n"
+  "        window[lhs]=rhs;\n"
+  "        clUpdate();\n"
+  "        return;\n"
+  "      }catch(e){\n"
+  "        if(window.console) console.warn('[cordlang preview] assign failed', name, e);\n"
+  "      }\n"
   "    }\n"
   "  }\n"
   "  var el=document.getElementById('cl-toast');\n"
@@ -187,6 +289,12 @@ static const char *RUNTIME_JS_CORE =
   "  clearTimeout(el._t);\n"
   "  el._t=setTimeout(function(){ el.classList.remove('show'); }, 1800);\n"
   "  if(window.console) console.log('[cordlang preview]', name, ev&&ev.type);\n"
+  "}\n"
+  "function clBindInput(el, field){\n"
+  "  if(!el||!field) return;\n"
+  "  var setter='set'+field.charAt(0).toUpperCase()+field.slice(1);\n"
+  "  if(typeof window[setter]==='function') window[setter](el.value);\n"
+  "  else { window[field]=el.value; clUpdate(); }\n"
   "}\n"
   "if(document.readyState==='loading'){\n"
   "  document.addEventListener('DOMContentLoaded', clUpdate);\n"
@@ -241,13 +349,13 @@ static void gen_style_classes(StrBuf *sb, Node *style_map) {
     }
 
     if (!mapped) {
-      if (strcmp(key, "between") == 0) sb_append(sb, " justify-between");
-      else if (strcmp(key, "center") == 0) sb_append(sb, " items-center justify-center");
+      if (strcmp(key, "between") == 0) sb_append(sb, " flex justify-between");
+      else if (strcmp(key, "center") == 0) sb_append(sb, " flex items-center justify-center");
       else if (strcmp(key, "around") == 0) sb_append(sb, " justify-around");
       else if (strcmp(key, "evenly") == 0) sb_append(sb, " justify-evenly");
       else if (strcmp(key, "sticky") == 0) sb_append(sb, " sticky top-0");
       else if (strcmp(key, "bold") == 0) sb_append(sb, " font-bold");
-      else if (strcmp(key, "muted") == 0) sb_append(sb, " text-gray-500");
+      else if (strcmp(key, "muted") == 0) sb_append(sb, " text-muted");
       else if (strcmp(key, "overflow") == 0) {
         sb_append(sb, " overflow-");
         sb_append(sb, val);
@@ -267,7 +375,31 @@ static const char *tag_to_div_plus_class(const char *tag) {
   return NULL;
 }
 
+/* Deny-list for raw HTML tags that must never reach the preview DOM. */
+static int html_tag_is_forbidden(const char *tag) {
+  static const char *bad[] = {
+      "script", "iframe",   "object", "embed",  "applet", "frame",
+      "frameset", "meta",   "base",   "link",   "style",  "html",
+      "head",   "body",     "template", "foreignobject", "svg",
+      "math",   "noscript", NULL};
+  if (!tag) return 1;
+  for (int i = 0; bad[i]; i++) {
+    if (strcasecmp(tag, bad[i]) == 0) return 1;
+  }
+  return 0;
+}
+
+static int html_tag_is_safe_name(const char *tag) {
+  if (!tag || !*tag) return 0;
+  if (!isalpha((unsigned char)tag[0])) return 0;
+  for (const char *p = tag + 1; *p; p++) {
+    if (!(isalnum((unsigned char)*p) || *p == '-')) return 0;
+  }
+  return 1;
+}
+
 static const char *html_tag_for(const char *tag) {
+  if (!tag) return "div";
   if (strcmp(tag, "col") == 0) return "div";
   if (strcmp(tag, "row") == 0) return "div";
   if (strcmp(tag, "stack") == 0) return "div";
@@ -284,7 +416,9 @@ static const char *html_tag_for(const char *tag) {
   if (strcmp(tag, "select") == 0) return "select";
   if (strcmp(tag, "checkbox") == 0) return "input";
   if (strcmp(tag, "radio") == 0) return "input";
-  if (strcmp(tag, "icon") == 0) return "span";
+  if (strcmp(tag, "icon") == 0) return "span"; /* stub; see capability note */
+  if (strcmp(tag, "motion") == 0 || strcmp(tag, "Motion") == 0) return "div";
+  if (strcmp(tag, "chart") == 0 || strcmp(tag, "Chart") == 0) return "div";
   if (strcmp(tag, "nav") == 0) return "nav";
   if (strcmp(tag, "header") == 0) return "header";
   if (strcmp(tag, "footer") == 0) return "footer";
@@ -297,6 +431,8 @@ static const char *html_tag_for(const char *tag) {
   if (strcmp(tag, "h2") == 0) return "h2";
   if (strcmp(tag, "h3") == 0) return "h3";
   if (strcmp(tag, "p") == 0) return "p";
+  /* Unknown Cord tags: only emit if safe; never script/iframe/etc. */
+  if (html_tag_is_forbidden(tag) || !html_tag_is_safe_name(tag)) return "div";
   return tag;
 }
 
@@ -390,15 +526,68 @@ static void make_setter_name(char *out, size_t out_sz, const char *name) {
            name + 1);
 }
 
+static int is_safe_js_ident(const char *s) {
+  if (!s || !*s) return 0;
+  if (!(isalpha((unsigned char)s[0]) || s[0] == '_')) return 0;
+  for (const char *p = s + 1; *p; p++) {
+    if (!(isalnum((unsigned char)*p) || *p == '_')) return 0;
+  }
+  return 1;
+}
+
+/* Allow only number / bool / null / double-quoted string as state init JS. */
+static int is_safe_js_init(const char *s) {
+  if (!s || !*s) return 0;
+  if (strcmp(s, "true") == 0 || strcmp(s, "false") == 0 ||
+      strcmp(s, "null") == 0)
+    return 1;
+  const char *p = s;
+  if (*p == '-' || *p == '+') p++;
+  int digits = 0;
+  while (*p) {
+    if (isdigit((unsigned char)*p))
+      digits++;
+    else if (*p != '.')
+      return 0;
+    p++;
+  }
+  if (digits > 0) return 1;
+  /* "..." with no unescaped quotes/backslashes beyond simple content */
+  if (s[0] == '"') {
+    size_t n = strlen(s);
+    if (n >= 2 && s[n - 1] == '"') {
+      for (size_t i = 1; i + 1 < n; i++) {
+        if (s[i] == '"' || s[i] == '\\' || s[i] == '\n' || s[i] == '\r')
+          return 0;
+      }
+      return 1;
+    }
+  }
+  return 0;
+}
+
+static int href_is_safe(const char *href) {
+  if (!href) return 1;
+  while (*href && isspace((unsigned char)*href)) href++;
+  if (!*href) return 1;
+  /* Block javascript:/data:/vbscript: scheme URLs */
+  if (strncasecmp(href, "javascript:", 11) == 0) return 0;
+  if (strncasecmp(href, "data:", 5) == 0) return 0;
+  if (strncasecmp(href, "vbscript:", 9) == 0) return 0;
+  return 1;
+}
+
 static void emit_state_runtime_js(StrBuf *sb) {
   if (g_state_count == 0) return;
   sb_append(sb, "/* Cordlang preview reactive state (C8) */\n");
   for (int i = 0; i < g_state_count; i++) {
     const char *name = g_state_names[i];
     const char *init = g_state_inits[i] ? g_state_inits[i] : "0";
+    if (!is_safe_js_ident(name)) continue;
+    if (!is_safe_js_init(init)) init = "null";
     char setter[128];
     make_setter_name(setter, sizeof(setter), name);
-    /* Use var so eval() handlers resolve state on the global object.
+    /* Use var so clEvalExpr/handlers resolve state on the global object.
      * Init comes from the parser (number / true / "string" / expr). */
     sb_appendf(sb, "var %s = %s;\n", name, init);
     sb_appendf(sb,
@@ -519,6 +708,17 @@ static void collect_classes(char *classes, size_t classes_sz, Node *node, const 
     strncat(classes, base_class, classes_sz - 1);
   }
 
+  int has_between = 0;
+  for (size_t i = 0; i < node->children_len; i++) {
+    Node *child = node->children[i];
+    if (child->type == NODE_BOOL_ATTR && child->value &&
+        strcmp(child->value, "between") == 0)
+      has_between = 1;
+    if (child->type == NODE_ATTR && child->value &&
+        strcmp(child->value, "between") == 0)
+      has_between = 1;
+  }
+
   for (size_t i = 0; i < node->children_len; i++) {
     Node *child = node->children[i];
     if (child->type == NODE_STYLE_MAP && child->value && strcmp(child->value, "style") == 0) {
@@ -540,12 +740,19 @@ static void collect_classes(char *classes, size_t classes_sz, Node *node, const 
     Node *child = node->children[i];
     char vbuf[96];
     if (child->type == NODE_BOOL_ATTR && child->value) {
-      if (strcmp(child->value, "between") == 0) strncat(classes, " justify-between", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->value, "center") == 0) strncat(classes, " items-center justify-center", classes_sz - strlen(classes) - 1);
+      if (strcmp(child->value, "between") == 0) strncat(classes, " flex justify-between", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->value, "center") == 0)
+        strncat(classes,
+                has_between ? " flex items-center"
+                            : " flex items-center justify-center",
+                classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "around") == 0) strncat(classes, " justify-around", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "evenly") == 0) strncat(classes, " justify-evenly", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "bold") == 0) strncat(classes, " font-bold", classes_sz - strlen(classes) - 1);
-      else if (strcmp(child->value, "muted") == 0) strncat(classes, " text-gray-500", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->value, "muted") == 0) strncat(classes, " text-muted", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->value, "font-mono") == 0) strncat(classes, " font-mono", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->value, "flex-1") == 0) strncat(classes, " flex-1", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->value, "border") == 0) strncat(classes, " border border-gray-200", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "sticky") == 0) strncat(classes, " sticky top-0", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "primary") == 0) strncat(classes, " btn-primary", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->value, "outline") == 0) strncat(classes, " btn-outline", classes_sz - strlen(classes) - 1);
@@ -583,6 +790,33 @@ static void collect_classes(char *classes, size_t classes_sz, Node *node, const 
       } else if (strcmp(child->value, "p") == 0) {
         snprintf(vbuf, sizeof(vbuf), " p-%s", child->value2);
         strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+      } else if (strcmp(child->value, "px") == 0) {
+        snprintf(vbuf, sizeof(vbuf), " px-%s", child->value2);
+        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+      } else if (strcmp(child->value, "py") == 0) {
+        snprintf(vbuf, sizeof(vbuf), " py-%s", child->value2);
+        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+      } else if (strcmp(child->value, "m") == 0) {
+        snprintf(vbuf, sizeof(vbuf), " m-%s", child->value2);
+        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+      } else if (strcmp(child->value, "mx") == 0) {
+        snprintf(vbuf, sizeof(vbuf), " mx-%s", child->value2);
+        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+      } else if (strcmp(child->value, "my") == 0) {
+        snprintf(vbuf, sizeof(vbuf), " my-%s", child->value2);
+        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+      } else if (strcmp(child->value, "w") == 0) {
+        snprintf(vbuf, sizeof(vbuf), " w-%s", child->value2);
+        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+      } else if (strcmp(child->value, "h") == 0) {
+        snprintf(vbuf, sizeof(vbuf), " h-%s", child->value2);
+        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+      } else if (strcmp(child->value, "min-h") == 0) {
+        snprintf(vbuf, sizeof(vbuf), " min-h-%s", child->value2);
+        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+      } else if (strcmp(child->value, "border") == 0) {
+        snprintf(vbuf, sizeof(vbuf), " border border-%s", child->value2);
+        strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
       } else if (strcmp(child->value, "bg") == 0) {
         snprintf(vbuf, sizeof(vbuf), " bg-%s", child->value2);
         strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
@@ -604,6 +838,14 @@ static int is_style_attr(const char *name) {
   return strcmp(name, "variant") == 0 || strcmp(name, "size") == 0 ||
          strcmp(name, "color") == 0 || strcmp(name, "gap") == 0 ||
          strcmp(name, "cols") == 0 || strcmp(name, "p") == 0 ||
+         strcmp(name, "px") == 0 || strcmp(name, "py") == 0 ||
+         strcmp(name, "m") == 0 || strcmp(name, "mx") == 0 ||
+         strcmp(name, "my") == 0 || strcmp(name, "w") == 0 ||
+         strcmp(name, "h") == 0 || strcmp(name, "min-h") == 0 ||
+         strcmp(name, "border") == 0 || strcmp(name, "flex-1") == 0 ||
+         strcmp(name, "font-mono") == 0 || strcmp(name, "center") == 0 ||
+         strcmp(name, "between") == 0 || strcmp(name, "bold") == 0 ||
+         strcmp(name, "muted") == 0 || strcmp(name, "sticky") == 0 ||
          strcmp(name, "bg") == 0 || strcmp(name, "shadow") == 0 ||
          strcmp(name, "rounded") == 0 || strcmp(name, "max-w") == 0 ||
          strcmp(name, "overflow") == 0 || strcmp(name, "fit") == 0 ||
@@ -649,8 +891,11 @@ static void gen_element(StrBuf *sb, Node *node, int depth) {
           strcmp(attr_name, "type") == 0 || strcmp(attr_name, "rows") == 0 ||
           strcmp(attr_name, "name") == 0 || strcmp(attr_name, "value") == 0 ||
           strcmp(attr_name, "id") == 0) {
+        const char *aval = child->value2 ? child->value2 : "";
+        if (strcmp(attr_name, "href") == 0 && !href_is_safe(aval))
+          aval = "#";
         sb_appendf(sb, " %s=\"", attr_name);
-        html_escape_append(sb, child->value2 ? child->value2 : "");
+        html_escape_append(sb, aval);
         sb_append(sb, "\"");
       }
     }
@@ -694,6 +939,8 @@ static void gen_element(StrBuf *sb, Node *node, int depth) {
     if (child->type == NODE_EVENT && child->value && child->value2) {
       const char *event = child->value;
       const char *handler = child->value2;
+      /* only [A-Za-z][A-Za-z0-9_]* event names (onclick → click via parser) */
+      if (!is_safe_js_ident(event)) continue;
       /* escape single quotes in handler name for JS string */
       sb_appendf(sb, " on%s=\"clPreviewHandler('", event);
       for (const char *p = handler; *p; p++) {
@@ -773,7 +1020,9 @@ static void gen_children(StrBuf *sb, Node *node, int depth) {
         /* Prefer live data-bind spans for known state inside mixed text */
         emit_text_with_live_interp(sb, child->value);
       } else {
-        html_escape_append(sb, child->value ? child->value : "");
+        char *plain = interp_plain_text(child->value);
+        html_escape_append(sb, plain ? plain : "");
+        free(plain);
       }
       sb_append(sb, "\n");
     } else if (child->type == NODE_STRING) {
@@ -781,7 +1030,9 @@ static void gen_children(StrBuf *sb, Node *node, int depth) {
       if (child->value && interp_has(child->value)) {
         emit_text_with_live_interp(sb, child->value);
       } else {
-        html_escape_append(sb, child->value ? child->value : "");
+        char *plain = interp_plain_text(child->value);
+        html_escape_append(sb, plain ? plain : "");
+        free(plain);
       }
       sb_append(sb, "\n");
     } else if (!is_decl_only(child->type)) {
@@ -820,7 +1071,9 @@ static void gen_node(StrBuf *sb, Node *node, int depth) {
         if (interp_has(node->value)) {
           emit_text_with_live_interp(sb, node->value);
         } else {
-          html_escape_append(sb, node->value);
+          char *plain = interp_plain_text(node->value);
+          html_escape_append(sb, plain ? plain : "");
+          free(plain);
         }
         sb_append(sb, "\n");
       }
@@ -850,13 +1103,21 @@ static char *html_generate_impl(Node *root) {
     "  <title>Cordlang Runtime Preview</title>\n"
     "  <style>\n");
   sb_append(&doc, RUNTIME_CSS);
+  {
+    char *theme = theme_css_generate(root);
+    if (theme) {
+      sb_append(&doc, "\n");
+      sb_append(&doc, theme);
+      free(theme);
+    }
+  }
   sb_append(&doc,
     "  </style>\n"
     "</head>\n"
     "<body>\n"
     "  <div class=\"cl-runtime-bar\">\n"
     "    <div><strong>Cordlang</strong> <span>native runtime preview</span></div>\n"
-    "    <div class=\"cl-runtime-badge\"><span class=\"cl-runtime-dot\"></span> live · no React/Node</div>\n"
+    "    <div class=\"cl-runtime-badge\"><span class=\"cl-runtime-dot\"></span> state · setX · #{x} · bind — no SPA parity</div>\n"
     "  </div>\n"
     "  <div id=\"app\">\n");
   sb_append(&doc, body.buf ? body.buf : "");
@@ -955,9 +1216,9 @@ static void gen_style_classes_ir(StrBuf *sb, IrNode *style_map) {
 
     if (!mapped) {
       if (strcmp(key, "between") == 0)
-        sb_append(sb, " justify-between");
+        sb_append(sb, " flex justify-between");
       else if (strcmp(key, "center") == 0)
-        sb_append(sb, " items-center justify-center");
+        sb_append(sb, " flex items-center justify-center");
       else if (strcmp(key, "around") == 0)
         sb_append(sb, " justify-around");
       else if (strcmp(key, "evenly") == 0)
@@ -967,7 +1228,7 @@ static void gen_style_classes_ir(StrBuf *sb, IrNode *style_map) {
       else if (strcmp(key, "bold") == 0)
         sb_append(sb, " font-bold");
       else if (strcmp(key, "muted") == 0)
-        sb_append(sb, " text-gray-500");
+        sb_append(sb, " text-muted");
       else if (strcmp(key, "overflow") == 0) {
         sb_append(sb, " overflow-");
         sb_append(sb, val);
@@ -981,6 +1242,14 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
   classes[0] = '\0';
   if (base_class) {
     strncat(classes, base_class, classes_sz - 1);
+  }
+
+  int has_between = 0;
+  for (size_t i = 0; i < node->n_kids; i++) {
+    IrNode *child = node->kids[i];
+    if (child && child->kind == IR_ATTR && child->name &&
+        strcmp(child->name, "between") == 0)
+      has_between = 1;
   }
 
   for (size_t i = 0; i < node->n_kids; i++) {
@@ -1009,9 +1278,11 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
     /* Bool-like attrs: IR_ATTR name with value "true" */
     if (ir_attr_is_true(child->value)) {
       if (strcmp(child->name, "between") == 0)
-        strncat(classes, " justify-between", classes_sz - strlen(classes) - 1);
+        strncat(classes, " flex justify-between", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->name, "center") == 0)
-        strncat(classes, " items-center justify-center",
+        strncat(classes,
+                has_between ? " flex items-center"
+                            : " flex items-center justify-center",
                 classes_sz - strlen(classes) - 1);
       else if (strcmp(child->name, "around") == 0)
         strncat(classes, " justify-around", classes_sz - strlen(classes) - 1);
@@ -1020,7 +1291,14 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
       else if (strcmp(child->name, "bold") == 0)
         strncat(classes, " font-bold", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->name, "muted") == 0)
-        strncat(classes, " text-gray-500", classes_sz - strlen(classes) - 1);
+        strncat(classes, " text-muted", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "font-mono") == 0)
+        strncat(classes, " font-mono", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "flex-1") == 0)
+        strncat(classes, " flex-1", classes_sz - strlen(classes) - 1);
+      else if (strcmp(child->name, "border") == 0)
+        strncat(classes, " border border-gray-200",
+                classes_sz - strlen(classes) - 1);
       else if (strcmp(child->name, "sticky") == 0)
         strncat(classes, " sticky top-0", classes_sz - strlen(classes) - 1);
       else if (strcmp(child->name, "primary") == 0)
@@ -1071,6 +1349,33 @@ static void collect_classes_ir(char *classes, size_t classes_sz, IrNode *node,
       strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
     } else if (strcmp(child->name, "p") == 0) {
       snprintf(vbuf, sizeof(vbuf), " p-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "px") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " px-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "py") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " py-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "m") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " m-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "mx") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " mx-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "my") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " my-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "w") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " w-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "h") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " h-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "min-h") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " min-h-%s", child->value);
+      strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
+    } else if (strcmp(child->name, "border") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " border border-%s", child->value);
       strncat(classes, vbuf, classes_sz - strlen(classes) - 1);
     } else if (strcmp(child->name, "bg") == 0) {
       snprintf(vbuf, sizeof(vbuf), " bg-%s", child->value);
@@ -1123,7 +1428,8 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth) {
     if (child && child->kind == IR_ATTR && child->name &&
         !is_style_attr(child->name) && !ir_attr_is_true(child->value) &&
         strcmp(child->name, "style") != 0 &&
-        strcmp(child->name, "__file__") != 0) {
+        strcmp(child->name, "__file__") != 0 &&
+        strcmp(child->name, "bind") != 0) {
       const char *attr_name = child->name;
       if (strcmp(attr_name, "to") == 0) attr_name = "href";
       if (strcmp(attr_name, "src") == 0 || strcmp(attr_name, "alt") == 0 ||
@@ -1136,6 +1442,44 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth) {
         html_escape_append(sb, child->value ? child->value : "");
         sb_append(sb, "\"");
       }
+    }
+  }
+
+  /* Two-way bind on form controls (preview): value + oninput → setField */
+  {
+    const char *bind_field = NULL;
+    for (size_t i = 0; i < node->n_kids; i++) {
+      IrNode *c = node->kids[i];
+      if (c && c->kind == IR_ATTR && c->name && strcmp(c->name, "bind") == 0 &&
+          c->value && is_safe_js_ident(c->value)) {
+        bind_field = c->value;
+        break;
+      }
+    }
+    if (bind_field &&
+        (strcmp(html_tag, "input") == 0 || strcmp(html_tag, "textarea") == 0 ||
+         strcmp(html_tag, "select") == 0)) {
+      const char *init = state_init_for(bind_field);
+      /* strip quotes from string inits for value attr */
+      sb_append(sb, " value=\"");
+      if (init && init[0] == '"') {
+        size_t n = strlen(init);
+        if (n >= 2)
+          for (size_t k = 1; k + 1 < n; k++) {
+            char c[2] = {init[k], 0};
+            if (init[k] == '"')
+              sb_append(sb, "&quot;");
+            else
+              sb_append(sb, c);
+          }
+      } else {
+        html_escape_append(sb, init ? init : "");
+      }
+      sb_append(sb, "\"");
+      sb_append(sb, " data-bind-value=\"");
+      html_escape_append(sb, bind_field);
+      sb_append(sb, "\"");
+      sb_appendf(sb, " oninput=\"clBindInput(this, '%s')\"", bind_field);
     }
   }
 
@@ -1179,6 +1523,7 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth) {
     if (child && child->kind == IR_EVENT && child->name && child->value) {
       const char *event = child->name;
       const char *handler = child->value;
+      if (!is_safe_js_ident(event)) continue;
       sb_appendf(sb, " on%s=\"clPreviewHandler('", event);
       for (const char *p = handler; *p; p++) {
         if (*p == '\'' || *p == '\\') sb_append(sb, "\\");
@@ -1213,8 +1558,8 @@ static void gen_ir_children(StrBuf *sb, IrNode *node, int depth) {
       sb_append(sb, "<div class=\"cl-loop\">\n");
       sb_indent(sb, depth + 1);
       sb_appendf(sb,
-                 "<div class=\"cl-loop-label\">for %s in %s — preview (2 "
-                 "samples)</div>\n",
+                 "<div class=\"cl-loop-label\">for %s in %s — lista estática "
+                 "(preview; no each dinámico)</div>\n",
                  var, list);
       for (int sample = 0; sample < 2; sample++) {
         for (size_t j = 0; j < child->n_kids; j++)
@@ -1224,21 +1569,50 @@ static void gen_ir_children(StrBuf *sb, IrNode *node, int depth) {
       sb_append(sb, "</div>\n");
     } else if (child->kind == IR_IF) {
       const char *cond = child->value ? child->value : "true";
-      sb_indent(sb, depth);
-      sb_appendf(sb, "<!-- if %s (preview shows true branch) -->\n", cond);
+      /* Collect true-branch kids until __else__ marker */
+      size_t else_at = child->n_kids;
       for (size_t j = 0; j < child->n_kids; j++) {
         IrNode *kc = child->kids[j];
         if (kc && kc->kind == IR_TEXT && kc->value &&
-            strcmp(kc->value, "__else__") == 0)
-          break; /* stop at else marker — true branch only */
-        gen_ir_node(sb, kc, depth);
+            strcmp(kc->value, "__else__") == 0) {
+          else_at = j;
+          break;
+        }
       }
-      /* skip paired else marker sibling if present under parent */
-      if (i + 1 < node->n_kids) {
+      sb_indent(sb, depth);
+      sb_append(sb, "<div data-if=\"");
+      html_escape_append(sb, cond);
+      sb_append(sb, "\">\n");
+      for (size_t j = 0; j < else_at; j++)
+        gen_ir_node(sb, child->kids[j], depth + 1);
+      sb_indent(sb, depth);
+      sb_append(sb, "</div>\n");
+      /* Else branch under sibling marker or remaining kids */
+      int has_else = 0;
+      if (else_at < child->n_kids) {
+        has_else = 1;
+        sb_indent(sb, depth);
+        sb_append(sb, "<div data-else-if=\"");
+        html_escape_append(sb, cond);
+        sb_append(sb, "\" hidden>\n");
+        for (size_t j = else_at + 1; j < child->n_kids; j++)
+          gen_ir_node(sb, child->kids[j], depth + 1);
+        sb_indent(sb, depth);
+        sb_append(sb, "</div>\n");
+      }
+      if (!has_else && i + 1 < node->n_kids) {
         IrNode *next = node->kids[i + 1];
         if (next && next->kind == IR_TEXT && next->value &&
             strcmp(next->value, "__else__") == 0) {
-          i++; /* skip marker; leave else body unrendered */
+          i++; /* consume marker */
+          sb_indent(sb, depth);
+          sb_append(sb, "<div data-else-if=\"");
+          html_escape_append(sb, cond);
+          sb_append(sb, "\" hidden>\n");
+          for (size_t j = 0; j < next->n_kids; j++)
+            gen_ir_node(sb, next->kids[j], depth + 1);
+          sb_indent(sb, depth);
+          sb_append(sb, "</div>\n");
         }
       }
     } else if (child->kind == IR_INTERP) {
@@ -1267,7 +1641,9 @@ static void gen_ir_children(StrBuf *sb, IrNode *node, int depth) {
       if (child->value && interp_has(child->value)) {
         emit_text_with_live_interp(sb, child->value);
       } else {
-        html_escape_append(sb, child->value ? child->value : "");
+        char *plain = interp_plain_text(child->value);
+        html_escape_append(sb, plain ? plain : "");
+        free(plain);
       }
       sb_append(sb, "\n");
     } else if (child->kind == IR_SLOT) {
@@ -1310,7 +1686,9 @@ static void gen_ir_node(StrBuf *sb, IrNode *node, int depth) {
         if (interp_has(node->value)) {
           emit_text_with_live_interp(sb, node->value);
         } else {
-          html_escape_append(sb, node->value);
+          char *plain = interp_plain_text(node->value);
+          html_escape_append(sb, plain ? plain : "");
+          free(plain);
         }
         sb_append(sb, "\n");
       }
@@ -1387,6 +1765,17 @@ static char *html_generate_from_ir_root(IrNode *root) {
             "  <title>Cordlang Runtime Preview</title>\n"
             "  <style>\n");
   sb_append(&doc, RUNTIME_CSS);
+  {
+    IrProgram fake;
+    memset(&fake, 0, sizeof(fake));
+    fake.root = root;
+    char *theme = theme_css_generate_from_ir(&fake);
+    if (theme) {
+      sb_append(&doc, "\n");
+      sb_append(&doc, theme);
+      free(theme);
+    }
+  }
   sb_append(&doc,
             "  </style>\n"
             "</head>\n"
@@ -1395,7 +1784,8 @@ static char *html_generate_from_ir_root(IrNode *root) {
             "    <div><strong>Cordlang</strong> <span>native runtime "
             "preview</span></div>\n"
             "    <div class=\"cl-runtime-badge\"><span "
-            "class=\"cl-runtime-dot\"></span> live · no React/Node</div>\n"
+            "class=\"cl-runtime-dot\"></span> state · setX · #{x} · bind — no "
+            "SPA parity</div>\n"
             "  </div>\n"
             "  <div id=\"app\">\n");
   sb_append(&doc, body.buf ? body.buf : "");
@@ -1468,6 +1858,7 @@ int html_scaffold(const char *project_dir, const char *html_doc) {
 static const BackendPort html_port = {
     .name = "html",
     .extension = ".html",
+    .needs_node_check = 0,
     .generate_from_ir = html_generate_from_ir,
     .scaffold_from_ir = html_scaffold_from_ir,
     .generate = html_generate,

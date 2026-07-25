@@ -1,0 +1,63 @@
+{
+  "name": "cordlang",
+  "displayName": "Cordlang",
+  "description": "Cordlang language support (snippets, check tasks, LSP via cordlang lsp)",
+  "version": "1.0.0",
+  "engines": { "vscode": "^1.80.0" },
+  "categories": ["Programming Languages"],
+  "main": "./extension.js",
+  "activationEvents": ["onLanguage:cordlang"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "cordlang",
+        "aliases": ["Cordlang", "cord"],
+        "extensions": [".cord"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "cordlang",
+        "path": "./snippets/cordlang.json"
+      }
+    ],
+    "problemMatchers": [
+      {
+        "name": "cordlang-check",
+        "owner": "cordlang",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": {
+          "regexp": "^(.*):(\\d+):(\\d+):\\s+(error|warning|info):\\s+(.*)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "message": 5
+        }
+      }
+    ],
+    "tasks": [
+      {
+        "type": "shell",
+        "label": "cordlang: check",
+        "command": "cordlang check",
+        "problemMatcher": ["$cordlang-check"],
+        "group": "build"
+      }
+    ],
+    "configuration": {
+      "title": "Cordlang",
+      "properties": {
+        "cordlang.lsp.path": {
+          "type": "string",
+          "default": "cordlang",
+          "description": "Path to cordlang binary (run with args: lsp)"
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  }
+}

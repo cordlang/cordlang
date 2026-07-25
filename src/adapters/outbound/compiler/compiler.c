@@ -112,7 +112,7 @@ static char *path_collapse(const char *path) {
     if (*p == '\\') *p = '/';
   }
 
-  int abs = (tmp[0] == '/');
+  int is_abs = (tmp[0] == '/');
   char *stack[128];
   int n = 0;
   char *tok = strtok(tmp, "/");
@@ -134,14 +134,14 @@ static char *path_collapse(const char *path) {
     return NULL;
   }
   size_t o = 0;
-  if (abs) out[o++] = '/';
+  if (is_abs) out[o++] = '/';
   for (int i = 0; i < n; i++) {
     if (i > 0) out[o++] = '/';
     size_t tl = strlen(stack[i]);
     memcpy(out + o, stack[i], tl);
     o += tl;
   }
-  if (n == 0 && !abs) {
+  if (n == 0 && !is_abs) {
     out[0] = '.';
     out[1] = '\0';
   } else {
@@ -151,7 +151,91 @@ static char *path_collapse(const char *path) {
   return out;
 }
 
-static char *resolve_module_file(const char *from_file, const char *mod_path) {
+/* Absolute collapsed path (joins cwd if relative). Caller frees. */
+static char *path_make_abs(const char *path) {
+  if (!path) return NULL;
+  int is_abs = (path[0] == '/');
+#ifdef _WIN32
+  if (path[0] && path[1] == ':') is_abs = 1;
+#endif
+  if (is_abs) return path_collapse(path);
+
+  char *cwd = fs_cwd();
+  if (!cwd) return path_collapse(path);
+  size_t lc = strlen(cwd), lp = strlen(path);
+  char *joined = malloc(lc + lp + 2);
+  if (!joined) {
+    free(cwd);
+    return path_collapse(path);
+  }
+  memcpy(joined, cwd, lc);
+  joined[lc] = '/';
+  memcpy(joined + lc + 1, path, lp + 1);
+  free(cwd);
+  char *out = path_collapse(joined);
+  free(joined);
+  return out;
+}
+
+/* True if path is equal to root or a descendant (after abs collapse). */
+static int path_is_under_root(const char *path, const char *root) {
+  if (!path || !root || !*root) return 0;
+  char *ap = path_make_abs(path);
+  char *ar = path_make_abs(root);
+  if (!ap || !ar) {
+    free(ap);
+    free(ar);
+    return 0;
+  }
+  size_t rl = strlen(ar);
+  int ok = 0;
+  if (strncmp(ap, ar, rl) == 0) {
+    if (ap[rl] == '\0' || ap[rl] == '/') ok = 1;
+  }
+  free(ap);
+  free(ar);
+  return ok;
+}
+
+/* Directory with cordlang.json walking up from entry, else entry dirname. */
+static char *find_project_root(const char *entry_path) {
+  char *start = fs_dirname(entry_path);
+  char *cur = path_make_abs(start);
+  free(start);
+  if (!cur) return NULL;
+  char *fallback = strdup(cur);
+  for (int depth = 0; depth < 48; depth++) {
+    size_t n = strlen(cur);
+    char *cfg = malloc(n + 20);
+    if (!cfg) break;
+    memcpy(cfg, cur, n);
+    memcpy(cfg + n, "/cordlang.json", 15);
+    int found = fs_exists(cfg);
+    free(cfg);
+    if (found) {
+      free(fallback);
+      return cur;
+    }
+    if (strcmp(cur, "/") == 0) break;
+#ifdef _WIN32
+    if (strlen(cur) <= 3 && cur[1] == ':') break;
+#endif
+    char *parent = fs_dirname(cur);
+    char *next = path_make_abs(parent);
+    free(parent);
+    if (!next || strcmp(next, cur) == 0) {
+      free(next);
+      break;
+    }
+    free(cur);
+    cur = next;
+  }
+  free(cur);
+  return fallback;
+}
+
+static char *resolve_module_file(const char *from_file, const char *mod_path,
+                                 const char *project_root) {
   if (!mod_path || !*mod_path) return NULL;
 
   char *dir = fs_dirname(from_file);
@@ -176,25 +260,32 @@ static char *resolve_module_file(const char *from_file, const char *mod_path) {
   size_t n = strlen(collapsed);
   int has_ext = (n > 5 && strcmp(collapsed + n - 5, ".cord") == 0);
 
+  char *candidate = NULL;
   if (fs_exists(collapsed) && !fs_is_dir(collapsed)) {
-    return collapsed;
-  }
-
-  if (!has_ext) {
+    candidate = collapsed;
+    collapsed = NULL;
+  } else if (!has_ext) {
     char *with_ext = malloc(n + 6);
     if (with_ext) {
       memcpy(with_ext, collapsed, n);
       memcpy(with_ext + n, ".cord", 6);
       if (fs_exists(with_ext) && !fs_is_dir(with_ext)) {
-        free(collapsed);
-        return with_ext;
+        candidate = with_ext;
+      } else {
+        free(with_ext);
       }
-      free(with_ext);
     }
   }
-
   free(collapsed);
-  return NULL;
+
+  if (!candidate) return NULL;
+
+  /* Jail: module must stay under project root */
+  if (project_root && !path_is_under_root(candidate, project_root)) {
+    free(candidate);
+    return NULL;
+  }
+  return candidate;
 }
 
 /* Move all children from src root into dst root (steal pointers) */
@@ -204,7 +295,10 @@ static void merge_ast_children(Node *dst_root, Node *src_root) {
     Node *c = src_root->children[i];
     if (!c) continue;
     if (c->type == NODE_USE) {
-      /* uses resolved separately; drop from merge of raw file later */
+      /* uses already resolved separately; drop and free so ast_free of
+       * the submodule does not lose them when children_len is cleared. */
+      src_root->children[i] = NULL;
+      node_free(c);
       continue;
     }
     src_root->children[i] = NULL;
@@ -311,12 +405,13 @@ static void ensure_component_wrapper(Node *root, const char *export_name,
 
 static int load_module_into(Node *dst_root, const char *from_file,
                             const char *mod_path, const char *alias,
-                            VisitedSet *visited, char *errbuf, size_t errlen);
+                            VisitedSet *visited, char *errbuf, size_t errlen,
+                            const char *project_root);
 
 /* Resolve NODE_USE and route module paths in this AST (from_file context) */
 static int resolve_uses_in_ast(Node *root, const char *from_file,
                                VisitedSet *visited, char *errbuf,
-                               size_t errlen) {
+                               size_t errlen, const char *project_root) {
   if (!root) return 0;
 
   /* Collect uses first (indices may shift) */
@@ -332,7 +427,7 @@ static int resolve_uses_in_ast(Node *root, const char *from_file,
         return -1;
       }
       if (load_module_into(root, from_file, mod, alias, visited, errbuf,
-                           errlen) != 0)
+                           errlen, project_root) != 0)
         return -1;
       /* remove USE node */
       node_free(c);
@@ -342,7 +437,7 @@ static int resolve_uses_in_ast(Node *root, const char *from_file,
       /* route / => pages/HomePage — load module, rewrite to component name */
       char *export_name = module_export_name(c->value2, NULL);
       if (load_module_into(root, from_file, c->value2, export_name, visited,
-                           errbuf, errlen) != 0) {
+                           errbuf, errlen, project_root) != 0) {
         free(export_name);
         return -1;
       }
@@ -353,7 +448,7 @@ static int resolve_uses_in_ast(Node *root, const char *from_file,
       /* lazy ProductPage = pages/ProductPage — load module for codegen */
       char *export_name = module_export_name(c->value2, c->value);
       if (load_module_into(root, from_file, c->value2, export_name, visited,
-                           errbuf, errlen) != 0) {
+                           errbuf, errlen, project_root) != 0) {
         free(export_name);
         return -1;
       }
@@ -374,11 +469,13 @@ static int resolve_uses_in_ast(Node *root, const char *from_file,
 
 static int load_module_into(Node *dst_root, const char *from_file,
                             const char *mod_path, const char *alias,
-                            VisitedSet *visited, char *errbuf, size_t errlen) {
-  char *resolved = resolve_module_file(from_file, mod_path);
+                            VisitedSet *visited, char *errbuf, size_t errlen,
+                            const char *project_root) {
+  char *resolved = resolve_module_file(from_file, mod_path, project_root);
   if (!resolved) {
-    snprintf(errbuf, errlen, "cannot resolve module '%s' (from %s)", mod_path,
-             from_file);
+    snprintf(errbuf, errlen,
+             "cannot resolve module '%s' (from %s) — missing or outside project",
+             mod_path, from_file);
     return -1;
   }
 
@@ -399,8 +496,8 @@ static int load_module_into(Node *dst_root, const char *from_file,
   char *export_name = module_export_name(mod_path, alias);
 
   /* Resolve nested uses relative to this module file */
-  if (resolve_uses_in_ast(sub.ast->root, resolved, visited, errbuf, errlen) !=
-      0) {
+  if (resolve_uses_in_ast(sub.ast->root, resolved, visited, errbuf, errlen,
+                          project_root) != 0) {
     free(export_name);
     free(resolved);
     compiler_result_free(&sub);
@@ -453,16 +550,18 @@ CompileResult compiler_parse_project(const char *entry_path) {
   result = compiler_parse_file(entry_path);
   if (!result.ok || !result.ast) return result;
 
+  char *project_root = find_project_root(entry_path);
   VisitedSet visited = {0};
   visited_add(&visited, entry_path);
 
   if (resolve_uses_in_ast(result.ast->root, entry_path, &visited, errbuf,
-                          sizeof(errbuf)) != 0) {
+                          sizeof(errbuf), project_root) != 0) {
     compiler_result_free(&result);
     result.ok = 0;
     result.ast = NULL;
     result.error = errbuf[0] ? errbuf : "module resolution failed";
     visited_free(&visited);
+    free(project_root);
     return result;
   }
 
@@ -470,7 +569,34 @@ CompileResult compiler_parse_project(const char *entry_path) {
   tag_components_in_root(result.ast->root, entry_path);
 
   visited_free(&visited);
+  free(project_root);
   return result;
+}
+
+/* ── single-module resolution (native ESM dev server) ───── */
+
+char *compiler_project_root(const char *entry_path) {
+  if (!entry_path) return NULL;
+  return find_project_root(entry_path);
+}
+
+char *compiler_resolve_module(const char *from_file, const char *mod_path,
+                              const char *project_root) {
+  if (!from_file || !mod_path) return NULL;
+  return resolve_module_file(from_file, mod_path, project_root);
+}
+
+char *compiler_module_export_name(const char *mod_path, const char *alias) {
+  if (!mod_path && !(alias && *alias)) return NULL;
+  return module_export_name(mod_path ? mod_path : "", alias);
+}
+
+int compiler_is_module_ref(const char *s) { return path_is_module_ref(s); }
+
+void compiler_wrap_module_body(Node *root, const char *export_name,
+                               const char *file_path) {
+  ensure_component_wrapper(root, export_name, file_path);
+  tag_components_in_root(root, file_path);
 }
 
 void compiler_result_free(CompileResult *result) {

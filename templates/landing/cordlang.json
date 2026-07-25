@@ -1,0 +1,5 @@
+{
+  "name": "landing",
+  "entry": "src/app.cord",
+  "presets": ["tailwind", "icons", "motion"]
+}

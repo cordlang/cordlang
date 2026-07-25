@@ -4,6 +4,7 @@
 #endif
 
 #include "adapters/outbound/runtime/preview_server.h"
+#include "adapters/outbound/process/process_spawn.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -60,14 +61,14 @@ void preview_open_browser(const char *url) {
 #ifdef _WIN32
   ShellExecuteA(NULL, "open", url, NULL, NULL, SW_SHOWNORMAL);
 #elif defined(__APPLE__)
-  char cmd[512];
-  snprintf(cmd, sizeof(cmd), "open '%s' >/dev/null 2>&1 &", url);
-  system(cmd);
+  char *argv[] = {"open", (char *)url, NULL};
+  (void)process_run(NULL, argv, 0);
 #else
-  char cmd[512];
-  snprintf(cmd, sizeof(cmd), "xdg-open '%s' >/dev/null 2>&1 || sensible-browser '%s' >/dev/null 2>&1 &",
-           url, url);
-  system(cmd);
+  char *argv[] = {"xdg-open", (char *)url, NULL};
+  if (process_run(NULL, argv, 0) != 0) {
+    char *argv2[] = {"sensible-browser", (char *)url, NULL};
+    (void)process_run(NULL, argv2, 0);
+  }
 #endif
 }
 

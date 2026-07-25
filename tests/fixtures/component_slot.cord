@@ -1,0 +1,11 @@
+# Golden: component children slot (not layout Outlet)
+
+def Card
+  props title=""
+  col p=16
+    h3 "#{title}" bold
+    slot
+
+def App
+  Card title="Hola"
+    p "cuerpo"

@@ -2,9 +2,10 @@
 
 > **Nota:** este documento nació como `idea.md` cuando Cordlang era un boceto.
 > Hoy el compilador y los backends React/Svelte/HTML son **reales** (ver README y roadmap).
-> Se conserva aquí como **especificación de diseño y sintaxis** — no como “solo una idea”.
+> Se conserva aquí como **especificación de diseño y sintaxis** — no normativa.
 >
-> Estado de implementación: [`docs/ROADMAP.md`](./ROADMAP.md) · mapas [`REACT.md`](./REACT.md) · [`SVELTE.md`](./SVELTE.md) · [`IR.md`](./IR.md)
+> **Normative language spec:** [`docs/SPEC.md`](./SPEC.md)  
+> Estado de implementación: [`docs/ROADMAP.md`](./ROADMAP.md) · mapas [`REACT.md`](./REACT.md) · [`SVELTE.md`](./SVELTE.md) · [`IR.md`](./IR.md) · [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
 ---
 # Cordlang — Language Design

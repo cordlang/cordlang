@@ -1,0 +1,39 @@
+// ===== src/components/Card.jsx =====
+/* cordlang: source=src/components/Card.cord */
+
+export default function Card({ title = "", children }) {
+  return (
+    <>
+      <div className="flex flex-col p-16">
+        <h3 className="font-bold">
+          {title}
+        </h3>
+        {children}
+      </div>
+    </>
+  );
+}
+
+// ===== src/components/App.jsx =====
+/* cordlang: source=src/components/App.cord */
+import Card from './Card';
+
+export default function App({  }) {
+  return (
+    <>
+      <Card title="Hola">
+        <p>
+          {'cuerpo'}
+        </p>
+      </Card>
+    </>
+  );
+}
+
+// ===== src/App.jsx =====
+/* cordlang: source=src/app.cord */
+import Card from './components/Card';
+
+export default function App() {
+  return <Card />;
+}

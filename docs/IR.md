@@ -1,6 +1,8 @@
 # Cordlang Intermediate Representation (IR)
 
-El **IR canónico** es la capa post-AST que **todos los backends consumen**.
+El **IR canónico** es el **contrato de backends**: todo destino nuevo debe consumir `IrProgram` / `IrNode`, no el AST crudo.
+
+Capas del compilador (hexagonal, ownership, cómo extender): [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ```
 .cord source
@@ -11,10 +13,25 @@ El **IR canónico** es la capa post-AST que **todos los backends consumen**.
     ▼
   ir_from_ast()  →  IrProgram  (domain/ir.h)
     │
+    ├── (optional IR passes — Phase H3, opt-in `--pass` / cordlang.json `passes`)
     ├── ir_dump()                 →  cordlang compile --ir
-    ├── generate_from_ir()        →  React / Svelte / HTML
-    └── scaffold_from_ir()        →  dist/react | dist/svelte | dist/preview
+    ├── generate_from_ir()        →  React / Svelte / Vue / Solid / HTML /
+    │                                email / pdf / next / sveltekit
+    └── scaffold_from_ir()        →  dist/<backend>
 ```
+
+### IR passes (H3)
+
+In-tree transforms in `domain/ir_pass.{c,h}`. Example: `strip-debug` removes `debug` / `data-debug*` attrs.
+
+```bash
+cordlang compile app.cord --backend react --pass strip-debug
+cordlang compile --list-passes
+```
+
+Default path applies **no** passes. Dynamic `dlopen`/WASM plugins are post-H3.
+
+**Regla (Horizonte A/B):** Vue / Solid / email / PDF / Next / SvelteKit se añaden **solo** sobre este contrato IR. No special-case el AST en un backend nuevo. Meta-backends (`next`, `sveltekit`) reutilizan emit React/Svelte y envuelven scaffolds aparte (no ensuciar SPA).
 
 ## Pipeline en el CLI
 
@@ -77,7 +94,7 @@ Cada `IrNode` guarda `origin` → puntero **débil** al AST (debug / theme resid
 | `IR_PROJECT` | root; `file` |
 | `IR_COMPONENT` / `IR_LAYOUT` | `name` |
 | `IR_ROUTE` | `name`=path, `value`=target |
-| `IR_PROP` / `IR_STATE` / `IR_COMPUTED` | name + value |
+| `IR_PROP` / `IR_STATE` / `IR_COMPUTED` | name + value; `IR_PROP` puede llevar kid `IR_ATTR type=string\|number\|boolean\|any` |
 | `IR_EFFECT` | name=effect\|layoutEffect\|insertionEffect |
 | `IR_ELEMENT` / `IR_TEXT` / `IR_INTERP` | markup |
 | `IR_IF` / `IR_FOR` | cond / item+list |
@@ -97,8 +114,20 @@ Al bajar eventos / computed / if / for, `ir_from_ast` llama `expr_normalize`.
 cordlang compile file.cord --ir          # dump IR
 cordlang compile file.cord --backend react   # IR → React
 cordlang compile file.cord --backend svelte  # IR → Svelte
+cordlang compile file.cord --backend email   # IR → static HTML
+cordlang compile file.cord --backend next    # IR → React wrap (Next meta)
 cordlang run react                       # parse → IR → scaffold_from_ir
 ```
+
+## Contrato para un backend nuevo
+
+1. Implementar `generate_from_ir` + `scaffold_from_ir` en `BackendPort`.
+2. Caminar solo `IrNode` (como `react_ir.c` / Svelte walkers).
+3. Añadir goldens en `tests/goldens/`.
+4. Documentar mapa en `docs/<BACKEND>.md` y actualizar checklist de paridad en `SVELTE.md` / `REACT.md`.
+5. No requerir LLM ni red en emit.
+
+Attrs oficiales de superficie: [`schema/attrs.json`](./schema/attrs.json).
 
 ## Definition of Done
 
@@ -110,6 +139,9 @@ cordlang run react                       # parse → IR → scaffold_from_ir
 ### IR-2 ✅
 - [x] React: `react_ir.c` — `project_partition_from_ir`, `gen_ir_node`, `gen_component_fn_ir`, App/contexts  
 - [x] Svelte: partition + script/markup walkers sobre `IrNode` (sin origin en body)  
-- [x] Goldens **18/18**  
-- [ ] Theme CSS 100% desde IR (hoy scaffold puede usar origin solo para theme)  
-- [ ] HTML preview 100% IR (opcional)
+- [x] Goldens verdes en CI  
+- [x] Theme CSS / HTML preview en path IR (G1–G2)
+
+### A3 (paridad)
+- [ ] Checklist React/Svelte en `SVELTE.md` §15 mantenida al día  
+- [ ] Prop types en IR (`IR_ATTR type=…`) ignorados por emit JS (OK)

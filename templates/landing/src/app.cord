@@ -1,0 +1,13 @@
+theme brand
+  primary: "#0f766e"
+  accent: "#0d9488"
+  bg: "#fafaf9"
+  surface: "#ffffff"
+  text: "#1c1917"
+  muted: "#78716c"
+  border: "#e7e5e4"
+  radius: 14
+  font: "IBM Plex Sans"
+
+use layouts/default
+route / => pages/HomePage

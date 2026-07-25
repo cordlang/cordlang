@@ -1,0 +1,9 @@
+# Capabilities smoke — goldens for react + svelte (+ vue/solid)
+def CapDemo
+  col gap=16 p=24
+    row gap=8 center
+      icon name=sparkles
+      h1 "Capabilities" size=2xl bold
+    motion fade
+      p "Motion + icons" muted
+    chart type=bar data=sales

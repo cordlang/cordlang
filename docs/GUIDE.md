@@ -17,10 +17,23 @@ cd demo
 # Instant preview (no Node)
 cordlang run
 
-# Real frameworks
+# Real frameworks (default product targets)
 cordlang run react     # → dist/react (Vite + React + Tailwind)
 cordlang run svelte    # → dist/svelte (Vite + Svelte 5 runes)
 ```
+
+### HTML preview contract
+
+`cordlang run` is a **limited** native runtime — not React/Svelte parity:
+
+| Supported | Not supported (use SPA backends) |
+|-----------|----------------------------------|
+| `state` + `setX(...)` / simple `x = …` | Full routing / layouts live |
+| `#{state}` live text | Dynamic `for` each (shows static samples) |
+| `bind=field` on `input` / `textarea` / `select` | Fetch / forms / context |
+| Live `if` / `else` via `data-if` | Meta-framework SSR |
+
+See `examples/preview_bind_if.cord`.
 
 Demo multi-file in the repo:
 
@@ -125,8 +138,10 @@ theme shop
   radius: 12
 ```
 
-→ `src/theme.css` CSS variables (`--color-primary`, `--radius`, …).  
-Use `color=primary` on tags when the backend maps tokens.
+→ `src/theme.css` CSS variables (`--color-primary`, `--radius`, …) plus design-system
+defaults (type scale, elevation, density). See [`DESIGN.md`](./DESIGN.md).
+
+Use `color=primary`, `type=display`, `elevate=2`, `section`, `md:p=24` on tags when the backend maps tokens.
 
 ### 3.5 Multi-file app
 

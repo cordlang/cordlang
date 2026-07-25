@@ -1,0 +1,4 @@
+col gap=16
+  h1 "Intro" size=2xl bold
+  p "Docs shell template — nav + content slot." muted
+  p "Write pages as .cord; compile to React or Svelte."

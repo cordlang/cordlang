@@ -15,7 +15,12 @@ void cord_guess_source_path(const char *unit_name, const char *kind_dir,
 char *cord_sourcemap_stub(const char *generated_file,
                           const char *const *sources, int n_sources);
 
-/* Write sourcemap next to generated_path (appends .map). 0 = ok. */
+/* Build Source Map v3 with VLQ mappings from cordlang source= markers
+ * in generated content. Caller frees. */
+char *cord_sourcemap_build(const char *generated_file, const char *content);
+
+/* Write sourcemap next to generated_path (appends .map). 0 = ok.
+ * Prefers mappings derived from generated file contents when present. */
 int cord_write_sourcemap_file(const char *generated_path,
                               const char *const *sources, int n_sources);
 

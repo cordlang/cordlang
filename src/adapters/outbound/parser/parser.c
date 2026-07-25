@@ -53,20 +53,45 @@ static int consume(Parser *p, TokenType type, const char *msg) {
 
 static char *token_str(Token t) {
   /* Allow empty strings (len == 0) e.g. props label="" */
-  if (t.start) {
-    char *s = malloc(t.len + 1);
-    if (!s) return NULL;
-    if (t.len > 0) memcpy(s, t.start, t.len);
-    s[t.len] = '\0';
+  if (!t.start) return NULL;
+  char *s = malloc(t.len + 1);
+  if (!s) return NULL;
+  if (t.type == TOKEN_STRING) {
+    /* Unescape \" \\ \n \t \r inside string token span.
+     * Keep \#{…} escaped so interp can emit literal "#{…}". */
+    size_t j = 0;
+    for (size_t i = 0; i < t.len; i++) {
+      if (t.start[i] == '\\' && i + 1 < t.len) {
+        i++;
+        char e = t.start[i];
+        if (e == 'n')
+          s[j++] = '\n';
+        else if (e == 't')
+          s[j++] = '\t';
+        else if (e == 'r')
+          s[j++] = '\r';
+        else if (e == '#' && i + 1 < t.len && t.start[i + 1] == '{') {
+          s[j++] = '\\';
+          s[j++] = '#';
+        } else
+          s[j++] = e;
+      } else {
+        s[j++] = t.start[i];
+      }
+    }
+    s[j] = '\0';
     return s;
   }
-  return NULL;
+  if (t.len > 0) memcpy(s, t.start, t.len);
+  s[t.len] = '\0';
+  return s;
 }
 
 static Node *parse_stmt(Parser *p);
 static Node *parse_react_decl(Parser *p);
 static Node *parse_title_or_head(Parser *p);
 static Node *parse_empty(Parser *p);
+static Node *parse_foreign(Parser *p);
 static Node *parse_await(Parser *p);
 static Node *parse_snippet(Parser *p);
 static Node *parse_store(Parser *p);
@@ -93,17 +118,17 @@ static Node *parse_style_map(Parser *p) {
           val_str = token_str(val);
         }
 
-        Node *entry = node_create(NODE_STYLE_ENTRY, key_str, key.line, key.col);
+        Node *entry = node_adopt(NODE_STYLE_ENTRY, key_str, key.line, key.col);
         if (val_str) entry->value2 = val_str;
         node_add_child(map, entry);
       } else if (peek(p).type == TOKEN_IDENTIFIER || peek(p).type == TOKEN_NUMBER || peek(p).type == TOKEN_STRING) {
         Token val = advance(p);
         char *val_str = token_str(val);
-        Node *entry = node_create(NODE_STYLE_ENTRY, key_str, key.line, key.col);
+        Node *entry = node_adopt(NODE_STYLE_ENTRY, key_str, key.line, key.col);
         entry->value2 = val_str;
         node_add_child(map, entry);
       } else {
-        Node *entry = node_create(NODE_STYLE_ENTRY, key_str, key.line, key.col);
+        Node *entry = node_adopt(NODE_STYLE_ENTRY, key_str, key.line, key.col);
         entry->value2 = strdup("true");
         node_add_child(map, entry);
       }
@@ -135,7 +160,7 @@ static Node *parse_attrs(Parser *p, Node *element) {
       if (peek(p).type == TOKEN_IDENTIFIER) {
         Token event = advance(p);
         char *event_name = token_str(event);
-        Node *evt_node = node_create(NODE_EVENT, event_name, event.line, event.col);
+        Node *evt_node = node_adopt(NODE_EVENT, event_name, event.line, event.col);
 
         if (match(p, TOKEN_EQUALS)) {
           /* Capture full handler: name | name(...) | (expr) */
@@ -295,18 +320,43 @@ static Node *parse_attrs(Parser *p, Node *element) {
       Token key = advance(p);
       char *key_str = token_str(key);
 
+      /* Responsive style attrs: sm:gap=8 / md:p=24 / lg:cols=3 */
+      if (key_str &&
+          (strcmp(key_str, "sm") == 0 || strcmp(key_str, "md") == 0 ||
+           strcmp(key_str, "lg") == 0) &&
+          peek(p).type == TOKEN_COLON) {
+        advance(p); /* : */
+        if (peek(p).type == TOKEN_IDENTIFIER) {
+          Token rest = advance(p);
+          char *rest_str = token_str(rest);
+          if (rest_str) {
+            size_t nlen = strlen(key_str) + 1 + strlen(rest_str) + 1;
+            char *combined = malloc(nlen);
+            if (combined) {
+              snprintf(combined, nlen, "%s:%s", key_str, rest_str);
+              free(key_str);
+              free(rest_str);
+              key_str = combined;
+            } else {
+              free(rest_str);
+            }
+          }
+        }
+      }
+
       if (strcmp(key_str, "for") == 0) {
         Node *loop = node_create(NODE_FOR, NULL, key.line, key.col);
         consume(p, TOKEN_IDENTIFIER, "Expected variable name after 'for'");
         Token var = p->current;
         loop->value = token_str(var);
         consume(p, TOKEN_IDENTIFIER, "Expected 'in' after for variable");
-        if (strcmp(token_str(p->current), "in") != 0) {
+        {
+          char *in_chk = token_str(p->current);
+          int is_in = in_chk && strcmp(in_chk, "in") == 0;
+          free(in_chk);
           Token tok = advance(p);
           loop->value2 = token_str(tok);
-        } else {
-          Token tok = advance(p);
-          loop->value2 = token_str(tok);
+          (void)is_in; /* both branches took the next token historically */
         }
         node_add_child(element, loop);
         free(key_str);
@@ -325,7 +375,7 @@ static Node *parse_attrs(Parser *p, Node *element) {
       }
 
       if (strcmp(key_str, "else") == 0) {
-        node_add_child(element, node_create(NODE_TEXT, strdup("__else__"), key.line, key.col));
+        node_add_child(element, node_create(NODE_TEXT, "__else__", key.line, key.col));
         free(key_str);
         continue;
       }
@@ -339,7 +389,7 @@ static Node *parse_attrs(Parser *p, Node *element) {
         } else if (peek(p).type == TOKEN_STRING) {
           Token val = advance(p);
           char *val_str = token_str(val);
-          Node *attr = node_create(NODE_ATTR, key_str, key.line, key.col);
+          Node *attr = node_adopt(NODE_ATTR, key_str, key.line, key.col);
           attr->value2 = val_str;
           node_add_child(element, attr);
         } else if (peek(p).type == TOKEN_IDENTIFIER || peek(p).type == TOKEN_NUMBER) {
@@ -391,11 +441,11 @@ static Node *parse_attrs(Parser *p, Node *element) {
             free(val_str);
             val_str = strdup(buf);
           }
-          Node *attr = node_create(NODE_ATTR, key_str, key.line, key.col);
+          Node *attr = node_adopt(NODE_ATTR, key_str, key.line, key.col);
           attr->value2 = val_str;
           node_add_child(element, attr);
         } else {
-          Node *attr = node_create(NODE_ATTR, key_str, key.line, key.col);
+          Node *attr = node_adopt(NODE_ATTR, key_str, key.line, key.col);
           attr->value2 = strdup("true");
           node_add_child(element, attr);
         }
@@ -403,12 +453,12 @@ static Node *parse_attrs(Parser *p, Node *element) {
         if (peek(p).type == TOKEN_IDENTIFIER) {
           Token val = advance(p);
           char *val_str = token_str(val);
-          Node *attr = node_create(NODE_ATTR, key_str, key.line, key.col);
+          Node *attr = node_adopt(NODE_ATTR, key_str, key.line, key.col);
           attr->value2 = val_str;
           node_add_child(element, attr);
         }
       } else {
-        Node *bool_attr = node_create(NODE_BOOL_ATTR, key_str, key.line, key.col);
+        Node *bool_attr = node_adopt(NODE_BOOL_ATTR, key_str, key.line, key.col);
         node_add_child(element, bool_attr);
       }
     }
@@ -442,7 +492,7 @@ static Node *parse_element(Parser *p) {
 
   Token tag_tok = advance(p);
   char *tag_name = token_str(tag_tok);
-  Node *element = node_create(NODE_ELEMENT, tag_name, tag_tok.line, tag_tok.col);
+  Node *element = node_adopt(NODE_ELEMENT, tag_name, tag_tok.line, tag_tok.col);
 
   parse_attrs(p, element);
 
@@ -472,6 +522,23 @@ static char *parse_default_value(Parser *p) {
   return NULL;
 }
 
+/* props name [: type] [= default] — type stored as ATTR type=<name> */
+static Node *parse_prop_node(Parser *p) {
+  Token prop = advance(p);
+  Node *prop_node =
+      node_adopt(NODE_TEXT, token_str(prop), prop.line, prop.col);
+  if (match(p, TOKEN_COLON)) {
+    if (peek(p).type == TOKEN_IDENTIFIER) {
+      Token ty = advance(p);
+      Node *ta = node_create(NODE_ATTR, "type", ty.line, ty.col);
+      ta->value2 = token_str(ty);
+      node_add_child(prop_node, ta);
+    }
+  }
+  if (match(p, TOKEN_EQUALS)) prop_node->value2 = parse_default_value(p);
+  return prop_node;
+}
+
 static Node *parse_def(Parser *p) {
   (void)advance(p); /* def */
 
@@ -482,7 +549,7 @@ static Node *parse_def(Parser *p) {
 
   Token name_tok = advance(p);
   char *name = token_str(name_tok);
-  Node *def = node_create(NODE_COMPONENT_DEF, name, name_tok.line, name_tok.col);
+  Node *def = node_adopt(NODE_COMPONENT_DEF, name, name_tok.line, name_tok.col);
 
   /* Optional flags after name: def FancyInput forwardRef */
   while (peek(p).type == TOKEN_IDENTIFIER) {
@@ -585,10 +652,7 @@ static Node *parse_def(Parser *p) {
           advance(p);
           continue;
         }
-        Token prop = advance(p);
-        Node *prop_node = node_create(NODE_TEXT, token_str(prop), prop.line, prop.col);
-        if (match(p, TOKEN_EQUALS)) prop_node->value2 = parse_default_value(p);
-        node_add_child(props, prop_node);
+        node_add_child(props, parse_prop_node(p));
       }
       node_add_child(def, props);
       free(kw);
@@ -604,7 +668,7 @@ static Node *parse_def(Parser *p) {
           continue;
         }
         Token st = advance(p);
-        Node *st_node = node_create(NODE_STATE_DECL, token_str(st), st.line, st.col);
+        Node *st_node = node_adopt(NODE_STATE_DECL, token_str(st), st.line, st.col);
         if (match(p, TOKEN_EQUALS)) st_node->value2 = parse_default_value(p);
         node_add_child(state, st_node);
       }
@@ -619,7 +683,7 @@ static Node *parse_def(Parser *p) {
       if (peek(p).type == TOKEN_IDENTIFIER) {
         Token comp = advance(p);
         Node *computed =
-            node_create(NODE_COMPUTED_DECL, token_str(comp), comp.line, comp.col);
+            node_adopt(NODE_COMPUTED_DECL, token_str(comp), comp.line, comp.col);
         if (match(p, TOKEN_EQUALS)) {
           /* Capture rest of line as expression */
           char expr[512] = {0};
@@ -665,7 +729,7 @@ static Node *parse_layout(Parser *p) {
     line = name_tok.line;
     col = name_tok.col;
     lname = NULL; /* will use token_str */
-    Node *layout = node_create(NODE_COMPONENT_DEF, token_str(name_tok), line, col);
+    Node *layout = node_adopt(NODE_COMPONENT_DEF, token_str(name_tok), line, col);
     layout->value2 = strdup("__layout__");
 
     while (peek(p).type == TOKEN_NEWLINE) advance(p);
@@ -701,7 +765,7 @@ static Node *parse_layout(Parser *p) {
 static Node *parse_theme(Parser *p) {
   advance(p);
   Token name_tok = advance(p);
-  Node *theme = node_create(NODE_THEME, token_str(name_tok), name_tok.line, name_tok.col);
+  Node *theme = node_adopt(NODE_THEME, token_str(name_tok), name_tok.line, name_tok.col);
 
   while (peek(p).type != TOKEN_DEDENT && peek(p).type != TOKEN_EOF) {
     if (peek(p).type == TOKEN_NEWLINE) { advance(p); continue; }
@@ -712,7 +776,7 @@ static Node *parse_theme(Parser *p) {
         if (peek(p).type == TOKEN_STRING || peek(p).type == TOKEN_IDENTIFIER || peek(p).type == TOKEN_NUMBER) {
           Token val = advance(p);
           char *val_str = token_str(val);
-          Node *entry = node_create(NODE_ATTR, token_str(key), key.line, key.col);
+          Node *entry = node_adopt(NODE_ATTR, token_str(key), key.line, key.col);
           entry->value2 = val_str;
           node_add_child(theme, entry);
         }
@@ -850,7 +914,7 @@ static Node *parse_route(Parser *p) {
         free(pn);
         if (stop) break;
         advance(p);
-        node_add_child(props, node_create(NODE_TEXT, token_str(prop), prop.line,
+        node_add_child(props, node_adopt(NODE_TEXT, token_str(prop), prop.line,
                                           prop.col));
       }
       node_add_child(route, props);
@@ -1776,7 +1840,10 @@ static Node *parse_react_decl(Parser *p) {
       if (strcmp(k, "to") == 0) {
         advance(p);
         free(k);
-        if (match(p, TOKEN_EQUALS)) por->value = capture_expr_line(p);
+        if (match(p, TOKEN_EQUALS)) {
+          free(por->value);
+          por->value = capture_expr_line(p);
+        }
       } else {
         free(k);
       }
@@ -2291,7 +2358,128 @@ static Node *parse_render(Parser *p) {
   return rn;
 }
 
-/* empty if=cond ... children shown when empty */
+/* foreign Name [from "mod" for backend]
+     props …
+     react from "…"
+     svelte from "…"
+*/
+static Node *parse_foreign(Parser *p) {
+  Token tok = advance(p); /* foreign */
+  if (peek(p).type != TOKEN_IDENTIFIER) {
+    p->had_error = 1;
+    p->error_msg = "expected component name after foreign";
+    return NULL;
+  }
+  Token name = advance(p);
+  char *nm = token_str(name);
+  Node *fn = node_adopt(NODE_FOREIGN, nm, tok.line, tok.col);
+
+  /* Optional: from "module" [for backend] */
+  if (peek(p).type == TOKEN_IDENTIFIER) {
+    char *kw = token_str(peek(p));
+    if (kw && strcmp(kw, "from") == 0) {
+      advance(p);
+      free(kw);
+      if (peek(p).type == TOKEN_STRING) {
+        Token mod = advance(p);
+        fn->value2 = token_str(mod);
+      }
+      if (peek(p).type == TOKEN_IDENTIFIER) {
+        char *fk = token_str(peek(p));
+        if (fk && strcmp(fk, "for") == 0) {
+          advance(p);
+          free(fk);
+          if (peek(p).type == TOKEN_IDENTIFIER) {
+            Token be = advance(p);
+            char *ben = token_str(be);
+            Node *a = node_create(NODE_ATTR, ben, be.line, be.col);
+            free(ben);
+            if (a && fn->value2) a->value2 = strdup(fn->value2);
+            if (a) node_add_child(fn, a);
+          }
+        } else {
+          free(fk);
+        }
+      }
+    } else {
+      free(kw);
+    }
+  }
+
+  while (peek(p).type == TOKEN_NEWLINE) advance(p);
+  if (peek(p).type == TOKEN_INDENT) {
+    advance(p);
+    while (peek(p).type != TOKEN_DEDENT && peek(p).type != TOKEN_EOF) {
+      while (peek(p).type == TOKEN_NEWLINE) advance(p);
+      if (peek(p).type == TOKEN_DEDENT || peek(p).type == TOKEN_EOF) break;
+      Token id = peek(p);
+      if (id.type != TOKEN_IDENTIFIER) {
+        advance(p);
+        continue;
+      }
+      char *k = token_str(id);
+      if (!k) {
+        advance(p);
+        continue;
+      }
+      if (strcmp(k, "props") == 0) {
+        free(k);
+        Node *props = parse_stmt(p);
+        if (props) node_add_child(fn, props);
+        continue;
+      }
+      /* backend from "module" [as { Export }] — as clause ignored in MVP */
+      if (strcmp(k, "react") == 0 || strcmp(k, "svelte") == 0 ||
+          strcmp(k, "vue") == 0 || strcmp(k, "solid") == 0) {
+        Token be = advance(p);
+        free(k);
+        char *fromkw = NULL;
+        if (peek(p).type == TOKEN_IDENTIFIER) {
+          fromkw = token_str(peek(p));
+          if (fromkw && strcmp(fromkw, "from") == 0) {
+            advance(p);
+          }
+          free(fromkw);
+        }
+        char *mod = NULL;
+        if (peek(p).type == TOKEN_STRING) {
+          Token m = advance(p);
+          mod = token_str(m);
+        }
+        /* skip optional: as { Name } */
+        if (peek(p).type == TOKEN_IDENTIFIER) {
+          char *ask = token_str(peek(p));
+          if (ask && strcmp(ask, "as") == 0) {
+            advance(p);
+            free(ask);
+            while (peek(p).type != TOKEN_NEWLINE && peek(p).type != TOKEN_EOF &&
+                   peek(p).type != TOKEN_DEDENT)
+              advance(p);
+          } else {
+            free(ask);
+          }
+        }
+        char *ben = token_str(be);
+        Node *a = node_adopt(NODE_ATTR, ben, be.line, be.col);
+        if (a) {
+          a->value2 = mod;
+          node_add_child(fn, a);
+        } else {
+          free(ben);
+          free(mod);
+        }
+        while (peek(p).type == TOKEN_NEWLINE) advance(p);
+        continue;
+      }
+      free(k);
+      Node *other = parse_stmt(p);
+      if (other) node_add_child(fn, other);
+    }
+    if (peek(p).type == TOKEN_DEDENT) advance(p);
+  }
+  return fn;
+}
+
 static Node *parse_empty(Parser *p) {
   Token tok = advance(p); /* empty */
   Node *em = node_create(NODE_EMPTY, NULL, tok.line, tok.col);
@@ -2408,10 +2596,7 @@ static Node *parse_stmt(Parser *p) {
         advance(p);
         continue;
       }
-      Token prop = advance(p);
-      Node *prop_node = node_create(NODE_TEXT, token_str(prop), prop.line, prop.col);
-      if (match(p, TOKEN_EQUALS)) prop_node->value2 = parse_default_value(p);
-      node_add_child(props, prop_node);
+      node_add_child(props, parse_prop_node(p));
     }
     while (peek(p).type == TOKEN_NEWLINE) advance(p);
     return props;
@@ -2425,7 +2610,7 @@ static Node *parse_stmt(Parser *p) {
         continue;
       }
       Token st = advance(p);
-      Node *st_node = node_create(NODE_STATE_DECL, token_str(st), st.line, st.col);
+      Node *st_node = node_adopt(NODE_STATE_DECL, token_str(st), st.line, st.col);
       if (match(p, TOKEN_EQUALS)) st_node->value2 = parse_default_value(p);
       node_add_child(state, st_node);
     }
@@ -2438,7 +2623,7 @@ static Node *parse_stmt(Parser *p) {
     if (peek(p).type == TOKEN_IDENTIFIER) {
       Token comp = advance(p);
       Node *computed =
-          node_create(NODE_COMPUTED_DECL, token_str(comp), comp.line, comp.col);
+          node_adopt(NODE_COMPUTED_DECL, token_str(comp), comp.line, comp.col);
       if (match(p, TOKEN_EQUALS)) {
         char expr[512] = {0};
         size_t elen = 0;
@@ -2471,6 +2656,9 @@ static Node *parse_stmt(Parser *p) {
   } else if (strcmp(kw, "route") == 0) {
     free(kw);
     return parse_route(p);
+  } else if (strcmp(kw, "foreign") == 0) {
+    free(kw);
+    return parse_foreign(p);
   } else if (strcmp(kw, "slot") == 0) {
     free(kw);
     Token tok = advance(p);
@@ -2485,7 +2673,7 @@ static Node *parse_stmt(Parser *p) {
     return parse_if(p);
   } else if (strcmp(kw, "else") == 0) {
     free(kw);
-    Node *else_marker = node_create(NODE_TEXT, strdup("__else__"), check.line, check.col);
+    Node *else_marker = node_create(NODE_TEXT, "__else__", check.line, check.col);
     (void)advance(p);
     if (peek(p).type == TOKEN_NEWLINE) {
       advance(p);

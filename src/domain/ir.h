@@ -42,6 +42,7 @@ typedef enum {
   IR_SNIPPET, /* {#snippet} */
   IR_STORE,   /* writable store decl */
   IR_RENDER,  /* {@render} */
+  IR_FOREIGN, /* host component from external lib; name=Comp, value=default module */
 } IrKind;
 
 typedef struct IrNode {
@@ -93,5 +94,8 @@ Node *ir_origin(const IrNode *n);
 
 /* Project root origin (NODE_ROOT), or NULL. */
 Node *ir_project_origin(const IrProgram *p);
+
+/* Free a single IR subtree (used by IR passes when dropping nodes). */
+void ir_free_node(IrNode *n);
 
 #endif

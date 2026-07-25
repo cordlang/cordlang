@@ -1,0 +1,7 @@
+<!-- ===== src/App.svelte ===== -->
+<!-- cordlang: source=src/app.cord -->
+<script>
+  import { onMount } from 'svelte';
+</script>
+
+<p>Empty Cordlang app</p>

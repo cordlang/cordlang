@@ -1,0 +1,15 @@
+# Native spike — Counter (Cord source)
+
+# Experimental: maps to Flutter Text / Column / Row / Button + state.
+# See docs/NATIVE.md and counter.dart.md
+
+def Counter
+  state count=0
+  props label: string = "Counter"
+
+  col gap=16 p=24 center
+    h1 "#{label}" size=xl bold purpose=content importance=primary
+    span "#{count}" size=4xl bold purpose=status
+    row gap=8 center
+      btn "-" @click=setCount(count - 1) variant=outline purpose=action
+      btn "+" @click=setCount(count + 1) variant=primary purpose=action importance=primary

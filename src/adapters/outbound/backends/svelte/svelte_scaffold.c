@@ -1,5 +1,8 @@
 #include "adapters/outbound/backends/svelte/svelte_backend.h"
+#include "adapters/outbound/backends/preset_registry.h"
 #include "adapters/outbound/backends/theme_css.h"
+#include "adapters/outbound/html_escape.h"
+#include "adapters/outbound/json/json_mini.h"
 #include "application/ports/fs_port.h"
 #include "domain/ir.h"
 #include <stdio.h>
@@ -38,7 +41,40 @@ static int scaffold_write_src(const char *rel_from_src, const char *content,
   return 0;
 }
 
-static int write_vite_skeleton(const char *out) {
+static int cfg_string(const char *json, const char *key, char *out, size_t outsz) {
+  return json_object_copy_string(json, key, out, outsz);
+}
+
+static void load_html_meta(const char *project_dir, char *lang, size_t lang_sz,
+                           char *title, size_t title_sz) {
+  snprintf(lang, lang_sz, "en");
+  snprintf(title, title_sz, "Cordlang Svelte App");
+  if (!project_dir) return;
+  char *cfg_path = fs_join(project_dir, "cordlang.json");
+  if (!cfg_path) return;
+  size_t len = 0;
+  char *json = fs_read_file(cfg_path, &len);
+  free(cfg_path);
+  if (!json) return;
+  char buf[256];
+  if (cfg_string(json, "lang", buf, sizeof(buf)))
+    snprintf(lang, lang_sz, "%s", buf);
+  if (cfg_string(json, "title", buf, sizeof(buf)))
+    snprintf(title, title_sz, "%s", buf);
+  else if (cfg_string(json, "name", buf, sizeof(buf)))
+    snprintf(title, title_sz, "%s", buf);
+  free(json);
+}
+
+static int write_vite_skeleton(const char *project_dir, const char *out) {
+  char lang[32];
+  char title[256];
+  load_html_meta(project_dir, lang, sizeof(lang), title, sizeof(title));
+  char lang_e[64];
+  char title_e[512];
+  html_escape_to(lang_e, sizeof(lang_e), lang);
+  html_escape_to(title_e, sizeof(title_e), title);
+
   const char *pkg =
       "{\n"
       "  \"name\": \"cordlang-svelte-app\",\n"
@@ -78,19 +114,21 @@ static int write_vite_skeleton(const char *out) {
       "  },\n"
       "}\n";
 
-  const char *html =
-      "<!doctype html>\n"
-      "<html lang=\"en\">\n"
-      "  <head>\n"
-      "    <meta charset=\"UTF-8\" />\n"
-      "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
-      "    <title>Cordlang Svelte App</title>\n"
-      "  </head>\n"
-      "  <body>\n"
-      "    <div id=\"app\"></div>\n"
-      "    <script type=\"module\" src=\"/src/main.js\"></script>\n"
-      "  </body>\n"
-      "</html>\n";
+  char html[1024];
+  snprintf(html, sizeof(html),
+           "<!doctype html>\n"
+           "<html lang=\"%s\">\n"
+           "  <head>\n"
+           "    <meta charset=\"UTF-8\" />\n"
+           "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
+           "    <title>%s</title>\n"
+           "  </head>\n"
+           "  <body>\n"
+           "    <div id=\"app\"></div>\n"
+           "    <script type=\"module\" src=\"/src/main.js\"></script>\n"
+           "  </body>\n"
+           "</html>\n",
+           lang_e, title_e);
 
   const char *main_js =
       "import { mount } from 'svelte'\n"
@@ -137,6 +175,10 @@ static int write_vite_skeleton(const char *out) {
       "  color: var(--color-text, #111827);\n"
       "}\n"
       "\n"
+      ".text-muted {\n"
+      "  color: var(--color-muted, #57534e);\n"
+      "}\n"
+      "\n"
       "a {\n"
       "  color: var(--color-primary, #2563eb);\n"
       "}\n"
@@ -144,11 +186,37 @@ static int write_vite_skeleton(const char *out) {
       "  text-decoration: underline;\n"
       "}\n";
 
+  /* Same Cord spacing scale as react_scaffold (p=16 → 1rem, not Tailwind 4rem). */
   const char *tailwind =
       "/** @type {import('tailwindcss').Config} */\n"
       "export default {\n"
       "  content: ['./index.html', './src/**/*.{js,svelte}'],\n"
-      "  theme: { extend: {} },\n"
+      "  theme: {\n"
+      "    extend: {\n"
+      "      spacing: {\n"
+      "        8: '0.5rem',\n"
+      "        12: '0.75rem',\n"
+      "        16: '1rem',\n"
+      "        24: '1.5rem',\n"
+      "        32: '2rem',\n"
+      "        40: '2.5rem',\n"
+      "        48: '3rem',\n"
+      "        64: '4rem',\n"
+      "        240: '15rem',\n"
+      "      },\n"
+      "      width: {\n"
+      "        240: '15rem',\n"
+      "      },\n"
+      "      maxWidth: {\n"
+      "        640: '40rem',\n"
+      "        720: '45rem',\n"
+      "      },\n"
+      "      borderRadius: {\n"
+      "        8: '8px',\n"
+      "        12: '12px',\n"
+      "      },\n"
+      "    },\n"
+      "  },\n"
       "  plugins: [],\n"
       "}\n";
 
@@ -256,12 +324,20 @@ int svelte_scaffold_from_ast(const char *project_dir, Node *root) {
     free(p3);
   }
 
-  int rc = write_vite_skeleton(out);
+  int rc = write_vite_skeleton(project_dir, out);
   if (rc != 0) {
     fprintf(stderr, "Error: failed writing Svelte skeleton\n");
     free(out);
     return rc;
   }
+  {
+    char *pj = fs_join(out, "package.json");
+    if (pj) {
+      preset_merge_package_json(pj, project_dir, PRESET_BACKEND_SVELTE);
+      free(pj);
+    }
+  }
+  preset_write_bridges(out, project_dir, PRESET_BACKEND_SVELTE);
 
   scaffold_public_assets(project_dir, out);
 
@@ -302,7 +378,7 @@ int svelte_scaffold(const char *project_dir, const char *blob) {
     free(out);
     return -1;
   }
-  int rc = write_vite_skeleton(out);
+  int rc = write_vite_skeleton(project_dir, out);
   rc |= write_path(out, "src/App.svelte",
                    blob ? blob : "<script></script>\n<p>Empty</p>\n");
   free(out);
@@ -335,12 +411,20 @@ int svelte_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
     free(p3);
   }
 
-  int rc = write_vite_skeleton(out);
+  int rc = write_vite_skeleton(project_dir, out);
   if (rc != 0) {
     fprintf(stderr, "Error: failed writing Svelte skeleton\n");
     free(out);
     return rc;
   }
+  {
+    char *pj = fs_join(out, "package.json");
+    if (pj) {
+      preset_merge_package_json(pj, project_dir, PRESET_BACKEND_SVELTE);
+      free(pj);
+    }
+  }
+  preset_write_bridges(out, project_dir, PRESET_BACKEND_SVELTE);
 
   scaffold_public_assets(project_dir, out);
 
@@ -378,6 +462,7 @@ int svelte_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
 static const BackendPort svelte_port = {
     .name = "svelte",
     .extension = ".svelte",
+    .needs_node_check = 1,
     .generate_from_ir = svelte_generate_from_ir,
     .scaffold_from_ir = svelte_scaffold_from_ir,
     .generate = svelte_generate,

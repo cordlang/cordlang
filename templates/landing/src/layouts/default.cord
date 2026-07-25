@@ -1,0 +1,11 @@
+layout default
+  col min-h
+    header sticky bg border
+      row between p=16 max-w=5xl mx
+        span "Acme" bold size=lg
+        row gap=16
+          link "Product" to=/#product muted
+          link "Start" to=/#cta
+    slot
+    footer p=24 muted center
+      p "© Acme — Cord landing template"

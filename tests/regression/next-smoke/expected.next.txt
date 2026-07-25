@@ -1,0 +1,43 @@
+/* Cordlang Next meta-backend (wraps React IR emit) */
+// ===== src/components/Counter.jsx =====
+/* cordlang: source=src/components/Counter.cord */
+import { useState } from 'react';
+
+export default function Counter({ label = "Counter" }) {
+  const [count, setCount] = useState(0);
+  return (
+    <>
+      <div className="flex flex-col gap-16 p-24 flex items-center justify-center">
+        <h1 className="text-2xl font-bold">
+          {label}
+        </h1>
+        <p className="text-lg text-muted">
+          {'Count: '}
+          {count}
+        </p>
+        <div className="flex flex-row gap-8 flex items-center justify-center">
+          <button className="btn btn-outline" onClick={() => setCount(count - 1)}>
+            {'-'}
+          </button>
+          <span className="text-4xl font-bold">
+            {count}
+          </span>
+          <button className="btn btn-primary" onClick={() => setCount(count + 1)}>
+            {'+'}
+          </button>
+        </div>
+        <button className="btn btn-ghost" onClick={() => setCount(0)}>
+          {'Reset'}
+        </button>
+      </div>
+    </>
+  );
+}
+
+// ===== src/App.jsx =====
+/* cordlang: source=src/app.cord */
+import Counter from './components/Counter';
+
+export default function App() {
+  return <Counter />;
+}

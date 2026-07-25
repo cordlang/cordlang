@@ -35,4 +35,10 @@ char *interp_to_js_template_body(const char *str);
  */
 char *interp_to_html_fragment(const char *str);
 
+/*
+ * Drop '\' before \#{…} so emitters show literal "#{…}".
+ * Caller frees.
+ */
+char *interp_plain_text(const char *s);
+
 #endif

@@ -15,7 +15,7 @@
 
 /* Convert tabs → 2 spaces, trim trailing WS per line, collapse >2 blank
  * lines to 1, ensure final newline. Caller frees. */
-static char *fmt_normalize(const char *src, size_t src_len) {
+char *fmt_service_normalize(const char *src, size_t src_len) {
   if (!src) src = "";
   /* worst case: every tab becomes 2 chars + final \n */
   size_t cap = src_len * 2 + 4;
@@ -111,7 +111,7 @@ static int fmt_one_file(const char *path, int write_in_place, int check_only,
     return 1;
   }
 
-  char *formatted = fmt_normalize(src, len);
+  char *formatted = fmt_service_normalize(src, len);
   if (!formatted) {
     free(src);
     fprintf(stderr, "Error: out of memory formatting '%s'\n", path);

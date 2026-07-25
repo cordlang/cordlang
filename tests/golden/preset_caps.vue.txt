@@ -1,0 +1,37 @@
+<!-- ===== src/components/CapDemo.vue ===== -->
+<!-- cordlang: source=src/components/CapDemo.cord -->
+<script setup>
+  import CordIcon from '../CordIcon.vue';
+  import CordMotion from '../CordMotion.vue';
+  import CordChart from '../CordChart.vue';
+</script>
+
+<template>
+<div class="flex flex-col gap-16 p-24">
+  <div class="flex flex-row gap-8 flex items-center justify-center">
+    <CordIcon :name="sparkles" />
+    <h1 class="text-2xl font-bold">
+      Capabilities
+    </h1>
+  </div>
+  <CordMotion :fade="true">
+    <p class="text-muted">
+      Motion + icons
+    </p>
+  </CordMotion>
+  <CordChart :type="bar" :data="sales" />
+</div>
+</template>
+
+<!-- ===== src/router.js ===== -->
+export const router = null;
+
+<!-- ===== src/App.vue ===== -->
+<!-- cordlang: source=src/app.cord -->
+<script setup>
+import CapDemo from './components/CapDemo.vue';
+</script>
+
+<template>
+  <CapDemo />
+</template>

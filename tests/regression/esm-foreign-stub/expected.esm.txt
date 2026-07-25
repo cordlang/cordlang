@@ -1,0 +1,18 @@
+/* cordlang: source=input.cord */
+import { h, frag, txt, keyed, component } from '/@cord/runtime.js';
+
+/* cordlang: foreign no disponible en preview ESM: Chart (recharts) */
+const Chart = component('Chart', function () {
+  return h('div', { class: 'cord-runtime-error' },
+           'cordlang: foreign \'Chart\' no disponible en preview ESM');
+});
+
+export const theme = null;
+
+export const Demo = component('Demo', function (props, $) {
+  return h('div', { class: 'flex flex-col' }, [
+    h(Chart, {}),
+  ]);
+});
+
+export default Demo;

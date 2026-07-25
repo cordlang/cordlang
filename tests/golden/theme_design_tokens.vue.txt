@@ -1,0 +1,35 @@
+<!-- ===== src/components/DesignDemo.vue ===== -->
+<!-- cordlang: source=src/components/DesignDemo.cord -->
+<script setup>
+</script>
+
+<template>
+<section class="cord-section p-24">
+  <div class="flex flex-col gap-16">
+    <h1 type="display">
+      Design tokens
+    </h1>
+    <p class="text-muted" type="body">
+      Type scale and elevation from theme.css
+    </p>
+    <div class="card p-24">
+      <span type="caption">
+        Elevated surface
+      </span>
+    </div>
+  </div>
+</section>
+</template>
+
+<!-- ===== src/router.js ===== -->
+export const router = null;
+
+<!-- ===== src/App.vue ===== -->
+<!-- cordlang: source=src/app.cord -->
+<script setup>
+import DesignDemo from './components/DesignDemo.vue';
+</script>
+
+<template>
+  <DesignDemo />
+</template>

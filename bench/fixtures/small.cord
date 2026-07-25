@@ -1,0 +1,14 @@
+# Bench S: minimal counter
+
+def Counter
+  state count=0
+  props label="Counter"
+
+  col gap=16 p=24 center
+    h1 "#{label}" size=2xl bold
+    p "Count: #{count}" size=lg muted
+    row gap=8 center
+      btn "-" @click=setCount(count - 1) variant=outline
+      span "#{count}" size=4xl bold
+      btn "+" @click=setCount(count + 1) variant=primary
+    btn "Reset" @click=setCount(0) variant=ghost

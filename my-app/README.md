@@ -57,7 +57,8 @@ Si un archivo no tiene `def`, el body se envuelve con el nombre del archivo.
 ## Comandos
 
 ```bash
-..\cordlang.exe run              # preview HTML
+..\cordlang.exe run              # ESM native preview (no Node)
+..\cordlang.exe run html         # legacy single-document HTML preview
 ..\cordlang.exe run react        # export React multi-file
 ..\cordlang.exe compile src/app.cord --ast
 ```

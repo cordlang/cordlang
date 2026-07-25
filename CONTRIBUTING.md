@@ -38,11 +38,15 @@ powershell -ExecutionPolicy Bypass -File tests\run_myapp_check.ps1   # needs Nod
 powershell -ExecutionPolicy Bypass -File tests\run_tests.ps1 -UpdateGoldens
 ```
 
+- **Bug fixes must include a regression test** under `tests/regression/<slug>/` (see [`tests/regression/README.md`](./tests/regression/README.md)). Do not merge a fix that only “looks fixed” without a pinned case the suite runs.
+
 - Update docs when the language surface changes:
   - `docs/REACT.md` / `docs/SVELTE.md` for maps  
   - `docs/IR.md` for IR kinds  
+  - `docs/ARCHITECTURE.md` for compiler internals  
+  - `docs/SPEC.md` for normative syntax (when present)  
   - `docs/ROADMAP.md` for phase status  
-  - `docs/LANGUAGE.md` for syntax design  
+  - `docs/LANGUAGE.md` for design notes  
 
 - If you want credit in [AUTHORS.md](./AUTHORS.md), mention it in the PR  
 

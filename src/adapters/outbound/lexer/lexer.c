@@ -93,9 +93,17 @@ static Token read_string(Lexer *lexer) {
   const char *start = lexer->source + lexer->pos;
   size_t len = 0;
   while (peek(lexer) && peek(lexer) != '"') {
-    if (peek(lexer) == '\\') { advance(lexer); }
-    advance(lexer);
-    len++;
+    if (peek(lexer) == '\\') {
+      advance(lexer); /* backslash */
+      len++;
+      if (peek(lexer)) {
+        advance(lexer); /* escaped char */
+        len++;
+      }
+    } else {
+      advance(lexer);
+      len++;
+    }
   }
   if (peek(lexer) == '"') {
     advance(lexer);
@@ -245,14 +253,17 @@ void lexer_tokenize(Lexer *lexer) {
     if (c == '.') { advance(lexer); emit_token(lexer, TOKEN_DOT, NULL, 0); continue; }
     if (c == '|') { advance(lexer); if (peek(lexer) == '>') { advance(lexer); } emit_token(lexer, TOKEN_PIPE, NULL, 0); continue; }
 
-    /* URL/path tokens: /products/:id  (used by route and link to=) */
+    /* URL/path tokens: /products/:id  and /guia#forma (used by route and link to=).
+     * '#' starts comments elsewhere, but inside a path token it is a URL fragment. */
     if (c == '/') {
       const char *start = lexer->source + lexer->pos;
       size_t len = 0;
       while (peek(lexer) &&
              (isalnum((unsigned char)peek(lexer)) || peek(lexer) == '/' ||
               peek(lexer) == ':' || peek(lexer) == '-' || peek(lexer) == '_' ||
-              peek(lexer) == '.' || peek(lexer) == '*' || peek(lexer) == '?')) {
+              peek(lexer) == '.' || peek(lexer) == '*' || peek(lexer) == '?' ||
+              peek(lexer) == '#' || peek(lexer) == '%' || peek(lexer) == '=' ||
+              peek(lexer) == '&')) {
         advance(lexer);
         len++;
       }

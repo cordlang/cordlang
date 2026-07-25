@@ -58,6 +58,8 @@ typedef enum {
   NODE_EFFECT_EVENT,      /* useEffectEvent: value=name, value2=fn/body */
   NODE_EXTERNAL_STORE,    /* useSyncExternalStore: value=name, value2=subscribe */
   NODE_IMPERATIVE_HANDLE, /* useImperativeHandle: value=ref, value2=body */
+  /* Libraries / capabilities (append only) */
+  NODE_FOREIGN, /* foreign Comp: value=Name; attrs react/svelte/vue/solid = module */
 } NodeType;
 
 typedef struct Node {
@@ -73,6 +75,8 @@ typedef struct Node {
 } Node;
 
 Node *node_create(NodeType type, const char *value, int line, int col);
+/* Takes ownership of value (malloc'd or NULL). Prefer over node_create(token_str()). */
+Node *node_adopt(NodeType type, char *value, int line, int col);
 void node_add_child(Node *parent, Node *child);
 void node_free(Node *node);
 Node *node_clone(const Node *node);
