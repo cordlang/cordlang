@@ -8,6 +8,7 @@
 #include "adapters/outbound/backends/pdf/pdf_backend.h"
 #include "adapters/outbound/backends/next/next_backend.h"
 #include "adapters/outbound/backends/sveltekit/sveltekit_backend.h"
+#include "adapters/outbound/backends/esm/esm_backend.h"
 #include <string.h>
 
 #define MAX_BACKENDS 16
@@ -27,6 +28,7 @@ void backend_register_all(void) {
   backends[backend_count++] = pdf_backend_port();
   backends[backend_count++] = next_backend_port();
   backends[backend_count++] = sveltekit_backend_port();
+  backends[backend_count++] = esm_backend_port();
   registered = 1;
 }
 

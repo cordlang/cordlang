@@ -703,12 +703,14 @@ int cli_run(int argc, char **argv) {
   }
 
   if (strcmp(cmd, "run") == 0) {
-    /* No backend / preview / html → native runtime in the .exe */
-    if (argc < 3 ||
-        strcmp(argv[2], "preview") == 0 ||
-        strcmp(argv[2], "html") == 0) {
+    /*
+     * No backend / preview → native ESM dev server in the .exe: each .cord is
+     * compiled per request and served as a real ES module.
+     * `run html` keeps the old single-document preview as an escape hatch.
+     */
+    if (argc < 3 || strcmp(argv[2], "preview") == 0)
       return preview_service_run(".");
-    }
+    if (strcmp(argv[2], "html") == 0) return preview_service_run_html(".");
     int check = 0;
     int watch = 0;
     for (int i = 3; i < argc; i++) {
