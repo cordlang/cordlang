@@ -3,7 +3,7 @@
  *
  * URL map:
  *   /                      → shell that statically imports the entry .cord
- *   /**.cord               → compiled on demand, served as text/javascript
+ *   any *.cord path        → compiled on demand, served as text/javascript
  *   /@cord/runtime.js      → the client runtime
  *   /@cord/base.css        → utilities for the classes this project emits
  *   /@cord/theme.css       → CSS vars from `theme` blocks

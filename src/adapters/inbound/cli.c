@@ -30,8 +30,9 @@ static void print_usage(void) {
   printf("  cordlang init [name] [--template <id>]  Create a new project\n");
   printf("  cordlang add <path-or-name> [--lib]     Copy a local Cord package\n");
   printf("  cordlang preset list|add <id>…         Project capabilities (icons/motion/…)\n");
-  printf("  cordlang run                   Native runtime preview (HTML, no Node)\n");
+  printf("  cordlang run                   Dev server, native ES modules (no Node)\n");
   printf("  cordlang run preview           Same as: cordlang run\n");
+  printf("  cordlang run html              Legacy single-document preview\n");
   printf("  cordlang run <backend>         Compile + scaffold full project\n");
   printf("  cordlang run <backend> --check Scaffold + npm install (if needed) + vite build\n");
   printf("  cordlang run <backend> --watch Watch src/**/*.cord and rebuild on change\n");
@@ -51,7 +52,9 @@ static void print_usage(void) {
   printf("  cordlang --version, -v, --v   Print CLI version\n");
   printf("  cordlang help                  Show this help\n\n");
   printf("Backends:\n");
-  printf("  preview / html                 Built-in runtime preview (default for run)\n");
+  printf("  preview                        Native ESM dev server (default for run)\n");
+  printf("  esm                            ES modules + built-in runtime (no npm)\n");
+  printf("  html                           Legacy static single-document preview\n");
   printf("  react                          React + Vite + Tailwind scaffold\n");
   printf("  svelte                         Svelte 5 + Vite + Tailwind + hash router\n");
   printf("  vue                            Vue 3 + Vite + Tailwind + vue-router\n");

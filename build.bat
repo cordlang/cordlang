@@ -50,7 +50,11 @@ gcc -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-function -Wno-format
   src/adapters/outbound/backends/next/next_backend.c ^
   src/adapters/outbound/backends/sveltekit/sveltekit_backend.c ^
   src/adapters/outbound/backends/html/html_backend.c ^
+  src/adapters/outbound/backends/esm/esm_ir.c ^
+  src/adapters/outbound/backends/esm/esm_runtime.c ^
+  src/adapters/outbound/backends/esm/esm_css.c ^
   src/adapters/outbound/runtime/preview_server.c ^
+  src/adapters/outbound/runtime/dev_server.c ^
   -lws2_32
 if %ERRORLEVEL% EQU 0 (
   echo Build successful: cordlang.exe
