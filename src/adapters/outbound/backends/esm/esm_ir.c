@@ -1404,8 +1404,12 @@ char *esm_generate_module(IrProgram *ir, const EsmModuleCtx *mod) {
 
   Sb out;
   sb_init(&out);
-  sb_addf(&out, "/* cordlang: source=%s */\n",
-          mod->source_rel ? mod->source_rel : "(inline)");
+  /* Normalize separators: the header must not differ between Windows and POSIX. */
+  {
+    char *src = mod->source_rel ? fs_norm_path(mod->source_rel) : NULL;
+    sb_addf(&out, "/* cordlang: source=%s */\n", src ? src : "(inline)");
+    free(src);
+  }
   gen_imports(&out, &c);
   sb_add(&out, body.buf ? body.buf : "");
   free(body.buf);
@@ -1450,8 +1454,17 @@ char *esm_generate_from_ir(IrProgram *ir) {
 
   Sb out;
   sb_init(&out);
-  sb_addf(&out, "/* cordlang: source=%s */\n",
-          ir->entry_file ? ir->entry_file : "(inline)");
+  /*
+   * Basename only: `compile --backend esm` receives whatever path the caller
+   * typed (relative or absolute), so echoing it whole would make the output
+   * depend on the invocation and no snapshot could ever pin it. The dev server
+   * has a real project-relative path and uses it (see esm_generate_module).
+   */
+  {
+    char *base = ir->entry_file ? fs_basename(ir->entry_file) : NULL;
+    sb_addf(&out, "/* cordlang: source=%s */\n", base ? base : "(inline)");
+    free(base);
+  }
   sb_add(&out, "import { h, frag, txt, keyed, component } from '/@cord/runtime.js';\n\n");
 
   gen_theme_export(&out, ir->root);

@@ -1,4 +1,4 @@
-/* cordlang: source=tests/regression/esm-attr-not-identifier/input.cord */
+/* cordlang: source=input.cord */
 import { h, frag, txt, keyed, component } from '/@cord/runtime.js';
 
 export const theme = null;

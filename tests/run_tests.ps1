@@ -71,8 +71,8 @@ foreach ($name in $names) {
     $goldenPath = Join-Path $GoldenDir ($name + "." + $backend + ".txt")
     $label = $name + " (" + $backend + ")"
 
-    $args = @("compile", $fixture, "--backend", $backend)
-    $stdout = & $Cordlang @args 2>&1
+    $cmdArgs = @("compile", $fixture, "--backend", $backend)
+    $stdout = & $Cordlang @cmdArgs 2>&1
     $exitCode = $LASTEXITCODE
 
     if ($exitCode -ne 0) {
@@ -188,14 +188,15 @@ $RegRoot = Join-Path $Root "tests\regression"
 if (Test-Path -LiteralPath $RegRoot) {
   $regDirs = Get-ChildItem -LiteralPath $RegRoot -Directory | Where-Object { $_.Name -notlike ".*" }
   foreach ($dir in $regDirs) {
-    $input = Join-Path $dir.FullName "input.cord"
-    if (-not (Test-Path -LiteralPath $input)) { continue }
+    # NOT $input: reserved automatic variable (the pipeline enumerator).
+    $inputCord = Join-Path $dir.FullName "input.cord"
+    if (-not (Test-Path -LiteralPath $inputCord)) { continue }
     $slug = $dir.Name
 
     $expectFail = Join-Path $dir.FullName "expect_check_nonzero"
     if (Test-Path -LiteralPath $expectFail) {
       $label = "regression/$slug (check)"
-      $out = & $Cordlang check $input 2>&1 | Out-String
+      $out = & $Cordlang check $inputCord 2>&1 | Out-String
       $ec = $LASTEXITCODE
       if ($ec -eq 0) {
         Write-Host ("FAIL: " + $label + " - expected non-zero check") -ForegroundColor Red
@@ -229,7 +230,7 @@ if (Test-Path -LiteralPath $RegRoot) {
       # gets invoked with no arguments (reported as "compile exit 1").
       $cmdArgs = New-Object System.Collections.Generic.List[string]
       [void]$cmdArgs.Add("compile")
-      [void]$cmdArgs.Add($input)
+      [void]$cmdArgs.Add($inputCord)
       [void]$cmdArgs.Add("--backend")
       [void]$cmdArgs.Add($backend)
       $passesPath = Join-Path $dir.FullName "passes.txt"
