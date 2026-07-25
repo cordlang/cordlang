@@ -146,6 +146,12 @@ typedef struct {
     char mod_path[256]; /* package hint for the comment; may be empty */
   } foreigns[32];
   int n_foreigns;
+  /*
+   * Dev-server entry only: import `mount` and self-boot into #app so the HTML
+   * shell can be Vite-compact (`<script type="module" src="…cord">`). Flat
+   * `compile --backend esm` leaves this 0 so goldens stay inspectable dumps.
+   */
+  int self_mount;
 } EsmCtx;
 
 static void scope_add(EsmCtx *c, const char *name) {
@@ -1379,7 +1385,15 @@ static void gen_routes(Sb *sb, IrNode *root, EsmCtx *c) {
 }
 
 static void gen_imports(Sb *sb, EsmCtx *c) {
-  sb_add(sb, "import { h, frag, txt, keyed, component } from '/@cord/runtime.js';\n");
+  /* `self_mount` (dev entry only) pulls `mount` for the Vite-style boot trailer. */
+  if (c->self_mount)
+    sb_add(sb,
+           "import { h, frag, txt, keyed, component, mount } from "
+           "'/@cord/runtime.js';\n");
+  else
+    sb_add(sb,
+           "import { h, frag, txt, keyed, component } from "
+           "'/@cord/runtime.js';\n");
   for (int i = 0; i < c->n_imports; i++)
     sb_addf(sb, "import %s from '%s';\n", c->imports[i].export_name,
             c->imports[i].url);
@@ -1437,6 +1451,8 @@ char *esm_generate_module(IrProgram *ir, const EsmModuleCtx *mod) {
   EsmCtx c;
   memset(&c, 0, sizeof(c));
   c.mod = mod;
+  /* Only the project entry script self-mounts; component modules are imports. */
+  c.self_mount = (mod->kind == ESM_MOD_ENTRY);
 
   IrNode *root = ir->root;
 
@@ -1524,10 +1540,29 @@ char *esm_generate_module(IrProgram *ir, const EsmModuleCtx *mod) {
   free(body.buf);
 
   if (mod->kind == ESM_MOD_ENTRY) {
-    sb_add(&out, "export default { __cord: 'app', routes: routes, theme: theme");
-    /* A single-file app (routes-less entry) still needs a root component. */
-    if (default_name[0]) sb_addf(&out, ", component: %s", default_name);
-    sb_add(&out, " };\n");
+    /*
+     * Vite-style: the shell is just
+     *   <script type="module" src="/src/app.cord"></script>
+     * so the entry boots itself when a #app host exists. `compile --backend esm`
+     * uses esm_generate_from_ir (flat, self_mount=0) and does not boot.
+     */
+    if (c.self_mount) {
+      sb_add(&out,
+             "const __cord_root = { __cord: 'app', routes: routes, theme: theme");
+      if (default_name[0]) sb_addf(&out, ", component: %s", default_name);
+      sb_add(&out, " };\n");
+      sb_add(&out, "export default __cord_root;\n");
+      sb_add(&out,
+             "if (typeof document !== 'undefined') {\n"
+             "  const __el = document.getElementById('app');\n"
+             "  if (__el) mount(__cord_root, __el);\n"
+             "}\n");
+    } else {
+      sb_add(&out,
+             "export default { __cord: 'app', routes: routes, theme: theme");
+      if (default_name[0]) sb_addf(&out, ", component: %s", default_name);
+      sb_add(&out, " };\n");
+    }
   } else if (default_name[0]) {
     sb_addf(&out, "export default %s;\n", default_name);
   } else {

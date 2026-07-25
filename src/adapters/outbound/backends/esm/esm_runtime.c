@@ -695,10 +695,10 @@ const char *esm_runtime_js(void) { return RUNTIME_JS; }
 const char *esm_hmr_client_js(void) { return HMR_CLIENT_JS; }
 
 /*
- * The shell. The entry .cord is a STATIC module import — the browser requests
- * /src/app.cord, the dev server answers with JavaScript, and the module graph
- * unfolds from there. That is exactly how Vite serves .vue / .svelte; no browser
- * parses those formats natively either.
+ * Vite-style shell: no inline bootstrap. The entry .cord is loaded as
+ *   <script type="module" src="/src/app.cord"></script>
+ * and self-mounts into #app (see esm_generate_module). /@cord/client is the
+ * reload client (same role as /@vite/client).
  */
 char *esm_index_html(const char *lang, const char *title, const char *entry_url,
                      int has_site_css, int has_site_js, int has_favicon,
@@ -722,9 +722,9 @@ char *esm_index_html(const char *lang, const char *title, const char *entry_url,
       "  <head>\n"
       "    <meta charset=\"UTF-8\" />\n"
       "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
+      "%s"
+      "%s"
       "    <title>%s</title>\n"
-      "%s"
-      "%s"
       "    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n"
       "    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n"
       "    <link href=\"https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Syne:wght@600;700;800&display=swap\" rel=\"stylesheet\" />\n"
@@ -735,21 +735,18 @@ char *esm_index_html(const char *lang, const char *title, const char *entry_url,
       "  </head>\n"
       "  <body>\n"
       "    <div id=\"app\"></div>\n"
-      "    <script type=\"module\">\n"
-      "      import app from '%s';\n"
-      "      import { mount } from '/@cord/runtime.js';\n"
-      "      mount(app, document.getElementById('app'));\n"
-      "    </script>\n"
-      "    <script type=\"module\" src=\"/@cord/hmr.js\"></script>\n"
+      "    <script type=\"module\" src=\"/@cord/client\"></script>\n"
+      "    <script type=\"module\" src=\"%s\"></script>\n"
       "%s"
       "  </body>\n"
       "</html>\n",
-      lang_e, title_e,
+      lang_e,
       has_favicon ? "    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\" />\n"
                   : "",
       has_logo_svg
           ? "    <link rel=\"icon\" href=\"/logo.svg\" type=\"image/svg+xml\" />\n"
           : "",
+      title_e,
       has_site_css ? "    <link rel=\"stylesheet\" href=\"/site.css\" />\n" : "",
       has_site_js
           ? "    <script>\n"

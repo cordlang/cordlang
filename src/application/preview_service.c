@@ -7,7 +7,8 @@
  *   /@cord/runtime.js      → the client runtime
  *   /@cord/base.css        → utilities for the classes this project emits
  *   /@cord/theme.css       → CSS vars from `theme` blocks
- *   /@cord/hmr.js          → reload client (the SSE stream is in dev_server.c)
+ *   /@cord/client          → reload client (Vite-style; alias: /@cord/hmr.js)
+ *   /@cord/hmr             → SSE stream (dev_server.c)
  *   /<anything else>       → public/ then project root, else the shell (SPA)
  *
  * Every .cord is parsed ALONE (compiler_parse_file, not compiler_parse_project),
@@ -299,7 +300,8 @@ static int preview_handler(const char *method, const char *path, void *userdata,
     return respond_static_str(out, 200, "text/javascript; charset=utf-8",
                               esm_runtime_js(), 1);
 
-  if (strcmp(path, "/@cord/hmr.js") == 0)
+  /* /@cord/client ≈ Vite's /@vite/client; /@cord/hmr.js kept as alias. */
+  if (strcmp(path, "/@cord/client") == 0 || strcmp(path, "/@cord/hmr.js") == 0)
     return respond_static_str(out, 200, "text/javascript; charset=utf-8",
                               esm_hmr_client_js(), 1);
 

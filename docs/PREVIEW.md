@@ -30,10 +30,17 @@ las peticiones a `*.cord` y responde con:
 Content-Type: text/javascript; charset=utf-8
 ```
 
-y un cuerpo que **sí** es un ES module válido (`import` / `export`). El
-`<script type="module">` del shell importa `/src/app.cord` (o la entry del
-proyecto); el browser pide ese URL; el server compila on-the-fly; los
+y un cuerpo que **sí** es un ES module válido (`import` / `export`). El shell
+carga la entry como Vite:
+
+```html
+<script type="module" src="/@cord/client"></script>
+<script type="module" src="/src/app.cord"></script>
+```
+
+El browser pide ese URL; el server compila on-the-fly; los
 `import Home from '/src/pages/Home.cord'` del grafo se resuelven igual.
+La entry se **auto-monta** en `#app` (como `main.tsx` llama a `createRoot`).
 
 Eso es el mismo truco que Vite con SFC: **el servidor es el compilador**.
 
@@ -41,12 +48,13 @@ Eso es el mismo truco que Vite con SFC: **el servidor es el compilador**.
 
 | URL | Qué devuelve |
 |-----|----------------|
-| `/` | Shell HTML (`#app` + import estático de la entry + runtime + HMR client) |
+| `/` | Shell HTML compacto (estilo Vite: `#app` + scripts `src=`) |
 | `*.cord` | Módulo ES compilado JIT (`text/javascript`) — entry o componente |
 | `/@cord/runtime.js` | Runtime embebido: `h`, diff, hooks, router, `mount` |
 | `/@cord/base.css` | CSS utilitario JIT (clases del proyecto) + reset/base |
 | `/@cord/theme.css` | Tokens del bloque `theme` del entry (custom properties) |
-| `/@cord/hmr.js` | Cliente SSE: escucha reloads |
+| `/@cord/client` | Cliente SSE de reload (equivalente a `/@vite/client`) |
+| `/@cord/hmr.js` | Alias de `/@cord/client` |
 | `/@cord/hmr` | Canal SSE (`text/event-stream`); mensaje `reload` → `location.reload()` |
 | estáticos | `public/**` primero (raíz del sitio), luego archivos del proyecto |
 | SPA fallback | Paths **sin extensión** desconocidos → shell HTML (el router client-side) |
@@ -92,7 +100,7 @@ export default Counter;
 
 ```js
 /* cordlang: source=src/app.cord */
-import { h, frag, txt, keyed, component } from '/@cord/runtime.js';
+import { h, frag, txt, keyed, component, mount } from '/@cord/runtime.js';
 import Home from '/src/pages/Home.cord';
 import Guide from '/src/pages/Guide.cord';
 import DefaultLayout from '/src/layouts/default.cord';
@@ -105,15 +113,19 @@ export const routes = [
   { path: '/post/:slug', component: Post, layout: Docs },
 ];
 
-export default { __cord: 'app', routes: routes, theme: theme };
+const __cord_root = { __cord: 'app', routes: routes, theme: theme };
+export default __cord_root;
+if (typeof document !== 'undefined') {
+  const __el = document.getElementById('app');
+  if (__el) mount(__cord_root, __el);
+}
 ```
 
-El shell hace:
+El shell HTML (estilo Vite) solo referencia la entry:
 
-```js
-import app from '/src/app.cord';
-import { mount } from '/@cord/runtime.js';
-mount(app, document.getElementById('app'));
+```html
+<script type="module" src="/@cord/client"></script>
+<script type="module" src="/src/app.cord"></script>
 ```
 
 Si el default export lleva `__cord: 'app'`, `mount` monta el `RouterRoot`.

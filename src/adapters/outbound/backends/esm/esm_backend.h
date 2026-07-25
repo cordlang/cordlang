@@ -53,7 +53,7 @@ const BackendPort *esm_backend_port(void);
 /* The runtime: h/diff/hooks/router/mount. Static string, do not free. */
 const char *esm_runtime_js(void);
 
-/* HMR client: subscribes to /@cord/hmr and reloads. Static, do not free. */
+/* Reload client (served at /@cord/client and /@cord/hmr.js). Static, do not free. */
 const char *esm_hmr_client_js(void);
 
 /* Error-overlay module body for a failed compile. Caller frees. */
@@ -65,7 +65,7 @@ char *esm_error_module(const char *message);
  */
 char *esm_base_css(IrProgram *ir);
 
-/* index.html shell that statically imports the entry .cord as a module. */
+/* Vite-style index.html: script src=entry + /@cord/client (entry self-mounts). */
 char *esm_index_html(const char *lang, const char *title, const char *entry_url,
                      int has_site_css, int has_site_js, int has_favicon,
                      int has_logo_svg);
