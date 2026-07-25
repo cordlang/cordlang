@@ -124,6 +124,17 @@ typedef struct {
    */
   char scope[ESM_MAX_SCOPE][64];
   int n_scope;
+  /*
+   * `use components/Nope` where the file is missing. Emitting nothing would
+   * leave a dangling identifier and the whole page would die with a
+   * ReferenceError; instead each one gets a stub component that renders the
+   * problem where it happens, so the rest of the app still works.
+   */
+  struct {
+    char export_name[96];
+    char mod_path[256];
+  } unresolved[32];
+  int n_unresolved;
 } EsmCtx;
 
 static void scope_add(EsmCtx *c, const char *name) {
@@ -326,12 +337,35 @@ static EsmImport *import_find_by_name(EsmCtx *c, const char *name) {
  * Register an import for a module ref. Returns the local export name to use,
  * or NULL when the module cannot be resolved (caller degrades gracefully).
  */
+static const char *import_unresolved(EsmCtx *c, const char *mod_path,
+                                     const char *alias) {
+  char *ename = compiler_module_export_name(mod_path, alias);
+  if (!ename) return NULL;
+  for (int i = 0; i < c->n_unresolved; i++) {
+    if (strcmp(c->unresolved[i].export_name, ename) == 0) {
+      free(ename);
+      return c->unresolved[i].export_name;
+    }
+  }
+  if (c->n_unresolved >= 32) {
+    free(ename);
+    return NULL;
+  }
+  int i = c->n_unresolved++;
+  snprintf(c->unresolved[i].export_name, sizeof(c->unresolved[i].export_name),
+           "%s", ename);
+  snprintf(c->unresolved[i].mod_path, sizeof(c->unresolved[i].mod_path), "%s",
+           mod_path ? mod_path : "?");
+  free(ename);
+  return c->unresolved[i].export_name;
+}
+
 static const char *import_add(EsmCtx *c, const char *mod_path, const char *alias) {
   if (!mod_path || !*mod_path) return NULL;
 
   char *resolved = compiler_resolve_module(c->mod->abs_path, mod_path,
                                           c->mod->project_root);
-  if (!resolved) return NULL;
+  if (!resolved) return import_unresolved(c, mod_path, alias);
 
   char url[512];
   url_for_resolved(resolved, c->mod->project_root, url, sizeof(url));

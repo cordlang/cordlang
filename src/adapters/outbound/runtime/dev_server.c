@@ -333,6 +333,26 @@ static int stamp_equal(const WatchStamp *a, const WatchStamp *b) {
   return a->hash == b->hash && a->files == b->files;
 }
 
+/*
+ * Monotonic wall-clock milliseconds. NOT clock(): that is CPU time on POSIX,
+ * and this loop spends nearly all its time blocked in select(), so a clock()
+ * based interval would almost never elapse and the watcher would go dead
+ * outside Windows.
+ */
+static unsigned long long now_ms(void) {
+#ifdef _WIN32
+  return (unsigned long long)GetTickCount64();
+#else
+  struct timespec ts;
+#if defined(CLOCK_MONOTONIC)
+  if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0)
+    return (unsigned long long)ts.tv_sec * 1000ULL +
+           (unsigned long long)(ts.tv_nsec / 1000000L);
+#endif
+  return (unsigned long long)time(NULL) * 1000ULL;
+#endif
+}
+
 /* ── request handling ───────────────────────────────────── */
 
 static int parse_request(const char *req, char *method, size_t mcap, char *path,
@@ -447,7 +467,7 @@ int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
   sse.count = 0;
 
   WatchStamp stamp = take_stamp(watch_dir);
-  clock_t last_check = clock();
+  unsigned long long last_check = now_ms();
 
   g_running = 1;
   while (g_running) {
@@ -494,9 +514,9 @@ int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
     }
 
     if (watch_dir) {
-      double elapsed = (double)(clock() - last_check) / (double)CLOCKS_PER_SEC;
-      if (elapsed > 0.4) {
-        last_check = clock();
+      unsigned long long tnow = now_ms();
+      if (tnow - last_check > 400ULL) {
+        last_check = tnow;
         WatchStamp now = take_stamp(watch_dir);
         if (!stamp_equal(&stamp, &now)) {
           stamp = now;
