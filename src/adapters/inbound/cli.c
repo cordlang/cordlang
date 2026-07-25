@@ -33,6 +33,7 @@ static void print_usage(void) {
   printf("  cordlang run                   Dev server, native ES modules (no Node)\n");
   printf("  cordlang run preview           Same as: cordlang run\n");
   printf("  cordlang run html              Legacy single-document preview\n");
+  printf("  cordlang run --no-open         Dev server without opening a browser\n");
   printf("  cordlang run <backend>         Compile + scaffold full project\n");
   printf("  cordlang run <backend> --check Scaffold + npm install (if needed) + vite build\n");
   printf("  cordlang run <backend> --watch Watch src/**/*.cord and rebuild on change\n");
