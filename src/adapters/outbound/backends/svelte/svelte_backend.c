@@ -300,25 +300,38 @@ static void collect_classes_ir(char *classes, size_t sz, const IrNode *node,
         strncat(classes, " btn-outline", sz - strlen(classes) - 1);
       else if (strcmp(k, "ghost") == 0)
         strncat(classes, " btn-ghost", sz - strlen(classes) - 1);
+      else if (strcmp(k, "wrap") == 0)
+        strncat(classes, " flex-wrap", sz - strlen(classes) - 1);
       else if (strcmp(k, "xl") == 0)
         strncat(classes, " text-xl", sz - strlen(classes) - 1);
       else if (strcmp(k, "2xl") == 0)
         strncat(classes, " text-2xl", sz - strlen(classes) - 1);
+      else if (strcmp(k, "3xl") == 0)
+        strncat(classes, " text-3xl", sz - strlen(classes) - 1);
       else if (strcmp(k, "4xl") == 0)
         strncat(classes, " text-4xl", sz - strlen(classes) - 1);
       else if (strcmp(k, "lg") == 0)
         strncat(classes, " text-lg", sz - strlen(classes) - 1);
-      if (attr_is_true(c) || !c->value || !c->value[0]) {
-        /* valued style keys with "true" already handled above for flags */
-        if (strcmp(k, "variant") && strcmp(k, "size") && strcmp(k, "color") &&
-            strcmp(k, "gap") && strcmp(k, "cols") && strcmp(k, "p") &&
-            strcmp(k, "bg") && strcmp(k, "shadow") && strcmp(k, "rounded") &&
-            strcmp(k, "max-w") && strcmp(k, "w") && strcmp(k, "h") &&
-            strcmp(k, "min-h") && strcmp(k, "mx") && strcmp(k, "my") &&
-            strcmp(k, "px") && strcmp(k, "py") && strcmp(k, "m") &&
-            strcmp(k, "border"))
-          continue;
+      else if (strcmp(k, "sm") == 0)
+        strncat(classes, " text-sm", sz - strlen(classes) - 1);
+      else if (strcmp(k, "xs") == 0)
+        strncat(classes, " text-xs", sz - strlen(classes) - 1);
+      else if (strchr(k, '-') != NULL || strcmp(k, "grow") == 0 ||
+               strcmp(k, "shrink") == 0) {
+        /* Bare Tailwind-like flags: h-screen, overflow-y-auto, w-full… */
+        snprintf(vbuf, sizeof(vbuf), " %s", k);
+        strncat(classes, vbuf, sz - strlen(classes) - 1);
       }
+      /* valued style keys with empty/"true" already handled as flags above */
+      if (strcmp(k, "variant") && strcmp(k, "size") && strcmp(k, "color") &&
+          strcmp(k, "gap") && strcmp(k, "cols") && strcmp(k, "p") &&
+          strcmp(k, "bg") && strcmp(k, "shadow") && strcmp(k, "rounded") &&
+          strcmp(k, "max-w") && strcmp(k, "w") && strcmp(k, "h") &&
+          strcmp(k, "min-h") && strcmp(k, "mx") && strcmp(k, "my") &&
+          strcmp(k, "px") && strcmp(k, "py") && strcmp(k, "m") &&
+          strcmp(k, "border") && strcmp(k, "flex") && strcmp(k, "opacity") &&
+          strcmp(k, "overflow"))
+        continue;
     }
 
     if (!c->value) continue;
@@ -371,6 +384,15 @@ static void collect_classes_ir(char *classes, size_t sz, const IrNode *node,
       strncat(classes, vbuf, sz - strlen(classes) - 1);
     } else if (strcmp(k, "min-h") == 0) {
       snprintf(vbuf, sizeof(vbuf), " min-h-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "flex") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " flex-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "opacity") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " opacity-%s", v);
+      strncat(classes, vbuf, sz - strlen(classes) - 1);
+    } else if (strcmp(k, "overflow") == 0) {
+      snprintf(vbuf, sizeof(vbuf), " overflow-%s", v);
       strncat(classes, vbuf, sz - strlen(classes) - 1);
     } else if (strcmp(k, "border") == 0 && !attr_is_true(c)) {
       snprintf(vbuf, sizeof(vbuf), " border border-%s", v);

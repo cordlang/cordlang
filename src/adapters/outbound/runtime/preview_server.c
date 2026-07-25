@@ -199,11 +199,12 @@ int preview_server_serve(const char *html, size_t html_len, int port) {
 
   printf("\n");
   printf("  Cordlang Runtime Preview\n");
-  printf("  ────────────────────────\n");
+  printf("  ------------------------\n");
   printf("  Local:   %s\n", url);
   printf("  Serving: native HTML runtime (no Node / no React)\n");
   printf("  Stop:    Ctrl+C\n");
   printf("\n");
+  fflush(stdout);
 
   preview_open_browser(url);
 

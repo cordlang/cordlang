@@ -1,4 +1,5 @@
 #include "adapters/outbound/backends/html/html_backend.h"
+#include "adapters/outbound/backends/ir_walk.h"
 #include "adapters/outbound/backends/theme_css.h"
 #include "application/ports/fs_port.h"
 #include "domain/interp.h"
@@ -122,23 +123,26 @@ static const char *RUNTIME_CSS =
   ".justify-evenly{justify-content:space-evenly}\n"
   ".min-h-screen{min-height:100vh}\n"
   ".sticky{position:sticky}.top-0{top:0}\n"
-  ".overflow-hidden{overflow:hidden}\n"
+  ".overflow-hidden{overflow:hidden}.overflow-y-auto{overflow-y:auto}\n"
   "/* Spacing — Cord scale (p=16 → 1rem, aligned with React Tailwind scaffold) */\n"
   ".p-4{padding:1rem}.p-6{padding:1.5rem}.p-8{padding:.5rem}.p-12{padding:.75rem}\n"
-  ".p-16{padding:1rem}.p-24{padding:1.5rem}.p-32{padding:2rem}\n"
+  ".p-16{padding:1rem}.p-20{padding:1.25rem}.p-24{padding:1.5rem}.p-32{padding:2rem}\n"
   ".px-4{padding-left:1rem;padding-right:1rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}\n"
   ".gap-2{gap:.5rem}.gap-4{gap:1rem}.gap-8{gap:.5rem}.gap-12{gap:.75rem}\n"
-  ".gap-16{gap:1rem}.gap-24{gap:1.5rem}\n"
+  ".gap-16{gap:1rem}.gap-20{gap:1.25rem}.gap-24{gap:1.5rem}\n"
   ".m-0{margin:0}\n"
-  ".w-240{width:15rem}.h-screen{height:100vh}.min-h-screen{min-height:100vh}\n"
+  ".w-240{width:15rem}.w-64{width:16rem;min-width:14rem}.w-full{width:100%}\n"
+  ".h-screen{height:100vh}.min-h-screen{min-height:100vh}.min-w-0{min-width:0}\n"
   ".flex-1{flex:1 1 0%}.font-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}\n"
   ".border{border-width:1px;border-style:solid}.border-gray-200{border-color:#e5e7eb}\n"
   ".max-w-640{max-width:40rem}.max-w-720{max-width:45rem}.max-w-md{max-width:28rem}\n"
   ".max-w-lg{max-width:32rem}.max-w-xl{max-width:36rem}.max-w-2xl{max-width:42rem}\n"
   ".rounded-8{border-radius:8px}.rounded-12{border-radius:12px}\n"
   "/* Text */\n"
-  ".font-bold{font-weight:700}.text-gray-500{color:#6b7280}.text-gray-700{color:#374151}\n"
+  ".font-bold{font-weight:700}.font-medium{font-weight:500}\n"
+  ".text-gray-500{color:#6b7280}.text-gray-700{color:#374151}\n"
   ".text-muted{color:var(--color-muted,#57534e)}\n"
+  ".bg-sidebar{background:var(--color-sidebar,#1e293b)}.bg-card{background:var(--color-card,#fff)}\n"
   ".text-xs{font-size:.75rem}.text-sm{font-size:.875rem}.text-base{font-size:1rem}\n"
   ".text-lg{font-size:1.125rem}.text-xl{font-size:1.25rem}.text-2xl{font-size:1.5rem}\n"
   ".text-3xl{font-size:1.875rem}.text-4xl{font-size:2.25rem}\n"
@@ -368,6 +372,7 @@ static const char *tag_to_div_plus_class(const char *tag) {
   if (strcmp(tag, "col") == 0) return "flex flex-col";
   if (strcmp(tag, "row") == 0) return "flex flex-row";
   if (strcmp(tag, "stack") == 0) return "flex flex-col";
+  if (strcmp(tag, "sidebar") == 0) return "flex flex-col";
   if (strcmp(tag, "grid") == 0) return "grid";
   if (strcmp(tag, "page") == 0) return "min-h-screen";
   if (strcmp(tag, "btn") == 0) return "btn";
@@ -424,9 +429,12 @@ static const char *html_tag_for(const char *tag) {
   if (strcmp(tag, "footer") == 0) return "footer";
   if (strcmp(tag, "main") == 0) return "main";
   if (strcmp(tag, "section") == 0) return "section";
+  if (strcmp(tag, "sidebar") == 0) return "aside";
   if (strcmp(tag, "article") == 0) return "article";
   if (strcmp(tag, "aside") == 0) return "aside";
   if (strcmp(tag, "span") == 0) return "span";
+  if (strcmp(tag, "hr") == 0) return "hr";
+  if (strcmp(tag, "br") == 0) return "br";
   if (strcmp(tag, "h1") == 0) return "h1";
   if (strcmp(tag, "h2") == 0) return "h2";
   if (strcmp(tag, "h3") == 0) return "h3";
@@ -864,7 +872,7 @@ static void gen_element(StrBuf *sb, Node *node, int depth) {
 
   sb_indent(sb, depth);
 
-  int self_closing = (strcmp(html_tag, "img") == 0 || strcmp(html_tag, "input") == 0);
+  int self_closing = irw_is_void_html(html_tag);
 
   sb_appendf(sb, "<%s", html_tag);
 
@@ -1405,8 +1413,7 @@ static void gen_ir_element(StrBuf *sb, IrNode *node, int depth) {
 
   sb_indent(sb, depth);
 
-  int self_closing =
-      (strcmp(html_tag, "img") == 0 || strcmp(html_tag, "input") == 0);
+  int self_closing = irw_is_void_html(html_tag);
 
   sb_appendf(sb, "<%s", html_tag);
 

@@ -424,7 +424,7 @@ Emite: `products` / `productsLoading` / `productsError` como `$state`.
 dist/svelte/
   package.json
   vite.config.js
-  svelte.config.js   # compilerOptions.runes: true
+  svelte.config.js   # vitePreprocess; runes inferred from $state/$props
   public/            # copiado del project public/
   src/
     App.svelte       # hash router + layout

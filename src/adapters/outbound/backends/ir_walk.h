@@ -69,13 +69,18 @@ static inline const char *irw_html_tag(const char *tag) {
       strcmp(tag, "group") == 0)
     return "div";
   if (strcmp(tag, "section") == 0) return "section";
+  if (strcmp(tag, "sidebar") == 0) return "aside";
   if (strcmp(tag, "btn") == 0 || strcmp(tag, "button") == 0) return "button";
   if (strcmp(tag, "link") == 0) return "a";
   if (strcmp(tag, "fragment") == 0) return NULL;
   if (strcmp(tag, "checkbox") == 0 || strcmp(tag, "radio") == 0) return "input";
+  /* Capability tags: bridge names for React/Svelte; HTML backend maps separately. */
   if (strcmp(tag, "icon") == 0) return "CordIcon";
   if (strcmp(tag, "motion") == 0 || strcmp(tag, "Motion") == 0) return "CordMotion";
   if (strcmp(tag, "chart") == 0 || strcmp(tag, "Chart") == 0) return "CordChart";
+  if (strcmp(tag, "hr") == 0) return "hr";
+  if (strcmp(tag, "br") == 0) return "br";
+  if (strcmp(tag, "img") == 0) return "img";
   return tag;
 }
 
@@ -93,11 +98,24 @@ static inline const char *irw_cord_bridge_name(const char *tag) {
   return NULL;
 }
 
+/* HTML void elements — self-closing; no children / no </tag> */
+static inline int irw_is_void_html(const char *html) {
+  if (!html) return 0;
+  return strcmp(html, "area") == 0 || strcmp(html, "base") == 0 ||
+         strcmp(html, "br") == 0 || strcmp(html, "col") == 0 ||
+         strcmp(html, "embed") == 0 || strcmp(html, "hr") == 0 ||
+         strcmp(html, "img") == 0 || strcmp(html, "input") == 0 ||
+         strcmp(html, "link") == 0 || strcmp(html, "meta") == 0 ||
+         strcmp(html, "param") == 0 || strcmp(html, "source") == 0 ||
+         strcmp(html, "track") == 0 || strcmp(html, "wbr") == 0;
+}
+
 static inline const char *irw_base_class(const char *tag) {
   if (!tag) return NULL;
   if (strcmp(tag, "col") == 0 || strcmp(tag, "stack") == 0)
     return "flex flex-col";
   if (strcmp(tag, "row") == 0) return "flex flex-row";
+  if (strcmp(tag, "sidebar") == 0) return "flex flex-col";
   if (strcmp(tag, "grid") == 0) return "grid";
   if (strcmp(tag, "page") == 0) return "min-h-screen";
   if (strcmp(tag, "section") == 0) return "cord-section";
