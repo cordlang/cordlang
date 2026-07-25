@@ -1,5 +1,5 @@
-# Capabilities demo — requires presets icons + motion (+ charts optional)
-# cordlang preset add icons motion charts
+# Capabilities demo — presets come from examples/cordlang.json
+# (or: cordlang preset add icons motion charts)
 
 def CapDemo
   state sales = 0
