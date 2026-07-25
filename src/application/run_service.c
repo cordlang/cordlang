@@ -58,8 +58,14 @@ static int run_vite_check(const char *project_dir, const char *backend_name) {
   if (need_install) {
     printf("--check: node_modules missing, running npm install...\n");
     fflush(stdout);
-    char *argv_install[] = {NPM_CMD, "install", "--prefix", dist, NULL};
-    rc = process_run(NULL, argv_install, 1);
+    /*
+     * Run npm *inside* dist/, not via --prefix from the project root.
+     * On Windows, `npm.cmd install --prefix <path>` often ignores prefix and
+     * looks for package.json in the current directory (ENOENT on templates/).
+     * process_run(cwd=dist) matches how we already run `npm run build`.
+     */
+    char *argv_install[] = {NPM_CMD, "install", NULL};
+    rc = process_run(dist, argv_install, 1);
     if (rc != 0) {
       fprintf(stderr, "Error: --check: npm install failed (exit %d)\n", rc);
       free(dist);
