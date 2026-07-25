@@ -711,8 +711,12 @@ int cli_run(int argc, char **argv) {
      * compiled per request and served as a real ES module.
      * `run html` keeps the old single-document preview as an escape hatch.
      */
-    if (argc < 3 || strcmp(argv[2], "preview") == 0)
-      return preview_service_run(".");
+    int no_open = 0;
+    for (int i = 2; i < argc; i++)
+      if (strcmp(argv[i], "--no-open") == 0) no_open = 1;
+
+    if (argc < 3 || argv[2][0] == '-' || strcmp(argv[2], "preview") == 0)
+      return preview_service_run(".", !no_open);
     if (strcmp(argv[2], "html") == 0) return preview_service_run_html(".");
     int check = 0;
     int watch = 0;

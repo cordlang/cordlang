@@ -37,7 +37,7 @@ typedef int (*DevHandlerFn)(const char *method, const char *path, void *userdata
  * Returns 0 on clean shutdown.
  */
 int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
-                     DevHandlerFn handler, void *userdata);
+                     int open_browser, DevHandlerFn handler, void *userdata);
 
 /* Best-effort browser open (shared with the legacy preview). */
 void dev_server_open_browser(const char *url);

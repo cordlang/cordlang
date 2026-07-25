@@ -363,7 +363,7 @@ static int parse_request(const char *req, char *method, size_t mcap, char *path,
 }
 
 int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
-                     DevHandlerFn handler, void *userdata) {
+                     int open_browser, DevHandlerFn handler, void *userdata) {
   if (!handler) return 1;
   if (port <= 0) port = 4173;
 
@@ -439,7 +439,7 @@ int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
   printf("\n");
   fflush(stdout);
 
-  dev_server_open_browser(url);
+  if (open_browser) dev_server_open_browser(url);
 
   SseSet sse;
   memset(&sse, 0, sizeof(sse));

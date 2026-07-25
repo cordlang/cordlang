@@ -8,7 +8,7 @@
  * is compiled on demand and answered as JavaScript, so the real module graph is
  * what loads. No bundler, no Node, no npm install.
  */
-int preview_service_run(const char *project_dir);
+int preview_service_run(const char *project_dir, int open_browser);
 
 /*
  * `cordlang run html` — the legacy preview: one pre-rendered static document

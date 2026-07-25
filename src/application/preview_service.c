@@ -328,7 +328,7 @@ static int preview_handler(const char *method, const char *path, void *userdata,
 
 /* ── entry points ───────────────────────────────────────── */
 
-int preview_service_run(const char *project_dir) {
+int preview_service_run(const char *project_dir, int open_browser) {
   const char *dir = project_dir && *project_dir ? project_dir : ".";
   backend_register_all();
 
@@ -394,7 +394,8 @@ int preview_service_run(const char *project_dir) {
   printf("Sirviendo %s como modulos ES nativos...\n", ctx->entry_url);
   fflush(stdout);
 
-  int rc = dev_server_serve(4173, dir, ctx->entry_url, preview_handler, ctx);
+  int rc = dev_server_serve(4173, dir, ctx->entry_url, open_browser,
+                            preview_handler, ctx);
   free(ctx);
   return rc;
 }
