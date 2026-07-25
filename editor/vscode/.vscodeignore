@@ -1,0 +1,16 @@
+.vscode/**
+.vscode-test/**
+node_modules/**
+!node_modules/vscode-languageclient/**
+!node_modules/vscode-jsonrpc/**
+!node_modules/vscode-languageserver-protocol/**
+!node_modules/vscode-languageserver-types/**
+!node_modules/minimatch/**
+!node_modules/brace-expansion/**
+!node_modules/balanced-match/**
+!node_modules/semver/**
+scripts/**
+**/*.vsix
+**/*.map
+.gitignore
+.vscodeignore

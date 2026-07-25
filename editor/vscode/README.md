@@ -10,9 +10,12 @@ Ver [`docs/LSP.md`](../../docs/LSP.md).
 ```bash
 cd editor/vscode
 npm install
-npm run check          # syntax + load module
+npm run check          # syntax + static package validation
 npx @vscode/vsce package   # → cordlang-*.vsix
 ```
+
+> Note: do **not** `require('./extension.js')` under plain Node — the `vscode`
+> API only exists inside the editor host. CI uses the same `npm run check` path.
 
 Instalar en el editor:
 

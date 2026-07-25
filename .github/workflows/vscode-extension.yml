@@ -35,23 +35,13 @@ jobs:
       - name: npm ci
         run: npm ci
 
+      # `vscode` is only available inside the editor host — never require('./extension.js')
+      # under plain Node. Syntax-check + static package validation are enough.
       - name: Syntax-check extension entry
         run: node --check extension.js
 
-      - name: Load extension module
-        run: node -e "require('./extension.js'); console.log('extension module ok')"
-
-      - name: Validate package.json contributes
-        run: |
-          node -e "
-          const p = require('./package.json');
-          if (p.name !== 'cordlang') throw new Error('bad name');
-          if (!p.main) throw new Error('missing main');
-          if (!p.contributes || !p.contributes.languages) throw new Error('no languages');
-          const langs = p.contributes.languages.map(l => l.id);
-          if (!langs.includes('cordlang')) throw new Error('cordlang language missing');
-          console.log('package.json ok', p.version);
-          "
+      - name: Validate package manifest + assets
+        run: node scripts/check.mjs
 
       - name: Package VSIX
         run: npx --yes @vscode/vsce@3 package --no-update-package-json --allow-missing-repository
