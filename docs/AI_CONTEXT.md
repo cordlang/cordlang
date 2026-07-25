@@ -10,6 +10,7 @@ Read this first. Full contract: [`AI.md`](./AI.md) · attrs: [`schema/attrs.json
 2. Keep sources dense and valid — every ceremonial line costs tokens.
 3. Multi-page: `app.cord` + `pages/` + `components/` + `layouts/`.
 4. After edits: `cordlang check` (prefer `--json` for agents).
+5. Preview loop: **`cordlang run`** — ESM native dev server (no Node). See [`PREVIEW.md`](./PREVIEW.md).
 
 ## Syntax (non-negotiable)
 
@@ -50,7 +51,7 @@ def Counter
 ## Visual quality
 
 - Start from `theme` tokens; use `type=display|title|body|caption`, `elevate=0..4`, `section` / `stack density=`, `md:p=` responsive.
-- Motion budget: 1–2 motions per viewport (`motion fade`). Preview HTML ≠ capability UI — use `run react|svelte`.
+- Motion budget: 1–2 motions per viewport (`motion fade`). ESM preview degrades `icon`/`motion`/`chart` to stubs — full capability UI needs `run react|svelte`.
 - Full contract: [`DESIGN.md`](./DESIGN.md).
 
 ## CLI
@@ -60,8 +61,14 @@ cordlang check [--json] [path]
 cordlang analyze [--json] [path]
 cordlang ai context | ai doctor [path] | ai check [path]
 cordlang preset list | preset add <id>…
-cordlang run | run react | run svelte
+cordlang run              # primary preview: ESM native (no Node)
+cordlang run --no-open
+cordlang run html         # legacy single-document HTML
+cordlang run react        # Vite + React scaffold
+cordlang run svelte       # Vite + Svelte 5 scaffold
 ```
+
+Preview contract (URLs, runtime `$`, layout resolution, deliberate limits): [`PREVIEW.md`](./PREVIEW.md).
 
 ## Self-check
 

@@ -1,6 +1,6 @@
 # Cordlang
 
-**La forma más rápida de construir UI con IA / vibecode** — escribe `.cord` denso (**menos tokens** que JSX), el compilador baja a un **IR canónico** y emite **React**, **Svelte 5** o un **preview HTML** nativo.
+**La forma más rápida de construir UI con IA / vibecode** — escribe `.cord` denso (**menos tokens** que JSX), el compilador baja a un **IR canónico** y emite **React**, **Svelte 5**, o un **preview ESM nativo** (`cordlang run`, sin Node).
 
 Cordlang **no** es otro framework JS (sin Vite/Next/router propios). Es un **lenguaje intermedio optimizado para agentes y ahorro de tokens**: vibecode → `check` → backends reales. Sin LLM en `compile`. Si docs antiguas suenan a “otro React”, ignóralas: el contrato IA manda.
 
@@ -19,7 +19,9 @@ def Counter
 ```
 
 ```bash
-cordlang run              # native HTML preview (no Node)
+cordlang run              # ESM native preview (no Node) — default
+cordlang run --no-open    # same server, don't open browser
+cordlang run html         # legacy single-document HTML preview
 cordlang run react        # Vite + React + Tailwind → dist/react
 cordlang run svelte       # Vite + Svelte 5 runes → dist/svelte
 cordlang check            # diagnostics anti-alucinación
@@ -37,7 +39,7 @@ Same multi-file `src/**/*.cord` for every backend.
 | **Token cost / vibecode** | Dense `.cord` → cheaper prompts, context, and diffs vs JSX |
 | Less boilerplate for UI | Indent + attrs + `#{expr}` instead of JSX/Svelte ceremony |
 | AI-friendly surface | Schema + deterministic `check` / `analyze` (no LLM in compile) |
-| One source, many targets | IR → React / Svelte / HTML (meta backends after the AI loop) |
+| One source, many targets | IR → ESM preview / React / Svelte / HTML (meta backends after the AI loop) |
 | Real apps | Routes, layouts, state, forms, lazy, context, fetch… |
 
 **No somos “JSX más corto”.** Somos el IR + DX alrededor para que la IA escriba UI válida.
@@ -66,6 +68,7 @@ Same multi-file `src/**/*.cord` for every backend.
 | [docs/LSP.md](./docs/LSP.md) | Editor / LSP mínimo |
 | [AGENTS.md](./AGENTS.md) | Coding-agent brief |
 | [docs/ROADMAP.md](./docs/ROADMAP.md) | Horizonte A/B + histórico |
+| [docs/PREVIEW.md](./docs/PREVIEW.md) | **ESM native preview** (`cordlang run`) |
 | [docs/REACT.md](./docs/REACT.md) · [SVELTE.md](./docs/SVELTE.md) · [IR.md](./docs/IR.md) | Maps & IR |
 
 ### AI / agents
@@ -79,7 +82,7 @@ Cordlang is designed for **LLM-authored UI**. Point tools at:
 | [`skills/write-cord/`](./skills/write-cord/) | **Portable skill** (any tool / LLM) |
 | [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot |
 
-Rule of thumb for models: **write `.cord`, not JSX**, then `cordlang run react|svelte`.
+Rule of thumb for models: **write `.cord`, not JSX**, then `cordlang run` (preview) or `cordlang run react|svelte` (scaffold).
 
 ---
 
@@ -115,9 +118,11 @@ cd my-app
 cordlang add ../path/to/pkg               # → src/vendor/<name>/
 cordlang --version
 
-cordlang run                 # HTML preview at http://127.0.0.1:4173
-cordlang run react           # generate dist/react
-cordlang run svelte          # generate dist/svelte
+cordlang run                 # ESM native preview at http://127.0.0.1:4173
+cordlang run --no-open       # same, without opening a browser
+cordlang run html            # legacy single-document HTML preview
+cordlang run react           # generate dist/react (Vite + React)
+cordlang run svelte          # generate dist/svelte (Vite + Svelte 5)
 cordlang run react --check   # npm install if needed + vite build
 cordlang run react --watch   # rebuild on .cord changes
 ```
@@ -158,8 +163,10 @@ cordlang goto Counter [entry]   # definition path
 | Command | Description |
 |---------|-------------|
 | `init [name]` | Scaffold `cordlang.json` + `src/` |
-| `run` / `run preview` | Native HTML runtime preview |
-| `run react` / `run svelte` | Full Vite scaffold under `dist/<backend>` |
+| `run` / `run preview` | **Default:** ESM native dev server (JIT `.cord` → JS modules, no Node) |
+| `run --no-open` | Same ESM server without opening a browser |
+| `run html` | Legacy single-document HTML preview |
+| `run react` / `run svelte` / … | Full Vite scaffold under `dist/<backend>` |
 | `run <backend> --check` | Scaffold + `vite build` smoke |
 | `run <backend> --watch` | Rebuild on `.cord` change |
 | `build <backend>` | Compile entry only |
@@ -168,7 +175,8 @@ cordlang goto Counter [entry]   # definition path
 | `fmt [path]` / `fmt --check` | Formatter |
 | `symbols` / `goto <Name>` | Project symbols |
 
-Backends: `preview`/`html`, `react`, `svelte`.
+Backends: `preview`/`esm` (native run), `html` (legacy), `react`, `svelte`, `vue`, `solid`, `next`, `sveltekit`, `email`, `pdf`.  
+Preview details: [`docs/PREVIEW.md`](./docs/PREVIEW.md).
 
 ---
 
@@ -184,6 +192,7 @@ cordlang/
 │   ├── ROADMAP.md       # phases & next steps
 │   ├── ARCHITECTURE.md  # compiler internals
 │   ├── LANGUAGE.md      # design & syntax reference
+│   ├── PREVIEW.md       # ESM native preview (cordlang run)
 │   ├── REACT.md         # Cordlang ↔ React map
 │   ├── SVELTE.md        # Cordlang ↔ Svelte map
 │   └── IR.md            # IR pipeline
@@ -204,7 +213,7 @@ cordlang/
 **Pipeline:**
 
 ```
-.cord → Lexer → Parser → AST → IR → React | Svelte | HTML
+.cord → Lexer → Parser → AST → IR → ESM preview | React | Svelte | HTML | …
 ```
 
 ---
@@ -283,4 +292,4 @@ Free to use, modify, and redistribute (including commercial use), with attributi
 ## Next
 
 **Loop IA (Horizonte A residual):** traps `check` + LSP buffer/hints + preview honest — see [docs/ROADMAP.md](./docs/ROADMAP.md).  
-Default targets: **React / Svelte / HTML preview**. Vue, Solid, email, PDF, Next, Kit = meta/experimental. WASM playground remains a stub.
+Default targets: **ESM native preview** (`cordlang run`) / **React** / **Svelte**; legacy `run html` for single-document HTML. Vue, Solid, email, PDF, Next, Kit = meta/experimental. WASM playground remains a stub.

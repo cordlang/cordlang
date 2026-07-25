@@ -1,0 +1,5 @@
+foreign Chart from "recharts"
+
+def Demo
+  col
+    Chart

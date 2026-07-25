@@ -22,7 +22,7 @@ application/*_service.c     (use cases)
         └── adapters/outbound/
               ├── lexer / parser / compiler
               ├── fs / process / json
-              └── backends/{react,svelte,vue,solid,html}
+              └── backends/{react,svelte,vue,solid,html,esm}
 ```
 
 | Layer | Path | Responsibility |
@@ -59,7 +59,7 @@ ir_from_ast    src/domain/ir.{c,h}   (+ expr_normalize)
 (IR passes)    Phase H3 — opt-in transforms on IrProgram
     │
     ├── ir_dump()                 →  compile --ir
-    ├── generate_from_ir()        →  React / Svelte / HTML body
+    ├── generate_from_ir()        →  React / Svelte / HTML / ESM body
     └── scaffold_from_ir()        →  dist/react | dist/svelte | preview
 ```
 
@@ -95,7 +95,10 @@ Orchestration lives in `src/application/compile_service.c` and `run_service.c`:
 | Static HTML (email/pdf) | `backends/static_html/static_html.c` + `email/` + `pdf/` |
 | Next meta | `backends/next/next_backend.c` (wraps React emit) |
 | SvelteKit meta | `backends/sveltekit/sveltekit_backend.c` (wraps Svelte emit) |
-| HTML preview | `backends/html/html_backend.c` + `runtime/preview_server.c` |
+| ESM native preview | `backends/esm/` — `esm_ir.c`, `esm_runtime.c`, `esm_css.c`, `esm_backend.h` |
+| Shared attr→class | `backends/cord_class.c` (+ `cord_class.h`) — used by react/svelte/vue/solid/esm |
+| Dev server (ESM run) | `runtime/dev_server.c` (+ `dev_server.h`) — HTTP + SSE; wired by `preview_service.c` |
+| HTML preview (legacy) | `backends/html/html_backend.c` + `runtime/preview_server.c` (`cordlang run html`) |
 | Theme CSS | `backends/theme_css.c` |
 | Source maps | `backends/source_attr.c` (VLQ from `cordlang: source=` markers) |
 
@@ -180,6 +183,7 @@ Dynamic plugins (`dlopen` / WASM) are **out of scope** for H3.
 
 | Doc | Audience |
 |-----|----------|
+| [`PREVIEW.md`](./PREVIEW.md) | ESM native preview (`cordlang run`) |
 | [`IR.md`](./IR.md) | IR kinds + backend port |
 | [`SPEC.md`](./SPEC.md) | Normative language |
 | [`LANGUAGE.md`](./LANGUAGE.md) | Design / history |

@@ -135,6 +135,17 @@ typedef struct {
     char mod_path[256];
   } unresolved[32];
   int n_unresolved;
+  /*
+   * `foreign Chart from "recharts"` cannot resolve npm packages in the ESM
+   * preview. Same degrade strategy as unresolved modules: a visible stub with
+   * class `cord-runtime-error` so PascalCase `h(Chart, …)` binds to a real
+   * const instead of crashing with ReferenceError.
+   */
+  struct {
+    char name[96];
+    char mod_path[256]; /* package hint for the comment; may be empty */
+  } foreigns[32];
+  int n_foreigns;
 } EsmCtx;
 
 static void scope_add(EsmCtx *c, const char *name) {
@@ -395,6 +406,17 @@ static const char *import_add(EsmCtx *c, const char *mod_path, const char *alias
   return im->export_name;
 }
 
+/* Package string for a foreign comment: default module, else first backend attr. */
+static const char *foreign_mod_hint(const IrNode *n) {
+  if (!n) return NULL;
+  if (n->value && n->value[0]) return n->value;
+  for (size_t i = 0; i < n->n_kids; i++) {
+    IrNode *a = n->kids[i];
+    if (a && a->kind == IR_ATTR && a->value && a->value[0]) return a->value;
+  }
+  return NULL;
+}
+
 static void layout_export_name_of(const char *orig, char *out, size_t n) {
   if (!orig || !*orig || strcmp(orig, "default") == 0) {
     snprintf(out, n, "DefaultLayout");
@@ -405,6 +427,52 @@ static void layout_export_name_of(const char *orig, char *out, size_t n) {
     return;
   }
   snprintf(out, n, "%c%s", (char)toupper((unsigned char)orig[0]), orig + 1);
+}
+
+/*
+ * Register a foreign host component as a runtime stub. Skips names already
+ * covered by a real import, an unresolved-module stub, or a same-file
+ * IR_COMPONENT / IR_LAYOUT export (avoids `const X` + `export const X`).
+ */
+static void foreign_add(EsmCtx *c, const char *name, const char *mod) {
+  if (!name || !*name || !is_safe_js_ident(name)) return;
+  if (import_find_by_name(c, name)) return;
+  for (int i = 0; i < c->n_unresolved; i++)
+    if (strcmp(c->unresolved[i].export_name, name) == 0) return;
+  for (int i = 0; i < c->n_foreigns; i++)
+    if (strcmp(c->foreigns[i].name, name) == 0) return;
+  if (c->n_foreigns >= 32) return;
+  int i = c->n_foreigns++;
+  snprintf(c->foreigns[i].name, sizeof(c->foreigns[i].name), "%s", name);
+  snprintf(c->foreigns[i].mod_path, sizeof(c->foreigns[i].mod_path), "%s",
+           (mod && mod[0]) ? mod : "");
+}
+
+/* True if a same-file component/layout already owns this JS export name. */
+static int same_file_export_owns(IrNode *root, const char *name) {
+  if (!root || !name || !*name) return 0;
+  for (size_t j = 0; j < root->n_kids; j++) {
+    IrNode *s = root->kids[j];
+    if (!s) continue;
+    if (s->kind == IR_COMPONENT && s->name && strcmp(s->name, name) == 0)
+      return 1;
+    if (s->kind == IR_LAYOUT) {
+      char en[96];
+      layout_export_name_of(s->name ? s->name : "default", en, sizeof(en));
+      if (strcmp(en, name) == 0) return 1;
+    }
+  }
+  return 0;
+}
+
+static void collect_foreigns(EsmCtx *c, IrNode *root) {
+  if (!c || !root) return;
+  for (size_t i = 0; i < root->n_kids; i++) {
+    IrNode *d = root->kids[i];
+    if (!d || d->kind != IR_FOREIGN || !d->name) continue;
+    if (same_file_export_owns(root, d->name)) continue;
+    foreign_add(c, d->name, foreign_mod_hint(d));
+  }
 }
 
 /* ── element / children codegen ─────────────────────────── */
@@ -432,6 +500,7 @@ static int is_decl_node(const IrNode *n) {
     case IR_ROUTE:
     case IR_ATTR:
     case IR_EVENT:
+    case IR_FOREIGN:
       return 1;
     case IR_HOOK:
       /* Declaration-ish hooks handled in the prelude, not the tree. */
@@ -967,6 +1036,11 @@ static void gen_node(Sb *sb, IrNode *n, int depth, EsmCtx *c) {
         sb_add(sb, "null");
       }
       break;
+    case IR_FOREIGN:
+      /* Declarations only; stubs are emitted once in gen_imports. */
+      sb_pad(sb, depth);
+      sb_add(sb, "null");
+      break;
     default:
       sb_pad(sb, depth);
       sb_add(sb, "frag([\n");
@@ -1323,6 +1397,38 @@ static void gen_imports(Sb *sb, EsmCtx *c) {
     free(esc);
   }
   if (c->n_unresolved) sb_add(sb, "\n");
+  for (int i = 0; i < c->n_foreigns; i++) {
+    /* A real import for the same name wins (no double-define). */
+    if (import_find_by_name(c, c->foreigns[i].name)) continue;
+    char *esc_name = js_escape_sq_dup(c->foreigns[i].name);
+    const char *mod = c->foreigns[i].mod_path;
+    if (mod[0]) {
+      char *esc_mod = js_escape_sq_dup(mod);
+      sb_addf(sb,
+              "/* cordlang: foreign no disponible en preview ESM: %s (%s) */\n"
+              "const %s = component('%s', function () {\n"
+              "  return h('div', { class: 'cord-runtime-error' },\n"
+              "           'cordlang: foreign \\'%s\\' no disponible en preview "
+              "ESM');\n"
+              "});\n",
+              esc_name ? esc_name : "?", esc_mod ? esc_mod : "?",
+              c->foreigns[i].name, c->foreigns[i].name,
+              esc_name ? esc_name : "?");
+      free(esc_mod);
+    } else {
+      sb_addf(sb,
+              "/* cordlang: foreign no disponible en preview ESM: %s */\n"
+              "const %s = component('%s', function () {\n"
+              "  return h('div', { class: 'cord-runtime-error' },\n"
+              "           'cordlang: foreign \\'%s\\' no disponible en preview "
+              "ESM');\n"
+              "});\n",
+              esc_name ? esc_name : "?", c->foreigns[i].name,
+              c->foreigns[i].name, esc_name ? esc_name : "?");
+    }
+    free(esc_name);
+  }
+  if (c->n_foreigns) sb_add(sb, "\n");
 }
 
 char *esm_generate_module(IrProgram *ir, const EsmModuleCtx *mod) {
@@ -1348,6 +1454,9 @@ char *esm_generate_module(IrProgram *ir, const EsmModuleCtx *mod) {
       import_add(&c, u->value, u->name);
     }
   }
+
+  /* foreign Chart from "pkg" — no npm in preview; stub before components use it. */
+  collect_foreigns(&c, root);
 
   /* Component / layout definitions declared in this file. */
   const char *primary = NULL;
@@ -1465,7 +1574,10 @@ char *esm_generate_from_ir(IrProgram *ir) {
     sb_addf(&out, "/* cordlang: source=%s */\n", base ? base : "(inline)");
     free(base);
   }
-  sb_add(&out, "import { h, frag, txt, keyed, component } from '/@cord/runtime.js';\n\n");
+
+  /* Flat `compile --backend esm`: still collect foreigns so stubs bind names. */
+  collect_foreigns(&c, ir->root);
+  gen_imports(&out, &c);
 
   gen_theme_export(&out, ir->root);
 
