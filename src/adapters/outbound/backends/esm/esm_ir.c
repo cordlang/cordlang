@@ -102,6 +102,8 @@ typedef struct {
   char basename[96];  /* docs */
 } EsmImport;
 
+#define ESM_MAX_SCOPE 192
+
 typedef struct {
   const EsmModuleCtx *mod;
   EsmImport imports[ESM_MAX_IMPORTS];
@@ -109,7 +111,57 @@ typedef struct {
   int is_layout;    /* current component is a layout → slot = props.children */
   int uses_children;
   int truncated;
+  /*
+   * Identifiers actually declared in the component being emitted (props, state,
+   * computed, refs, fetch results, route params, `for` variables).
+   *
+   * Cord attribute values are untyped words: `purpose=action` and
+   * `label=title` look exactly like `count` does. Guessing from the shape of
+   * the word alone turns a semantic attribute into a variable reference and the
+   * component dies with ReferenceError at render time. So an identifier is only
+   * emitted as an expression when it is genuinely in scope; otherwise it is a
+   * string.
+   */
+  char scope[ESM_MAX_SCOPE][64];
+  int n_scope;
 } EsmCtx;
+
+static void scope_add(EsmCtx *c, const char *name) {
+  if (!name || !*name || strlen(name) >= 64) return;
+  if (c->n_scope >= ESM_MAX_SCOPE) return;
+  for (int i = 0; i < c->n_scope; i++)
+    if (strcmp(c->scope[i], name) == 0) return;
+  snprintf(c->scope[c->n_scope], 64, "%s", name);
+  c->n_scope++;
+}
+
+/* Root identifier of a value: `user.name` → `user`. */
+static int scope_has(EsmCtx *c, const char *expr) {
+  if (!c || !expr || !*expr) return 0;
+  char root[64];
+  size_t i = 0;
+  for (; expr[i] && expr[i] != '.' && i < sizeof(root) - 1; i++) root[i] = expr[i];
+  root[i] = '\0';
+  for (int j = 0; j < c->n_scope; j++)
+    if (strcmp(c->scope[j], root) == 0) return 1;
+  return 0;
+}
+
+/* Comma/space separated declaration lists, e.g. `params id, slug`. */
+static void scope_add_list(EsmCtx *c, const char *list) {
+  if (!list) return;
+  const char *p = list;
+  while (*p) {
+    while (*p == ' ' || *p == ',' || *p == '\t') p++;
+    if (!*p) break;
+    char buf[64];
+    size_t n = 0;
+    while (*p && *p != ' ' && *p != ',' && *p != '\t' && n < sizeof(buf) - 1)
+      buf[n++] = *p++;
+    buf[n] = '\0';
+    scope_add(c, buf);
+  }
+}
 
 static int is_pascal(const char *s) {
   return s && s[0] && isupper((unsigned char)s[0]);
@@ -160,11 +212,14 @@ static void emit_literal(Sb *sb, const char *val) {
 }
 
 /*
- * Attribute/child value. Cord is untyped at this level, so mirror the React
- * backend's heuristics: #{…} → template literal, dotted/lowercase identifiers →
- * expression, everything else → string.
+ * Attribute / child value.
+ *   #{…}                              → template literal
+ *   number / bool                     → bare literal
+ *   identifier declared in this scope → expression
+ *   anything else                     → string
+ * The scope check is the important part; see the comment on EsmCtx.scope.
  */
-static void emit_value(Sb *sb, const char *val, int prefer_string) {
+static void emit_value(Sb *sb, const char *val, int prefer_string, EsmCtx *c) {
   if (!val) {
     sb_add(sb, "null");
     return;
@@ -180,8 +235,7 @@ static void emit_value(Sb *sb, const char *val, int prefer_string) {
       sb_add(sb, val);
       return;
     }
-    if (is_safe_js_path(val) && (strchr(val, '.') || islower((unsigned char)val[0]) ||
-                                 val[0] == '_')) {
+    if (is_safe_js_path(val) && scope_has(c, val)) {
       sb_add(sb, val);
       return;
     }
@@ -396,11 +450,55 @@ static int bare_attr_is_content(const char *name, int skip_preset_attrs) {
   return 1;
 }
 
-/* Attrs that must reach the DOM as literal strings. */
-static int attr_is_stringish(const char *name) {
-  return name && (strcmp(name, "title") == 0 || strcmp(name, "label") == 0 ||
-                  strcmp(name, "placeholder") == 0 || strcmp(name, "alt") == 0 ||
-                  strcmp(name, "name") == 0);
+/*
+ * DOM attributes whose value is a plain string in practice. `type=button` and
+ * `id=forma` must NOT become identifier references — mirrors the React
+ * backend, which only treats these as expressions when the value is dotted or
+ * numeric.
+ */
+static int attr_is_dom_literal(const char *name) {
+  return name && (strcmp(name, "src") == 0 || strcmp(name, "alt") == 0 ||
+                  strcmp(name, "href") == 0 || strcmp(name, "placeholder") == 0 ||
+                  strcmp(name, "type") == 0 || strcmp(name, "rows") == 0 ||
+                  strcmp(name, "name") == 0 || strcmp(name, "value") == 0 ||
+                  strcmp(name, "id") == 0 || strcmp(name, "key") == 0 ||
+                  strcmp(name, "title") == 0 || strcmp(name, "label") == 0 ||
+                  strcmp(name, "for") == 0 || strcmp(name, "target") == 0 ||
+                  strcmp(name, "rel") == 0 || strcmp(name, "lang") == 0);
+}
+
+/*
+ * Component props that are almost always literal text in Cord UIs. Without this
+ * `CodeSample title="arbol"` would compile to an identifier reference.
+ */
+static int prop_is_stringish(const char *name) {
+  return name && (strcmp(name, "title") == 0 || strcmp(name, "text") == 0 ||
+                  strcmp(name, "label") == 0 || strcmp(name, "placeholder") == 0 ||
+                  strcmp(name, "alt") == 0 || strcmp(name, "name") == 0);
+}
+
+static void emit_dom_attr_value(Sb *sb, const char *val, EsmCtx *c) {
+  if (!val) {
+    sb_add(sb, "null");
+    return;
+  }
+  if (interp_has(val)) {
+    char *body = interp_to_js_template_body(val);
+    sb_addf(sb, "`%s`", body ? body : "");
+    free(body);
+    return;
+  }
+  if (is_safe_js_path(val) && strchr(val, '.') && scope_has(c, val)) {
+    sb_add(sb, val);
+    return;
+  }
+  if (cord_looks_like_number(val)) {
+    sb_add(sb, val);
+    return;
+  }
+  char *plain = interp_plain_text(val);
+  emit_sq_string(sb, plain ? plain : val);
+  free(plain);
 }
 
 static void gen_props_object(Sb *sb, IrNode *node, const char *tag,
@@ -508,7 +606,7 @@ static void gen_props_object(Sb *sb, IrNode *node, const char *tag,
       if (!interp_has(href) && !url_href_is_safe(href)) href = "#";
       if (wrote) sb_add(sb, ",");
       sb_add(sb, " href: ");
-      emit_value(sb, href, 1);
+      emit_value(sb, href, 1, c);
       wrote = 1;
       continue;
     }
@@ -524,8 +622,10 @@ static void gen_props_object(Sb *sb, IrNode *node, const char *tag,
       char *esc = js_escape_sq_dup(v ? v : "");
       sb_addf(sb, "'%s'", esc ? esc : "");
       free(esc);
+    } else if (!is_component && attr_is_dom_literal(k)) {
+      emit_dom_attr_value(sb, v, c);
     } else {
-      emit_value(sb, v, attr_is_stringish(k) && !interp_has(v ? v : ""));
+      emit_value(sb, v, is_component && prop_is_stringish(k), c);
     }
     wrote = 1;
   }
@@ -722,7 +822,12 @@ static void gen_for(Sb *sb, IrNode *n, int depth, EsmCtx *c) {
   multi = count != 1;
   if (multi) sb_add(sb, "frag([");
   sb_add(sb, "\n");
+  /* The loop variable is only in scope inside the body. */
+  int saved_scope = c->n_scope;
+  scope_add(c, var);
+  scope_add(c, "idx");
   gen_children_array(sb, n, depth + 1, c);
+  c->n_scope = saved_scope;
   sb_pad(sb, depth);
   if (multi) sb_add(sb, "])");
   sb_add(sb, "))");
@@ -858,6 +963,7 @@ static void gen_prelude(Sb *sb, IrNode *def, EsmCtx *c) {
       if (!p->name || !is_safe_js_ident(p->name)) continue;
       if (n++) sb_add(sb, ",");
       sb_addf(sb, " %s", p->name);
+      scope_add(c, p->name);
       if (p->value) {
         sb_add(sb, " = ");
         emit_literal(sb, p->value);
@@ -872,6 +978,7 @@ static void gen_prelude(Sb *sb, IrNode *def, EsmCtx *c) {
     if (!ir_hook_is(k, "params")) continue;
     const char *names = k->value ? k->value : "id";
     sb_addf(sb, "  const { %s } = $.params();\n", names);
+    scope_add_list(c, names);
   }
 
   /* state */
@@ -887,12 +994,14 @@ static void gen_prelude(Sb *sb, IrNode *def, EsmCtx *c) {
                 st->name);
         emit_literal(sb, st->value ? st->value : "null");
         sb_add(sb, ");\n");
+        scope_add(c, st->name);
       }
     } else if (k->name && is_safe_js_ident(k->name)) {
       sb_addf(sb, "  const [%s, set%c%s] = $.state('%s', ", k->name,
               (char)toupper((unsigned char)k->name[0]), k->name + 1, k->name);
       emit_literal(sb, k->value ? k->value : "null");
       sb_add(sb, ");\n");
+      scope_add(c, k->name);
     }
   }
 
@@ -904,6 +1013,7 @@ static void gen_prelude(Sb *sb, IrNode *def, EsmCtx *c) {
     sb_addf(sb, "  const %s = $.ref(", k->value);
     if (k->value2) emit_literal(sb, k->value2);
     sb_add(sb, ");\n");
+    scope_add(c, k->value);
   }
 
   /* navigate */
@@ -912,6 +1022,7 @@ static void gen_prelude(Sb *sb, IrNode *def, EsmCtx *c) {
     if (!ir_hook_is(k, "navigate")) continue;
     const char *nm = k->value && is_safe_js_ident(k->value) ? k->value : "navigate";
     sb_addf(sb, "  const %s = $.navigate;\n", nm);
+    scope_add(c, nm);
   }
 
   /* fetch → resource; expose data under the declared name */
@@ -919,11 +1030,19 @@ static void gen_prelude(Sb *sb, IrNode *def, EsmCtx *c) {
     IrNode *k = def->kids[i];
     if (k->kind != IR_FETCH || !k->name || !is_safe_js_ident(k->name)) continue;
     sb_addf(sb, "  const %s$res = $.resource('%s', ", k->name, k->name);
-    emit_value(sb, k->value, 0);
+    emit_value(sb, k->value, 0, c);
     sb_add(sb, ");\n");
     sb_addf(sb, "  const %s = %s$res.data;\n", k->name, k->name);
     sb_addf(sb, "  const %sLoading = %s$res.loading;\n", k->name, k->name);
     sb_addf(sb, "  const %sError = %s$res.error;\n", k->name, k->name);
+    scope_add(c, k->name);
+    {
+      char buf[96];
+      snprintf(buf, sizeof(buf), "%sLoading", k->name);
+      scope_add(c, buf);
+      snprintf(buf, sizeof(buf), "%sError", k->name);
+      scope_add(c, buf);
+    }
   }
 
   /*
@@ -934,6 +1053,7 @@ static void gen_prelude(Sb *sb, IrNode *def, EsmCtx *c) {
     IrNode *k = def->kids[i];
     if (k->kind != IR_COMPUTED || !k->name || !is_safe_js_ident(k->name)) continue;
     sb_addf(sb, "  const %s = (%s);\n", k->name, k->value ? k->value : "null");
+    scope_add(c, k->name);
   }
 
   /* effects */
@@ -961,10 +1081,9 @@ static void gen_prelude(Sb *sb, IrNode *def, EsmCtx *c) {
 
 static void gen_component(Sb *sb, IrNode *def, const char *name, int is_layout,
                           EsmCtx *c) {
-  EsmCtx saved_layout;
-  (void)saved_layout;
   c->is_layout = is_layout;
   c->uses_children = 0;
+  c->n_scope = 0; /* scope is per component, imports are per module */
 
   sb_addf(sb, "export const %s = component('%s', function (props, $) {\n", name,
           name);
@@ -1082,11 +1201,14 @@ static void gen_routes(Sb *sb, IrNode *root, EsmCtx *c) {
     return;
   }
 
-  /* Resolve route targets into imports before emitting the array. */
+  /*
+   * IR_ROUTE carries the URL in `name` and the target module/component in
+   * `value` (see ir.c). Resolve targets into imports before emitting the array.
+   */
   for (size_t i = 0; i < root->n_kids; i++) {
     IrNode *r = root->kids[i];
-    if (!r || r->kind != IR_ROUTE || !r->value2) continue;
-    if (compiler_is_module_ref(r->value2)) import_add(c, r->value2, NULL);
+    if (!r || r->kind != IR_ROUTE || !r->value) continue;
+    if (compiler_is_module_ref(r->value)) import_add(c, r->value, NULL);
   }
 
   sb_add(sb, "export const routes = [\n");
@@ -1094,18 +1216,18 @@ static void gen_routes(Sb *sb, IrNode *root, EsmCtx *c) {
     IrNode *r = root->kids[i];
     if (!r || r->kind != IR_ROUTE) continue;
 
-    const char *path = r->value ? r->value : "/";
+    const char *path = r->name ? r->name : "/";
     char comp[128];
     comp[0] = '\0';
-    if (r->value2) {
-      if (compiler_is_module_ref(r->value2)) {
-        char *ename = compiler_module_export_name(r->value2, NULL);
+    if (r->value) {
+      if (compiler_is_module_ref(r->value)) {
+        char *ename = compiler_module_export_name(r->value, NULL);
         if (ename) {
           snprintf(comp, sizeof(comp), "%s", ename);
           free(ename);
         }
       } else {
-        snprintf(comp, sizeof(comp), "%s", r->value2);
+        snprintf(comp, sizeof(comp), "%s", r->value);
       }
     }
     if (!comp[0]) continue;
@@ -1320,7 +1442,7 @@ char *esm_generate_from_ir(IrProgram *ir) {
     sb_add(&out, "export const routes = [\n");
     for (size_t i = 0; i < ir->root->n_kids; i++) {
       IrNode *r = ir->root->kids[i];
-      if (!r || r->kind != IR_ROUTE || !r->value2) continue;
+      if (!r || r->kind != IR_ROUTE || !r->value) continue;
       const char *layout_attr = NULL;
       for (size_t j = 0; j < r->n_kids; j++) {
         IrNode *a = r->kids[j];
@@ -1338,8 +1460,8 @@ char *esm_generate_from_ir(IrProgram *ir) {
         snprintf(layout, sizeof(layout), "%s", first_layout);
 
       sb_add(&out, "  { path: ");
-      emit_sq_string(&out, r->value ? r->value : "/");
-      sb_addf(&out, ", component: %s", r->value2);
+      emit_sq_string(&out, r->name ? r->name : "/");
+      sb_addf(&out, ", component: %s", r->value);
       if (layout[0]) sb_addf(&out, ", layout: %s", layout);
       sb_add(&out, " },\n");
     }
