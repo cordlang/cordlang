@@ -1,0 +1,60 @@
+/* cordlang: source=tests/regression/esm-routes-layouts/input.cord */
+import { h, frag, txt, keyed, component } from '/@cord/runtime.js';
+
+export const theme = { 'primary': '#0c0f12', 'accent': '#3DFFB5', 'radius': 12 };
+
+export const DefaultLayout = component('DefaultLayout', function (props, $) {
+  return h('div', { class: 'flex flex-col min-h-screen' }, [
+    h('header', { class: 'sticky top-0' }, [
+      'Sitio',
+    ]),
+    h('main', {}, [
+      props.children,
+    ]),
+  ]);
+});
+
+export const Docs = component('Docs', function (props, $) {
+  return h('div', { class: 'flex flex-row gap-24' }, [
+    h('aside', { class: 'w-240' }, [
+      'Indice',
+    ]),
+    h('main', {}, [
+      props.children,
+    ]),
+  ]);
+});
+
+export const Home = component('Home', function (props, $) {
+  return h('div', { class: 'flex flex-col gap-16 p-24' }, [
+    h('h1', { class: 'text-3xl font-bold' }, [
+      'Inicio',
+    ]),
+  ]);
+});
+
+export const Guide = component('Guide', function (props, $) {
+  return h('div', { class: 'flex flex-col gap-16' }, [
+    h('h2', { class: 'text-2xl font-bold' }, [
+      'Guia',
+    ]),
+  ]);
+});
+
+export const Post = component('Post', function (props, $) {
+  const { slug } = $.params();
+  return h('div', { class: 'flex flex-col gap-8' }, [
+    h('h2', { class: 'text-xl font-bold' }, [
+      'Post ',
+      (slug),
+    ]),
+  ]);
+});
+
+export const routes = [
+  { path: '/', component: Home, layout: DefaultLayout },
+  { path: '/guia', component: Guide, layout: Docs },
+  { path: '/post/:slug', component: Post, layout: Docs },
+];
+
+export default { __cord: 'app', routes: routes, theme: theme };

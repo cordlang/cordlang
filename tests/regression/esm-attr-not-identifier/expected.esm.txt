@@ -1,0 +1,28 @@
+/* cordlang: source=tests/regression/esm-attr-not-identifier/input.cord */
+import { h, frag, txt, keyed, component } from '/@cord/runtime.js';
+
+export const theme = null;
+
+export const AttrWords = component('AttrWords', function (props, $) {
+  const { label = 'Enviar' } = props;
+  const [count, setCount] = $.state('count', 0);
+  return h('div', { class: 'flex flex-col gap-16' }, [
+    h('button', { class: 'btn', type: 'button', purpose: 'action' }, [
+      'Buscar',
+    ]),
+    h('div', { class: 'flex flex-col gap-8', id: 'forma' }, [
+      h('p', { class: 'text-muted' }, [
+        'Etiqueta: ',
+        (label),
+      ]),
+      h('span', { class: 'text-lg font-bold' }, [
+        (count),
+      ]),
+      h('button', { class: 'btn btn-primary', onClick: (e) => { setCount(count + 1); } }, [
+        '+',
+      ]),
+    ]),
+  ]);
+});
+
+export default AttrWords;

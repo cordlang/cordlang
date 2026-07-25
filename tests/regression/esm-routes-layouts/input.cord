@@ -1,0 +1,39 @@
+# Regression: routes must carry a component and pick the right layout.
+#
+# IR_ROUTE stores the URL in `name` and the target in `value` (see ir.c).
+# Reading value/value2 instead produced `export const routes = []` — the app
+# mounted with zero routes and every URL fell through to the 404 view.
+
+theme app
+  primary: "#0c0f12"
+  accent: "#3DFFB5"
+  radius: 12
+
+layout default
+  col min-h=screen
+    header "Sitio" sticky
+    main
+      slot
+
+layout docs
+  row gap=24
+    aside "Indice" w=240
+    main
+      slot
+
+route / => Home
+route /guia => Guide layout=docs
+route /post/:slug => Post layout=docs
+
+def Home
+  col gap=16 p=24
+    h1 "Inicio" size=3xl bold
+
+def Guide
+  col gap=16
+    h2 "Guia" size=2xl bold
+
+def Post
+  params slug
+  col gap=8
+    h2 "Post #{slug}" size=xl bold

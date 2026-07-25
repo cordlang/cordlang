@@ -49,7 +49,10 @@ function Get-NormalizedText([string]$text) {
   if ($null -eq $text) { return "" }
   $t = $text.Replace("`r`n", "`n")
   $t = $t.Replace("`r", "`n")
-  return $t
+  # run_tests.sh compares via $(...), which strips trailing newlines on BOTH
+  # sides. Do the same here or every golden fails on Windows with an
+  # off-by-one line count while passing on Linux.
+  return $t.TrimEnd("`n")
 }
 
 $failed = 0
@@ -141,8 +144,8 @@ foreach ($pair in $extraGoldens) {
     $failed = $failed + 1
     continue
   }
-  $args = @("compile", $fixture, "--backend", $backend)
-  $stdout = & $Cordlang @args 2>&1
+  $cmdArgs = @("compile", $fixture, "--backend", $backend)
+  $stdout = & $Cordlang @cmdArgs 2>&1
   $exitCode = $LASTEXITCODE
   if ($exitCode -ne 0) {
     Write-Host ("FAIL: " + $label + " - compile exit " + $exitCode) -ForegroundColor Red
@@ -221,22 +224,25 @@ if (Test-Path -LiteralPath $RegRoot) {
       $expectedPath = $_.FullName
       $backend = $_.BaseName.Substring("expected.".Length)
       $label = "regression/$slug (" + $backend + ")"
-      $args = New-Object System.Collections.Generic.List[string]
-      [void]$args.Add("compile")
-      [void]$args.Add($input)
-      [void]$args.Add("--backend")
-      [void]$args.Add($backend)
+      # NOT $args: that is a reserved automatic variable backed by a
+      # fixed-size array, so .Add() throws, the list stays empty and cordlang
+      # gets invoked with no arguments (reported as "compile exit 1").
+      $cmdArgs = New-Object System.Collections.Generic.List[string]
+      [void]$cmdArgs.Add("compile")
+      [void]$cmdArgs.Add($input)
+      [void]$cmdArgs.Add("--backend")
+      [void]$cmdArgs.Add($backend)
       $passesPath = Join-Path $dir.FullName "passes.txt"
       if (Test-Path -LiteralPath $passesPath) {
         Get-Content -LiteralPath $passesPath | ForEach-Object {
           $pname = $_.Trim()
           if ($pname -and -not $pname.StartsWith("#")) {
-            [void]$args.Add("--pass")
-            [void]$args.Add($pname)
+            [void]$cmdArgs.Add("--pass")
+            [void]$cmdArgs.Add($pname)
           }
         }
       }
-      $stdout = & $Cordlang @($args.ToArray()) 2>&1
+      $stdout = & $Cordlang @($cmdArgs.ToArray()) 2>&1
       $exitCode = $LASTEXITCODE
       if ($exitCode -ne 0) {
         Write-Host ("FAIL: " + $label + " - compile exit " + $exitCode) -ForegroundColor Red

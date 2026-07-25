@@ -1310,6 +1310,19 @@ static void gen_imports(Sb *sb, EsmCtx *c) {
     sb_addf(sb, "import %s from '%s';\n", c->imports[i].export_name,
             c->imports[i].url);
   sb_add(sb, "\n");
+  for (int i = 0; i < c->n_unresolved; i++) {
+    char *esc = js_escape_sq_dup(c->unresolved[i].mod_path);
+    sb_addf(sb,
+            "/* cordlang: modulo no encontrado: %s */\n"
+            "const %s = component('%s', function () {\n"
+            "  return h('div', { class: 'cord-runtime-error' },\n"
+            "           'cordlang: no existe el modulo \\'%s\\'');\n"
+            "});\n",
+            esc ? esc : "?", c->unresolved[i].export_name,
+            c->unresolved[i].export_name, esc ? esc : "?");
+    free(esc);
+  }
+  if (c->n_unresolved) sb_add(sb, "\n");
 }
 
 char *esm_generate_module(IrProgram *ir, const EsmModuleCtx *mod) {
