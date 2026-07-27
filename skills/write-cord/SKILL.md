@@ -27,7 +27,7 @@ You are authoring **Cordlang** — a dense UI DSL optimized for **vibecode / AI 
 
 1. Deliver **`.cord` source** as the primary artifact.  
 2. For apps: structure like `templates/` (`app.cord` + `pages/` + `components/` + `layouts/`).  
-3. Mention how to run: `cordlang run`, `cordlang run react`, `cordlang run svelte`, `cordlang check`, `cordlang analyze`.  
+3. Mention how to run: `cordlang run` (ESM preview — see `docs/PREVIEW.md` limits), `cordlang run react`, `cordlang run svelte`, `cordlang check`, `cordlang analyze`.  
 4. Prefer typed props: `props title: string = ""` (`string` \| `number` \| `boolean` \| `any`).  
 5. Only show generated React/Svelte if the user asks for emitted code.  
 6. After edits: `cordlang check` (or `cordlang ai check` / `check --json`). See `docs/AI_WORKFLOW.md`.

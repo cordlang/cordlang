@@ -5,6 +5,12 @@ Language surface versions follow [`docs/SPEC.md`](./docs/SPEC.md) and [`docs/VER
 
 ## [Unreleased]
 
+### Added — Fase R: ESM preview perfection
+- **R1 DX/perf** — in-process emit cache (mtime+bust), watch `public/**`, stderr on import truncation / parse errors, `cordlang run --smoke`, docs drift (GUIDE/LIBRARIES/skills)
+- **R2 Soft HMR** — SSE `update:/path.cord` remounts entry (import bust `?v=`); entry/public/config → full `reload`
+- **R3 `cordlang build esm`** — static tree under `dist/esm/` (no Node, no HMR client)
+- **R4 Runtime** — `ErrorBoundary` / `Portal` / `Suspense`; presets icon (SVG) / motion (CSS fade) / chart (axes stub)
+
 ### Added — ESM native preview (`cordlang run`)
 - **ESM backend** (`src/adapters/outbound/backends/esm/`): one ES module per `.cord`, JIT-compiled by the embedded dev server (no Node / npm / bundler). Docs: [`docs/PREVIEW.md`](./docs/PREVIEW.md)
   - `esm_ir.c` — IR → module emit (`component` modules + entry with `routes` / `theme`)

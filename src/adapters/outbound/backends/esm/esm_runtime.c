@@ -194,6 +194,7 @@ static const char *RUNTIME_JS =
     "let mountDepth = 0;\n"
     "const effectQueue = [];\n"
     "const dirtySet = new Set();\n"
+    "const boundaryStack = [];\n"
     "let scheduled = false;\n"
     "\n"
     "function Instance(fn, name, depth) {\n"
@@ -317,10 +318,20 @@ static const char *RUNTIME_JS =
     "  try {\n"
     "    out = inst.fn(vn.props || {}, inst.api);\n"
     "  } catch (e) {\n"
-    "    logErr(e);\n"
-    "    showOverlay('Error en ' + inst.name, e && e.stack ? e.stack : String(e));\n"
-    "    out = h('div', { class: 'cord-runtime-error' },\n"
-    "            inst.name + ': ' + (e && e.message ? e.message : String(e)));\n"
+    "    if (boundaryStack.length) {\n"
+    "      const b = boundaryStack[boundaryStack.length - 1];\n"
+    "      try { b.store.set('eb', { err: e }); invalidate(b); } catch (x) {}\n"
+    "      const fb = (b.vnode && b.vnode.props && b.vnode.props.fallback)\n"
+    "        ? b.vnode.props.fallback\n"
+    "        : h('div', { class: 'cord-runtime-error' },\n"
+    "            String(e && e.message ? e.message : e));\n"
+    "      out = fb;\n"
+    "    } else {\n"
+    "      logErr(e);\n"
+    "      showOverlay('Error en ' + inst.name, e && e.stack ? e.stack : String(e));\n"
+    "      out = h('div', { class: 'cord-runtime-error' },\n"
+    "              inst.name + ': ' + (e && e.message ? e.message : String(e)));\n"
+    "    }\n"
     "  }\n"
     "  currentInst = prev;\n"
     "  effectQueue.push(inst);\n"
@@ -352,8 +363,14 @@ static const char *RUNTIME_JS =
     "    const inst = new Instance(vn.type, vn.type.cordName || vn.type.name, mountDepth++);\n"
     "    inst.vnode = vn;\n"
     "    vn.inst = inst;\n"
-    "    vn.child = renderInst(vn, inst);\n"
-    "    mountVnode(vn.child, parent, before);\n"
+    "    const isEB = inst.name === 'ErrorBoundary';\n"
+    "    if (isEB) boundaryStack.push(inst);\n"
+    "    try {\n"
+    "      vn.child = renderInst(vn, inst);\n"
+    "      mountVnode(vn.child, parent, before);\n"
+    "    } finally {\n"
+    "      if (isEB) boundaryStack.pop();\n"
+    "    }\n"
     "    mountDepth--;\n"
     "    return;\n"
     "  }\n"
@@ -650,9 +667,22 @@ static const char *RUNTIME_JS =
     "}\n"
     "\n"
     "let booted = false;\n"
+    "let mountHost = null;\n"
+    "let mountRoot = null;\n"
+    "\n"
+    "export function remount(mod, el) {\n"
+    "  const target = el || mountHost || document.getElementById('app') || document.body;\n"
+    "  if (mountRoot) {\n"
+    "    try { unmountVnode(mountRoot); } catch (e) { logErr(e); }\n"
+    "    mountRoot = null;\n"
+    "  }\n"
+    "  target.textContent = '';\n"
+    "  return mount(mod, target);\n"
+    "}\n"
     "\n"
     "export function mount(mod, el) {\n"
     "  const target = el || document.getElementById('app') || document.body;\n"
+    "  mountHost = target;\n"
     "  if (!booted) {\n"
     "    document.addEventListener('click', onDocClick);\n"
     "    booted = true;\n"
@@ -662,37 +692,106 @@ static const char *RUNTIME_JS =
     "  target.textContent = '';\n"
     "  mountDepth = 0;\n"
     "  mountVnode(root, target, null);\n"
+    "  mountRoot = root;\n"
     "  drainEffects();\n"
     "  updateActiveLinks();\n"
     "  return root;\n"
     "}\n"
     "\n"
-    "export default { h: h, frag: frag, txt: txt, mount: mount, component: component,\n"
-    "                 navigate: navigate, Frag: FRAG };\n";
-
-static const char *HMR_CLIENT_JS =
-    "/* Cordlang dev reload: SSE from the compiler process. */\n"
-    "(function () {\n"
-    "  let es = null;\n"
-    "  let retry = 0;\n"
-    "  function connect() {\n"
-    "    try { es = new EventSource('/@cord/hmr'); } catch (e) { return; }\n"
-    "    es.onopen = function () { retry = 0; };\n"
-    "    es.onmessage = function (ev) {\n"
-    "      if (ev.data === 'reload') location.reload();\n"
-    "    };\n"
-    "    es.onerror = function () {\n"
-    "      if (es) { es.close(); es = null; }\n"
-    "      retry = Math.min(retry + 1, 10);\n"
-    "      setTimeout(connect, 250 * retry);\n"
-    "    };\n"
+    "export function ErrorBoundary(props, $) {\n"
+    "  const st = $.state('eb', { err: null });\n"
+    "  if (st[0].err) {\n"
+    "    return props.fallback || h('div', { class: 'cord-runtime-error' },\n"
+    "      String(st[0].err && st[0].err.message ? st[0].err.message : st[0].err));\n"
     "  }\n"
-    "  connect();\n"
-    "})();\n";
+    "  return props.children || null;\n"
+    "}\n"
+    "ErrorBoundary.cordName = 'ErrorBoundary';\n"
+    "\n"
+    "export function Portal(props, $) {\n"
+    "  const kids = props.children;\n"
+    "  $.effect(function () {\n"
+    "    const host = document.createElement('div');\n"
+    "    host.className = 'cord-portal';\n"
+    "    const target = (props.target === 'body' || !props.target)\n"
+    "      ? document.body\n"
+    "      : (document.querySelector(props.target) || document.body);\n"
+    "    target.appendChild(host);\n"
+    "    const vn = asVnode(kids);\n"
+    "    mountVnode(vn, host, null);\n"
+    "    drainEffects();\n"
+    "    return function () {\n"
+    "      try { unmountVnode(vn); } catch (e) {}\n"
+    "      host.remove();\n"
+    "    };\n"
+    "  }, [kids]);\n"
+    "  return frag(null);\n"
+    "}\n"
+    "Portal.cordName = 'Portal';\n"
+    "\n"
+    "export function Suspense(props) {\n"
+    "  if (props.loading) return props.fallback || null;\n"
+    "  return props.children || null;\n"
+    "}\n"
+    "Suspense.cordName = 'Suspense';\n"
+    "\n"
+    "export default { h: h, frag: frag, txt: txt, mount: mount, remount: remount,\n"
+    "                 component: component, navigate: navigate, Frag: FRAG,\n"
+    "                 ErrorBoundary: ErrorBoundary, Portal: Portal, Suspense: Suspense };\n";
+
+static char HMR_CLIENT_BUF[2048];
 
 const char *esm_runtime_js(void) { return RUNTIME_JS; }
 
-const char *esm_hmr_client_js(void) { return HMR_CLIENT_JS; }
+const char *esm_hmr_client_js(const char *entry_url) {
+  const char *entry = entry_url && *entry_url ? entry_url : "/src/app.cord";
+  char esc[512];
+  size_t j = 0;
+  esc[j++] = '\'';
+  for (const char *p = entry; *p && j + 3 < sizeof(esc); p++) {
+    if (*p == '\'' || *p == '\\') esc[j++] = '\\';
+    esc[j++] = *p;
+  }
+  esc[j++] = '\'';
+  esc[j] = '\0';
+  snprintf(
+      HMR_CLIENT_BUF, sizeof(HMR_CLIENT_BUF),
+      "/* Cordlang soft update / reload: SSE from the compiler process. */\n"
+      "(function () {\n"
+      "  var ENTRY = %s;\n"
+      "  var es = null;\n"
+      "  var retry = 0;\n"
+      "  function fullReload() { location.reload(); }\n"
+      "  function softUpdate(url) {\n"
+      "    var bust = Date.now();\n"
+      "    import('/@cord/runtime.js').then(function (rt) {\n"
+      "      return import(ENTRY + (ENTRY.indexOf('?') >= 0 ? '&' : '?') + 'hmr=' + bust)\n"
+      "        .then(function (mod) {\n"
+      "          var el = document.getElementById('app');\n"
+      "          if (!el || !rt.remount) { fullReload(); return; }\n"
+      "          rt.remount(mod.default !== undefined ? mod.default : mod, el);\n"
+      "        });\n"
+      "    }).catch(function () { fullReload(); });\n"
+      "  }\n"
+      "  function connect() {\n"
+      "    try { es = new EventSource('/@cord/hmr'); } catch (e) { return; }\n"
+      "    es.onopen = function () { retry = 0; };\n"
+      "    es.onmessage = function (ev) {\n"
+      "      if (!ev || !ev.data) return;\n"
+      "      if (ev.data === 'reload') { fullReload(); return; }\n"
+      "      if (ev.data.indexOf('update:') === 0) softUpdate(ev.data.slice(7));\n"
+      "    };\n"
+      "    es.onerror = function () {\n"
+      "      if (es) { es.close(); es = null; }\n"
+      "      retry = Math.min(retry + 1, 10);\n"
+      "      setTimeout(connect, 250 * retry);\n"
+      "    };\n"
+      "  }\n"
+      "  connect();\n"
+      "})();\n",
+      esc);
+  return HMR_CLIENT_BUF;
+}
 
 /*
  * Vite-style shell: no inline bootstrap. The entry .cord is loaded as
@@ -702,7 +801,7 @@ const char *esm_hmr_client_js(void) { return HMR_CLIENT_JS; }
  */
 char *esm_index_html(const char *lang, const char *title, const char *entry_url,
                      int has_site_css, int has_site_js, int has_favicon,
-                     int has_logo_svg) {
+                     int has_logo_svg, int with_hmr) {
   char lang_e[64];
   char title_e[512];
   html_escape_to(lang_e, sizeof(lang_e), lang && *lang ? lang : "en");
@@ -735,7 +834,7 @@ char *esm_index_html(const char *lang, const char *title, const char *entry_url,
       "  </head>\n"
       "  <body>\n"
       "    <div id=\"app\"></div>\n"
-      "    <script type=\"module\" src=\"/@cord/client\"></script>\n"
+      "%s"
       "    <script type=\"module\" src=\"%s\"></script>\n"
       "%s"
       "  </body>\n"
@@ -759,6 +858,8 @@ char *esm_index_html(const char *lang, const char *title, const char *entry_url,
             "}catch(e){}})();\n"
             "    </script>\n"
           : "",
+      with_hmr ? "    <script type=\"module\" src=\"/@cord/client\"></script>\n"
+               : "",
       entry,
       has_site_js ? "    <script type=\"module\" src=\"/site.js\"></script>\n" : "");
   return out;

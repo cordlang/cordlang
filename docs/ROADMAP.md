@@ -299,7 +299,7 @@ Mapa completo: [`docs/SVELTE.md`](./SVELTE.md) (basado en [svelte.dev/docs/svelt
 
 ```
 Hecho ──► Fases A–E MVP + IR-1/IR-2 + Fase G/H + traps/LSP + ESM preview MVP
-AHORA ──► Fase R — ESM native preview perfection (R1→R4)
+AHORA ──► Horizonte A residual / meta backends
 DESPUÉS ► Meta backends / WASM playground / registry remoto (no diluir A)
 ```
 
@@ -309,10 +309,10 @@ Track por fases (**E** = ejecutar R1→R4 en orden, un PR por fase). Contrato: [
 
 | # | Opción | Entregable | Estado |
 |---|--------|------------|--------|
-| **R1** | A — DX + rendimiento | Caché emit, watch `public/`, overlay/stderr, docs drift, smoke handler | ⬜ |
-| **R2** | B — Soft HMR | SSE `update` + reimport best-effort; full reload en entry/theme/css | ⬜ |
-| **R3** | C — `build esm` | `cordlang build esm` → `dist/esm` estático (subset preview) | ⬜ |
-| **R4** | D — Paridad runtime | errorBoundary / portal / suspense mínimos + degrade útil presets | ⬜ |
+| **R1** | A — DX + rendimiento | Caché emit, watch `public/`, overlay/stderr, docs drift, smoke handler | ✅ |
+| **R2** | B — Soft HMR | SSE `update` + reimport best-effort; full reload en entry/theme/css | ✅ |
+| **R3** | C — `build esm` | `cordlang build esm` → `dist/esm` estático (subset preview) | ✅ |
+| **R4** | D — Paridad runtime | errorBoundary / portal / suspense mínimos + degrade útil presets | ✅ |
 
 Orden fijo: **R1 → R2 → R3 → R4**. No mezclar fases en el mismo PR.
 
@@ -403,7 +403,7 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 ### ESM preview (`cordlang run`)
 
 1. JIT `.cord` → ES modules + SSE reload ✅ MVP — [`PREVIEW.md`](./PREVIEW.md)  
-2. Fase R (R1–R4) — perfeccionamiento ⬜ — ver §4.0  
+2. Fase R (R1–R4) — perfeccionamiento ✅ — ver §4.0  
 3. `cordlang run html` queda como **escape hatch** legacy (no el default)
 
 ### HTML preview (legacy — `cordlang run html`)
@@ -455,7 +455,7 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 | **M7 — Horizonte A** | A1–A6 (DX, contratos, paridad, IA workflow, templates, analyze) | ✅ gate 1.0 |
 | **M8 — Madurez** | Fase H (regresión, ARCHITECTURE, SPEC, bench, IR passes) | ✅ |
 | **M9 — Horizonte B / meta** | Platform → Vue → Solid → email/PDF → Next/Kit → ecosystem (`add`, templates, versioning, playground stub) → native spike | 🟡 en curso |
-| **M10 — ESM preview** | Fase R (R1 DX → R2 soft HMR → R3 build esm → R4 runtime) | ⬜ |
+| **M10 — ESM preview** | Fase R (R1 DX → R2 soft HMR → R3 build esm → R4 runtime) | ✅ |
 
 Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `backend:esm`, `ir`, `dx`, `ci`, `docs`.
 

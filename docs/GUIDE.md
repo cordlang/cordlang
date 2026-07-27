@@ -22,20 +22,16 @@ cordlang run react     # → dist/react (Vite + React + Tailwind)
 cordlang run svelte    # → dist/svelte (Vite + Svelte 5 runes)
 ```
 
-### HTML preview contract
+### ESM preview contract
 
-`cordlang run` is a **limited** native runtime — not React/Svelte parity:
+`cordlang run` is the **native ESM preview** (no Node): each `.cord` is a real ES
+module. See [`PREVIEW.md`](./PREVIEW.md). Legacy HTML: `cordlang run html`.
 
-| Supported | Not supported (use SPA backends) |
-|-----------|----------------------------------|
-| `state` + `setX(...)` / simple `x = …` | Full routing / layouts live |
-| `#{state}` live text | Dynamic `for` each (shows static samples) |
-| `bind=field` on `input` / `textarea` / `select` | Fetch / forms / context |
-| Live `if` / `else` via `data-if` | Meta-framework SSR |
-
-See `examples/preview_bind_if.cord`.
-
-Multi-file starters in the repo:
+| Supported in ESM preview | Use SPA backends (`run react\|svelte`) for |
+|--------------------------|-------------------------------------------|
+| Multi-file `use` / `route` / layouts | Full preset libs (lucide, framer, recharts) |
+| `state` + `setX` / `#{…}` / `if` / `for` | npm `foreign` packages |
+| Soft update (leaf `.cord`) or full reload | Production React/Svelte deploy |
 
 ```bash
 cordlang init demo --template counter
@@ -270,8 +266,10 @@ cordlang compile examples/counter.cord --ir
 
 | Command | Purpose |
 |---------|---------|
-| `cordlang run` | HTML preview |
+| `cordlang run` | ESM native preview (no Node) — [PREVIEW.md](./PREVIEW.md) |
+| `cordlang run html` | Legacy single-document HTML preview |
 | `cordlang run react\|svelte` | Scaffold Vite app |
+| `cordlang build esm` | Static export → `dist/esm` |
 | `cordlang run react --check` | + vite production build |
 | `cordlang run react --watch` | Rebuild on `.cord` change |
 | `cordlang check` | Semantic errors (`file:line:col`) |

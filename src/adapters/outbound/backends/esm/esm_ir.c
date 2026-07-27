@@ -105,7 +105,7 @@ typedef struct {
 #define ESM_MAX_SCOPE 192
 
 typedef struct {
-  const EsmModuleCtx *mod;
+  EsmModuleCtx *mod;
   EsmImport imports[ESM_MAX_IMPORTS];
   int n_imports;
   int is_layout;    /* current component is a layout → slot = props.children */
@@ -792,34 +792,63 @@ static void gen_element(Sb *sb, IrNode *node, int depth, EsmCtx *c) {
 
   /*
    * Preset tags (icon / motion / chart) have no npm component here. Degrade to
-   * a semantic element carrying the same class hooks rather than emitting an
-   * import that cannot resolve.
+   * a useful semantic stub (SVG / motion class / chart axes) rather than an
+   * unresolved import.
    */
-  int preset_tag = 0;
+  int preset_icon = 0, preset_motion = 0, preset_chart = 0;
   if (strcmp(dom_tag, "CordIcon") == 0) {
     dom_tag = "span";
-    preset_tag = 1;
+    preset_icon = 1;
   } else if (strcmp(dom_tag, "CordMotion") == 0) {
     dom_tag = "div";
-    preset_tag = 1;
+    preset_motion = 1;
   } else if (strcmp(dom_tag, "CordChart") == 0) {
     dom_tag = "div";
-    preset_tag = 1;
+    preset_chart = 1;
   }
+  int preset_tag = preset_icon || preset_motion || preset_chart;
 
   const char *base_class = cord_tag_base_class(tag);
   char classes[2048];
   cord_collect_classes(classes, sizeof(classes), node, base_class);
   if (preset_tag) {
     char extra[2048];
-    snprintf(extra, sizeof(extra), "cord-%s%s%s", tag, classes[0] ? " " : "",
-             classes);
+    if (preset_icon)
+      snprintf(extra, sizeof(extra), "cord-icon cord-%s%s%s", tag,
+               classes[0] ? " " : "", classes);
+    else if (preset_motion)
+      snprintf(extra, sizeof(extra), "cord-motion cord-motion-fade cord-%s%s%s",
+               tag, classes[0] ? " " : "", classes);
+    else
+      snprintf(extra, sizeof(extra), "cord-chart cord-%s%s%s", tag,
+               classes[0] ? " " : "", classes);
     snprintf(classes, sizeof(classes), "%s", extra);
   }
   const char *cls = classes;
   while (*cls == ' ') cls++;
 
   sb_pad(sb, depth);
+  if (preset_icon) {
+    sb_add(sb, "h('span', ");
+    gen_props_object(sb, node, tag, "span", cls, 0, c);
+    sb_add(sb,
+           ", [h('svg', { class: 'cord-icon-svg', viewBox: '0 0 24 24', width: "
+           "'1.25em', height: '1.25em', 'aria-hidden': 'true' }, ["
+           "h('path', { d: 'M12 2 L15 9 L22 9 L17 14 L19 21 L12 17 L5 21 L7 "
+           "14 L2 9 L9 9 Z', fill: 'currentColor' })])])");
+    return;
+  }
+  if (preset_chart) {
+    sb_add(sb, "h('div', ");
+    gen_props_object(sb, node, tag, "div", cls, 0, c);
+    sb_add(sb,
+           ", [h('div', { class: 'cord-chart-axes' }, ["
+           "h('div', { class: 'cord-chart-y' }),"
+           "h('div', { class: 'cord-chart-plot' }, 'chart')"
+           "])])");
+    return;
+  }
+
   sb_addf(sb, "h('%s', ", dom_tag);
   gen_props_object(sb, node, tag, dom_tag, cls, 0, c);
 
@@ -1021,11 +1050,28 @@ static void gen_node(Sb *sb, IrNode *n, int depth, EsmCtx *c) {
         gen_children_array(sb, n, depth + 1, c);
         sb_pad(sb, depth);
         sb_add(sb, "]) : null)");
-      } else if (ir_hook_is(n, "suspense") || ir_hook_is(n, "loading") ||
-                 ir_hook_is(n, "errorBoundary") || ir_hook_is(n, "portal")) {
-        /* No async boundary in the preview runtime: render the content. */
+      } else if (ir_hook_is(n, "errorBoundary")) {
+        /* Local boundary: catch render throws; optional __fallback__ child. */
         sb_pad(sb, depth);
-        sb_add(sb, "frag([\n");
+        sb_add(sb, "h(ErrorBoundary, { fallback: ");
+        {
+          int has_fb = 0;
+          for (size_t i = 0; i < n->n_kids; i++) {
+            IrNode *k = n->kids[i];
+            if (k && k->kind == IR_ELEMENT && k->name &&
+                strcmp(k->name, "__fallback__") == 0) {
+              sb_add(sb, "frag([\n");
+              gen_children_array(sb, k, depth + 1, c);
+              sb_pad(sb, depth);
+              sb_add(sb, "])");
+              has_fb = 1;
+              break;
+            }
+          }
+          if (!has_fb)
+            sb_add(sb, "h('div', { class: 'cord-runtime-error' }, 'Error')");
+        }
+        sb_add(sb, " }, frag([\n");
         for (size_t i = 0; i < n->n_kids; i++) {
           IrNode *k = n->kids[i];
           if (!is_renderable(k)) continue;
@@ -1036,7 +1082,54 @@ static void gen_node(Sb *sb, IrNode *n, int depth, EsmCtx *c) {
           sb_add(sb, ",\n");
         }
         sb_pad(sb, depth);
-        sb_add(sb, "])");
+        sb_add(sb, "]))");
+      } else if (ir_hook_is(n, "portal")) {
+        sb_pad(sb, depth);
+        sb_add(sb, "h(Portal, { target: 'body' }, frag([\n");
+        for (size_t i = 0; i < n->n_kids; i++) {
+          IrNode *k = n->kids[i];
+          if (!is_renderable(k)) continue;
+          if (k->kind == IR_ELEMENT && k->name &&
+              strcmp(k->name, "__fallback__") == 0)
+            continue;
+          gen_node(sb, k, depth + 1, c);
+          sb_add(sb, ",\n");
+        }
+        sb_pad(sb, depth);
+        sb_add(sb, "]))");
+      } else if (ir_hook_is(n, "suspense") || ir_hook_is(n, "loading")) {
+        /* Show __fallback__ while any $.resource in tree is loading — best-effort:
+         * emit Suspense wrapper that swaps on props.loading if present. */
+        sb_pad(sb, depth);
+        sb_add(sb, "h(Suspense, { fallback: ");
+        {
+          int has_fb = 0;
+          for (size_t i = 0; i < n->n_kids; i++) {
+            IrNode *k = n->kids[i];
+            if (k && k->kind == IR_ELEMENT && k->name &&
+                strcmp(k->name, "__fallback__") == 0) {
+              sb_add(sb, "frag([\n");
+              gen_children_array(sb, k, depth + 1, c);
+              sb_pad(sb, depth);
+              sb_add(sb, "])");
+              has_fb = 1;
+              break;
+            }
+          }
+          if (!has_fb) sb_add(sb, "null");
+        }
+        sb_add(sb, " }, frag([\n");
+        for (size_t i = 0; i < n->n_kids; i++) {
+          IrNode *k = n->kids[i];
+          if (!is_renderable(k)) continue;
+          if (k->kind == IR_ELEMENT && k->name &&
+              strcmp(k->name, "__fallback__") == 0)
+            continue;
+          gen_node(sb, k, depth + 1, c);
+          sb_add(sb, ",\n");
+        }
+        sb_pad(sb, depth);
+        sb_add(sb, "]))");
       } else {
         sb_pad(sb, depth);
         sb_add(sb, "null");
@@ -1388,15 +1481,17 @@ static void gen_imports(Sb *sb, EsmCtx *c) {
   /* `self_mount` (dev entry only) pulls `mount` for the Vite-style boot trailer. */
   if (c->self_mount)
     sb_add(sb,
-           "import { h, frag, txt, keyed, component, mount } from "
-           "'/@cord/runtime.js';\n");
+           "import { h, frag, txt, keyed, component, mount, ErrorBoundary, "
+           "Portal, Suspense } from '/@cord/runtime.js';\n");
   else
     sb_add(sb,
-           "import { h, frag, txt, keyed, component } from "
-           "'/@cord/runtime.js';\n");
-  for (int i = 0; i < c->n_imports; i++)
-    sb_addf(sb, "import %s from '%s';\n", c->imports[i].export_name,
-            c->imports[i].url);
+           "import { h, frag, txt, keyed, component, ErrorBoundary, Portal, "
+           "Suspense } from '/@cord/runtime.js';\n");
+  for (int i = 0; i < c->n_imports; i++) {
+    const char *q = (c->mod && c->mod->import_query) ? c->mod->import_query : "";
+    sb_addf(sb, "import %s from '%s%s';\n", c->imports[i].export_name,
+            c->imports[i].url, q);
+  }
   sb_add(sb, "\n");
   for (int i = 0; i < c->n_unresolved; i++) {
     char *esc = js_escape_sq_dup(c->unresolved[i].mod_path);
@@ -1445,8 +1540,9 @@ static void gen_imports(Sb *sb, EsmCtx *c) {
   if (c->n_foreigns) sb_add(sb, "\n");
 }
 
-char *esm_generate_module(IrProgram *ir, const EsmModuleCtx *mod) {
+char *esm_generate_module(IrProgram *ir, EsmModuleCtx *mod) {
   if (!ir || !ir->root || !mod) return NULL;
+  mod->truncated = 0;
 
   EsmCtx c;
   memset(&c, 0, sizeof(c));
@@ -1570,8 +1666,10 @@ char *esm_generate_module(IrProgram *ir, const EsmModuleCtx *mod) {
            "export default component('Empty', function () { return null; });\n");
   }
 
-  if (c.truncated)
+  if (c.truncated) {
+    mod->truncated = 1;
     sb_add(&out, "/* cordlang: import limit reached, some modules omitted */\n");
+  }
 
   return out.buf;
 }
