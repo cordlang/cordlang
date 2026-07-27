@@ -21,6 +21,8 @@ typedef struct {
   char *body;               /* heap; the server frees it */
   size_t len;               /* 0 → strlen(body) */
   int no_store;             /* 1 → Cache-Control: no-store */
+  /* If set, emitted as Cache-Control and overrides no_store. */
+  const char *cache_control;
 } DevResponse;
 
 /*

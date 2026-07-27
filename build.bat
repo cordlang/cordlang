@@ -33,6 +33,7 @@ gcc -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-function -Wno-format
   src/adapters/outbound/backends/source_attr.c ^
   src/adapters/outbound/backends/cord_class.c ^
   src/adapters/outbound/backends/theme_css.c ^
+  src/adapters/outbound/fonts/font_cache.c ^
   src/adapters/outbound/backends/react/react_backend.c ^
   src/adapters/outbound/backends/react/react_ir.c ^
   src/adapters/outbound/backends/react/react_scaffold.c ^

@@ -824,18 +824,15 @@ char *esm_index_html(const char *lang, const char *title, const char *entry_url,
       "%s"
       "%s"
       "    <title>%s</title>\n"
-      "    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n"
-      "    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n"
-      "    <link href=\"https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Syne:wght@600;700;800&display=swap\" rel=\"stylesheet\" />\n"
-      "    <link rel=\"stylesheet\" href=\"/@cord/theme.css\" />\n"
-      "    <link rel=\"stylesheet\" href=\"/@cord/base.css\" />\n"
+      "    <link rel=\"modulepreload\" href=\"/@cord/runtime.js\" />\n"
+      "    <link rel=\"stylesheet\" href=\"/@cord/styles.css\" />\n"
       "%s"
       "%s"
       "  </head>\n"
       "  <body>\n"
       "    <div id=\"app\"></div>\n"
-      "%s"
       "    <script type=\"module\" src=\"%s\"></script>\n"
+      "%s"
       "%s"
       "  </body>\n"
       "</html>\n",
@@ -858,10 +855,15 @@ char *esm_index_html(const char *lang, const char *title, const char *entry_url,
             "}catch(e){}})();\n"
             "    </script>\n"
           : "",
-      with_hmr ? "    <script type=\"module\" src=\"/@cord/client\"></script>\n"
-               : "",
       entry,
-      has_site_js ? "    <script type=\"module\" src=\"/site.js\"></script>\n" : "");
+      has_site_js ? "    <script type=\"module\" src=\"/site.js\"></script>\n" : "",
+      with_hmr
+          ? "    <script>\n"
+            "    (function(){function load(){import('/@cord/client').catch(function(){})}"
+            "if('requestIdleCallback' in window)requestIdleCallback(load,{timeout:2000});"
+            "else setTimeout(load,1);})();\n"
+            "    </script>\n"
+          : "");
   return out;
 }
 

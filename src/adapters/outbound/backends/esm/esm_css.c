@@ -680,7 +680,7 @@ static const char *BASE_CSS =
     "  background-color: var(--color-bg, #fafaf9);\n"
     "  color: var(--color-text, #1c1917);\n"
     "  line-height: 1.6;\n"
-    "  font-family: var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif);\n"
+    "  font-family: var(--font-sans, system-ui, sans-serif);\n"
     "  --ui-container: 80rem;\n"
     "  --ui-header-height: 4rem;\n"
     "}\n"
@@ -693,10 +693,10 @@ static const char *BASE_CSS =
     "ul, ol { margin: 0 0 0.75rem; padding-left: 1.25rem; }\n"
     "pre { margin: 0; overflow-x: auto; }\n"
     "code, pre, .font-mono, .font-mono * {\n"
-    "  font-family: var(--font-mono, 'IBM Plex Mono', ui-monospace, monospace);\n"
+    "  font-family: var(--font-mono, ui-monospace, monospace);\n"
     "}\n"
     ".font-display {\n"
-    "  font-family: var(--font-display, Syne, 'IBM Plex Sans', sans-serif);\n"
+    "  font-family: var(--font-display, system-ui, sans-serif);\n"
     "}\n"
     ".text-muted { color: var(--color-muted, #57534e); }\n"
     "\n"
@@ -854,7 +854,9 @@ static const char *BASE_CSS =
     "@keyframes cord-fade-in {\n"
     "  from { opacity: 0; transform: translateY(4px); }\n"
     "  to { opacity: 1; transform: none; }\n"
-    "}\n"
+    "}\n";
+
+static const char *BASE_CSS_CHART =
     ".cord-chart {\n"
     "  min-height: 8rem;\n"
     "  padding: 0.75rem;\n"
@@ -873,21 +875,39 @@ static const char *BASE_CSS =
     "  display: flex;\n"
     "  align-items: flex-end;\n"
     "  border-bottom: 2px solid var(--color-border, #d6d3d1);\n"
-    "}\n"
+    "}\n";
+
+static const char *BASE_CSS_PORTAL =
     ".cord-portal { position: relative; z-index: 1000; }\n";
 
 /* ── entry point ────────────────────────────────────────── */
+
+static int class_set_has_prefix(ClassSet *set, const char *prefix) {
+  if (!set || !prefix) return 0;
+  size_t n = strlen(prefix);
+  for (int i = 0; i < set->count; i++) {
+    if (strncmp(set->names[i], prefix, n) == 0) return 1;
+  }
+  return 0;
+}
 
 char *esm_base_css(IrProgram *ir) {
   Cb out;
   cb_init(&out);
   cb_add(&out, BASE_CSS);
 
-  if (!ir || !ir->root) return out.buf;
+  ClassSet *set = NULL;
+  if (ir && ir->root) {
+    set = calloc(1, sizeof(ClassSet));
+    if (set) collect_from_ir(ir->root, set);
+  }
 
-  ClassSet *set = calloc(1, sizeof(ClassSet));
+  if (set && class_set_has_prefix(set, "cord-chart"))
+    cb_add(&out, BASE_CSS_CHART);
+  if (set && class_set_has_prefix(set, "cord-portal"))
+    cb_add(&out, BASE_CSS_PORTAL);
+
   if (!set) return out.buf;
-  collect_from_ir(ir->root, set);
 
   cb_add(&out, "\n/* utilities for the classes this project emits */\n");
 

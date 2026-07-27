@@ -50,7 +50,7 @@ def Counter
 
 ## Visual quality
 
-- Start from `theme` tokens; use `type=display|title|body|caption`, `elevate=0..4`, `section` / `stack density=`, `md:p=` responsive.
+- Start from `theme` tokens; use `type=display|title|body|caption`, `elevate=0..4`, `section` / `stack density=`, `md:p=` responsive. `font: "Inter"` (etc.) resolves native WOFF2 via Cord cache — no Google `<link>` in shells.
 - Motion budget: 1–2 motions per viewport (`motion fade`). ESM preview degrades `icon`/`motion`/`chart` to stubs — full capability UI needs `run react|svelte`.
 - Full contract: [`DESIGN.md`](./DESIGN.md).
 

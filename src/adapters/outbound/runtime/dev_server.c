@@ -140,6 +140,20 @@ static int recv_headers(SOCKET s, char *buf, size_t cap) {
   return (int)total;
 }
 
+/* Browsers often open idle TCP sockets (preconnect). Without a recv timeout the
+ * single-threaded accept loop blocks forever on those and never serves / again. */
+static void set_recv_timeout_ms(SOCKET s, int ms) {
+#ifdef _WIN32
+  DWORD tv = (DWORD)(ms > 0 ? ms : 1);
+  setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
+#else
+  struct timeval tv;
+  tv.tv_sec = ms / 1000;
+  tv.tv_usec = (ms % 1000) * 1000;
+  setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+#endif
+}
+
 static int hexval(char c) {
   if (c >= '0' && c <= '9') return c - '0';
   if (c >= 'a' && c <= 'f') return c - 'a' + 10;
@@ -165,8 +179,17 @@ static void percent_decode(const char *in, char *out, size_t cap) {
 
 static void send_simple(SOCKET s, int status, const char *reason,
                         const char *ctype, const char *body, size_t len,
-                        int no_store, int head_only) {
-  char header[512];
+                        int no_store, const char *cache_control,
+                        int head_only) {
+  char cache_line[160];
+  cache_line[0] = '\0';
+  if (cache_control && *cache_control)
+    snprintf(cache_line, sizeof(cache_line), "Cache-Control: %s\r\n",
+             cache_control);
+  else if (no_store)
+    snprintf(cache_line, sizeof(cache_line), "Cache-Control: no-store\r\n");
+
+  char header[640];
   int hlen = snprintf(header, sizeof(header),
                       "HTTP/1.1 %d %s\r\n"
                       "Content-Type: %s\r\n"
@@ -175,7 +198,7 @@ static void send_simple(SOCKET s, int status, const char *reason,
                       "Connection: close\r\n"
                       "\r\n",
                       status, reason, ctype ? ctype : "text/plain; charset=utf-8",
-                      len, no_store ? "Cache-Control: no-store\r\n" : "");
+                      len, cache_line);
   if (hlen > 0) send_all(s, header, (size_t)hlen);
   if (!head_only && body && len) send_all(s, body, len);
 }
@@ -674,6 +697,8 @@ int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
     SOCKET client = accept(server, (struct sockaddr *)&caddr, &clen);
     if (client == INVALID_SOCKET) continue;
 
+    set_recv_timeout_ms(client, 2000);
+
     char req[8192];
     int n = recv_headers(client, req, sizeof(req));
     if (n <= 0) {
@@ -686,7 +711,7 @@ int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
     if (parse_request(req, method, sizeof(method), path, sizeof(path)) != 0) {
       const char *msg = "bad request";
       send_simple(client, 400, "Bad Request", "text/plain; charset=utf-8", msg,
-                  strlen(msg), 1, 0);
+                  strlen(msg), 1, NULL, 0);
       CLOSESOCK(client);
       continue;
     }
@@ -695,15 +720,17 @@ int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
     int is_head = strcmp(method, "HEAD") == 0;
     if (!is_get && !is_head) {
       send_simple(client, 405, "Method Not Allowed", "text/plain; charset=utf-8",
-                  "", 0, 1, 0);
+                  "", 0, 1, NULL, 0);
       CLOSESOCK(client);
       continue;
     }
 
-    /* The reload channel stays open; everything else is one-shot. */
+    /* The reload channel stays open; everything else is one-shot.
+     * (Keep-alive without a timeout starves this single-threaded accept loop
+     * when the browser opens parallel connections.) */
     if (strcmp(path, "/@cord/hmr") == 0) {
       if (is_head) {
-        send_simple(client, 200, "OK", "text/event-stream", "", 0, 1, 1);
+        send_simple(client, 200, "OK", "text/event-stream", "", 0, 1, NULL, 1);
         CLOSESOCK(client);
       } else {
         sse_add(&sse, client);
@@ -717,19 +744,20 @@ int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
     if (rc != 0) {
       const char *msg = "internal error";
       send_simple(client, 500, "Internal Server Error",
-                  "text/plain; charset=utf-8", msg, strlen(msg), 1, is_head);
+                  "text/plain; charset=utf-8", msg, strlen(msg), 1, NULL,
+                  is_head);
       free(res.body);
       CLOSESOCK(client);
       continue;
     }
 
     size_t len = res.len ? res.len : (res.body ? strlen(res.body) : 0);
-    const char *reason = res.status == 404 ? "Not Found"
+    const char *reason = res.status == 404   ? "Not Found"
                          : res.status == 500 ? "Internal Server Error"
                          : res.status == 304 ? "Not Modified"
                                              : "OK";
     send_simple(client, res.status ? res.status : 200, reason, res.content_type,
-                res.body, len, res.no_store, is_head);
+                res.body, len, res.no_store, res.cache_control, is_head);
     free(res.body);
     CLOSESOCK(client);
   }

@@ -36,8 +36,10 @@ y un cuerpo que **sí** es un ES module válido (`import` / `export`). El shell
 carga la entry como Vite:
 
 ```html
-<script type="module" src="/@cord/client"></script>
+<link rel="modulepreload" href="/@cord/runtime.js" />
+<link rel="stylesheet" href="/@cord/styles.css" />
 <script type="module" src="/src/app.cord"></script>
+<!-- HMR client se carga idle (requestIdleCallback) -->
 ```
 
 El browser pide ese URL; el server compila on-the-fly; los
@@ -52,10 +54,12 @@ Eso es el mismo truco que Vite con SFC: **el servidor es el compilador**.
 |-----|----------------|
 | `/` | Shell HTML compacto (estilo Vite: `#app` + scripts `src=`) |
 | `*.cord` | Módulo ES compilado JIT (`text/javascript`) — entry o componente |
-| `/@cord/runtime.js` | Runtime embebido: `h`, diff, hooks, router, `mount` |
+| `/@cord/runtime.js` | Runtime embebido (`immutable` cache) |
+| `/@cord/styles.css` | theme + base en un solo request |
 | `/@cord/base.css` | CSS utilitario JIT (clases del proyecto) + reset/base |
-| `/@cord/theme.css` | Tokens del bloque `theme` del entry (custom properties) |
-| `/@cord/client` | Cliente SSE de reload (equivalente a `/@vite/client`) |
+| `/@cord/theme.css` | Tokens `theme` + `@font-face` nativos |
+| `/@cord/fonts/<file>` | WOFF2 desde `~/.cordlang/cache/fonts` (`immutable`) |
+| `/@cord/client` | Cliente SSE de reload (carga diferida) |
 | `/@cord/hmr.js` | Alias de `/@cord/client` |
 | `/@cord/hmr` | Canal SSE (`text/event-stream`); mensaje `reload` → `location.reload()` |
 | estáticos | `public/**` primero (raíz del sitio), luego archivos del proyecto |
