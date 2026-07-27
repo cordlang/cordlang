@@ -5,6 +5,12 @@ Language surface versions follow [`docs/SPEC.md`](./docs/SPEC.md) and [`docs/VER
 
 ## [Unreleased]
 
+### Added — Fase R5: native error overlay (`cordlang run`)
+- Full-screen compile/runtime overlay (`showErrorOverlay` / `showCompileError`) with `file:line:col`, message, `code`/`hint`, and source excerpt
+- Parser spans (`error_line`/`error_col`) propagated through `CompileResult`
+- ESM JIT runs `check_service_on_ast` per `.cord`; failures emit structured error modules (HTTP 200, `no-store`)
+- Docs: ROADMAP R5, PREVIEW.md overlay contract; smoke covers parse + `jsx-attr` paths
+
 ### Added — Fase R: ESM preview perfection
 - **R1 DX/perf** — in-process emit cache (mtime+bust), watch `public/**`, stderr on import truncation / parse errors, `cordlang run --smoke`, docs drift (GUIDE/LIBRARIES/skills)
 - **R2 Soft HMR** — SSE `update:/path.cord` remounts entry (import bust `?v=`); entry/public/config → full `reload`

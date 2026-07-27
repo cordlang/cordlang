@@ -18,6 +18,7 @@
  * is what makes the browser walk the graph instead of receiving one blob.
  */
 #include "application/preview_service.h"
+#include "application/check_service.h"
 #include "application/compile_service.h"
 #include "application/ports/backend_port.h"
 #include "application/ports/compiler_port.h"
@@ -28,6 +29,7 @@
 #include "adapters/outbound/runtime/dev_server.h"
 #include "adapters/outbound/runtime/preview_server.h"
 #include "adapters/outbound/json/json_mini.h"
+#include "domain/diag.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -363,13 +365,23 @@ static int respond_cord_module(PreviewCtx *ctx, const char *path,
 
   CompileResult r = compiler_parse_file(abs);
   if (!r.ok || !r.ast) {
-    char detail[900];
-    snprintf(detail, sizeof(detail), "%s: %s", rel,
-             r.error ? r.error : "error de parseo");
-    fprintf(stderr, "cordlang preview: %s\n", detail);
+    DiagList diags;
+    diag_list_init(&diags);
+    diag_emit(&diags, DIAG_ERROR, rel,
+              r.error_line > 0 ? r.error_line : 0,
+              r.error_col > 0 ? r.error_col : 0, "%s",
+              r.error ? r.error : "error de parseo");
+    fprintf(stderr, "cordlang preview: %s:%d:%d: %s\n", rel,
+            r.error_line > 0 ? r.error_line : 0,
+            r.error_col > 0 ? r.error_col : 0,
+            r.error ? r.error : "error de parseo");
+    size_t src_len = 0;
+    char *src = fs_read_file(abs, &src_len);
     compiler_result_free(&r);
     free(abs);
-    char *mod = esm_error_module(detail);
+    char *mod = esm_error_module_from_diags(&diags, src, src_len);
+    free(src);
+    diag_list_free(&diags);
     if (!mod) return -1;
     return respond_str(out, 200, "text/javascript; charset=utf-8", mod,
                        strlen(mod), 1);
@@ -386,6 +398,27 @@ static int respond_cord_module(PreviewCtx *ctx, const char *path,
       free(en);
     }
     compiler_wrap_module_body(r.ast->root, export_name, abs);
+  }
+
+  {
+    DiagList diags;
+    diag_list_init(&diags);
+    if (check_service_on_module(r.ast->root, rel, &diags) != 0) {
+      fprintf(stderr, "cordlang preview: check failed in %s (%d error(s))\n",
+              rel, diag_error_count(&diags));
+      size_t src_len = 0;
+      char *src = r.ast->source ? strdup(r.ast->source) : fs_read_file(abs, &src_len);
+      if (r.ast->source && src) src_len = strlen(src);
+      compiler_result_free(&r);
+      free(abs);
+      char *mod = esm_error_module_from_diags(&diags, src, src_len);
+      free(src);
+      diag_list_free(&diags);
+      if (!mod) return -1;
+      return respond_str(out, 200, "text/javascript; charset=utf-8", mod,
+                         strlen(mod), 1);
+    }
+    diag_list_free(&diags);
   }
 
   IrProgram *ir = ir_from_ast(r.ast->root, abs);
@@ -696,6 +729,42 @@ int preview_service_smoke(const char *project_dir) {
   failed += smoke_check(&ctx, "/@cord/base.css", 200, "text/css", NULL);
   failed += smoke_check(&ctx, "/no-such-asset.xyz", 404, "text/plain", "404");
   failed += smoke_check(&ctx, "/spa-route-without-ext", 200, "text/html", "app");
+
+  /* R5: structured error overlay modules (parse + check). */
+  {
+    char bad_parse[1200];
+    char bad_check[1200];
+    snprintf(bad_parse, sizeof(bad_parse), "%s/src/__smoke_parse_err.cord",
+             ctx.root);
+    snprintf(bad_check, sizeof(bad_check), "%s/src/__smoke_check_err.cord",
+             ctx.root);
+    FILE *fp = fopen(bad_parse, "wb");
+    if (fp) {
+      fputs("foreign\n", fp);
+      fclose(fp);
+      failed += smoke_check(&ctx, "/src/__smoke_parse_err.cord", 200,
+                            "javascript", "showCompileError");
+      failed += smoke_check(&ctx, "/src/__smoke_parse_err.cord", 200,
+                            "javascript", "line\\\"");
+      remove(bad_parse);
+    } else {
+      fprintf(stderr, "smoke FAIL: cannot write parse-error fixture\n");
+      failed++;
+    }
+    fp = fopen(bad_check, "wb");
+    if (fp) {
+      fputs("def Bad\n  col className=\"flex\"\n    p \"nope\"\n", fp);
+      fclose(fp);
+      failed += smoke_check(&ctx, "/src/__smoke_check_err.cord", 200,
+                            "javascript", "showCompileError");
+      failed += smoke_check(&ctx, "/src/__smoke_check_err.cord", 200,
+                            "javascript", "jsx-attr");
+      remove(bad_check);
+    } else {
+      fprintf(stderr, "smoke FAIL: cannot write check-error fixture\n");
+      failed++;
+    }
+  }
 
   /* Entry with routes should emit a non-empty routes array when present. */
   {

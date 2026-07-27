@@ -69,8 +69,12 @@ Eso es el mismo truco que Vite con SFC: **el servidor es el compilador**.
 Notas prácticas:
 
 - `public/site.css` y `public/site.js` se enganchan en el shell si existen.
-- Parse error en un `.cord` → módulo de error (HTTP 200) que pinta overlay vía
-  `moduleError` — el browser sigue pudiendo ejecutar el grafo.
+- **Error overlay (R5):** parse fail o `check` error en un `.cord` → módulo JS
+  (HTTP 200, `no-store`) que llama `showCompileError(payload)` con
+  `diagnostics[]` (`file`/`line`/`col`/`message`/`code`/`hint`, misma forma que
+  `cordlang check --json`) + `frame` (excerpt del fuente). El runtime pinta un
+  overlay full-screen (`#cord-overlay`). Errores de render / `window.onerror`
+  usan el mismo UI. Al `mount`/`remount` (HMR soft) se limpia el overlay.
 - Watch: al guardar `.cord`, `public/**` o `cordlang.json` el server manda SSE.
   Leaf `.cord` (no entry) → soft update (`update:` + remount). Entry / public /
   config / CSS global → `reload` (full page). **Best-effort**; no es HMR de Vite
@@ -213,7 +217,7 @@ Otros matices:
 
 - Rutas client-side (`pathname` + `pushState`), no file-based SSR.
 - Un módulo no encontrado en el grafo → stub `cord-runtime-error` en el emit.
-- Error de render en un componente → overlay + caja `cord-runtime-error`.
+- Error de render en un componente → overlay full-screen + caja `cord-runtime-error`.
 - `cordlang build esm` escribe `dist/esm/` (shell sin HMR + módulos `.js` + runtime).
   Mismo subset de preview; no es paridad React.
 ## `esm` vs `react` (y el resto)

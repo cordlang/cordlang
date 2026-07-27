@@ -16,6 +16,8 @@ CompileResult compiler_parse_source(const char *source, size_t source_len) {
   if (parser->had_error) {
     result.ok = 0;
     result.error = parser->error_msg ? parser->error_msg : "parse error";
+    result.error_line = parser->error_line;
+    result.error_col = parser->error_col;
     ast_free(ast);
     parser_destroy(parser);
     lexer_destroy(lexer);

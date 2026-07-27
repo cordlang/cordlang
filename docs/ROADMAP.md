@@ -313,8 +313,9 @@ Track por fases (**E** = ejecutar R1→R4 en orden, un PR por fase). Contrato: [
 | **R2** | B — Soft HMR | SSE `update` + reimport best-effort; full reload en entry/theme/css | ✅ |
 | **R3** | C — `build esm` | `cordlang build esm` → `dist/esm` estático (subset preview) | ✅ |
 | **R4** | D — Paridad runtime | errorBoundary / portal / suspense mínimos + degrade útil presets | ✅ |
+| **R5** | E — Error overlay nativo | Overlay full-screen tipo Next: spans file:line:col, check en JIT, excerpt, code/hint | ✅ |
 
-Orden fijo: **R1 → R2 → R3 → R4**. No mezclar fases en el mismo PR.
+Orden fijo: **R1 → R2 → R3 → R4 → R5**. No mezclar fases en el mismo PR.
 
 ### 4.1 Horizonte A — épicas ejecutables
 
@@ -403,7 +404,7 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 ### ESM preview (`cordlang run`)
 
 1. JIT `.cord` → ES modules + SSE reload ✅ MVP — [`PREVIEW.md`](./PREVIEW.md)  
-2. Fase R (R1–R4) — perfeccionamiento ✅ — ver §4.0  
+2. Fase R (R1–R5) — perfeccionamiento ✅ — ver §4.0  
 3. `cordlang run html` queda como **escape hatch** legacy (no el default)
 
 ### HTML preview (legacy — `cordlang run html`)
@@ -455,7 +456,7 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 | **M7 — Horizonte A** | A1–A6 (DX, contratos, paridad, IA workflow, templates, analyze) | ✅ gate 1.0 |
 | **M8 — Madurez** | Fase H (regresión, ARCHITECTURE, SPEC, bench, IR passes) | ✅ |
 | **M9 — Horizonte B / meta** | Platform → Vue → Solid → email/PDF → Next/Kit → ecosystem (`add`, templates, versioning, playground stub) → native spike | 🟡 en curso |
-| **M10 — ESM preview** | Fase R (R1 DX → R2 soft HMR → R3 build esm → R4 runtime) | ✅ |
+| **M10 — ESM preview** | Fase R (R1 DX → R2 soft HMR → R3 build esm → R4 runtime → R5 error overlay) | ✅ |
 
 Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `backend:esm`, `ir`, `dx`, `ci`, `docs`.
 
@@ -470,4 +471,4 @@ Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `backend:esm`, `
 
 ---
 
-*Última actualización: Fase R (ESM preview perfection R1–R4) en track activo; playground WASM real y MCP Cordlang = pendientes.*
+*Última actualización: Fase R5 (error overlay nativo Next-style) ✅; playground WASM real y MCP Cordlang = pendientes.*

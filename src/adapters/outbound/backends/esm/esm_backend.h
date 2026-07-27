@@ -3,6 +3,7 @@
 
 #include "application/ports/backend_port.h"
 #include "domain/ir.h"
+#include "domain/diag.h"
 
 /*
  * Native ES-module backend.
@@ -70,6 +71,13 @@ const char *esm_hmr_client_js(const char *entry_url);
 
 /* Error-overlay module body for a failed compile. Caller frees. */
 char *esm_error_module(const char *message);
+
+/*
+ * Structured compile-error module: diagnostics (+ optional source frame).
+ * `source` may be NULL. Caller frees the returned JS.
+ */
+char *esm_error_module_from_diags(const DiagList *diags, const char *source,
+                                  size_t source_len);
 
 /*
  * Utility CSS for exactly the classes this project emits (a tiny JIT over the

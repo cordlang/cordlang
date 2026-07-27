@@ -28,6 +28,8 @@ void diag_emit_ex(DiagList *d, DiagLevel level, const char *file, int line,
                   ...);
 void diag_print_all(const DiagList *d); /* file:line:col: error: msg (+ hint) */
 void diag_print_json(const DiagList *d); /* stdout JSON array */
+/* Heap JSON array matching diag_print_json. Caller frees. Never NULL. */
+char *diag_format_json(const DiagList *d);
 int diag_error_count(const DiagList *d);
 int diag_count_level(const DiagList *d, DiagLevel level);
 

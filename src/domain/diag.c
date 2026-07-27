@@ -99,68 +99,136 @@ void diag_print_all(const DiagList *d) {
   }
 }
 
-static void json_escape_f(FILE *f, const char *s) {
-  if (!s) {
-    fputs("", f);
+typedef struct {
+  char *buf;
+  size_t len, cap;
+} DiagSb;
+
+static int diagsb_grow(DiagSb *sb, size_t extra) {
+  if (sb->len + extra + 1 <= sb->cap) return 1;
+  size_t ncap = sb->cap ? sb->cap * 2 : 256;
+  while (ncap < sb->len + extra + 1) ncap *= 2;
+  char *n = realloc(sb->buf, ncap);
+  if (!n) return 0;
+  sb->buf = n;
+  sb->cap = ncap;
+  return 1;
+}
+
+static void diagsb_add(DiagSb *sb, const char *s) {
+  if (!sb || !s) return;
+  size_t n = strlen(s);
+  if (!diagsb_grow(sb, n)) return;
+  memcpy(sb->buf + sb->len, s, n);
+  sb->len += n;
+  sb->buf[sb->len] = '\0';
+}
+
+static void diagsb_addc(DiagSb *sb, char c) {
+  if (!sb || !diagsb_grow(sb, 1)) return;
+  sb->buf[sb->len++] = c;
+  sb->buf[sb->len] = '\0';
+}
+
+static void diagsb_addf(DiagSb *sb, const char *fmt, ...) {
+  if (!sb || !fmt) return;
+  va_list ap;
+  va_start(ap, fmt);
+  char tmp[512];
+  int n = vsnprintf(tmp, sizeof(tmp), fmt, ap);
+  va_end(ap);
+  if (n < 0) return;
+  if ((size_t)n < sizeof(tmp)) {
+    diagsb_add(sb, tmp);
     return;
   }
+  char *big = malloc((size_t)n + 1);
+  if (!big) return;
+  va_start(ap, fmt);
+  vsnprintf(big, (size_t)n + 1, fmt, ap);
+  va_end(ap);
+  diagsb_add(sb, big);
+  free(big);
+}
+
+static void json_escape_sb(DiagSb *sb, const char *s) {
+  if (!s) return;
   for (const unsigned char *p = (const unsigned char *)s; *p; p++) {
     switch (*p) {
       case '"':
-        fputs("\\\"", f);
+        diagsb_add(sb, "\\\"");
         break;
       case '\\':
-        fputs("\\\\", f);
+        diagsb_add(sb, "\\\\");
         break;
       case '\n':
-        fputs("\\n", f);
+        diagsb_add(sb, "\\n");
         break;
       case '\r':
-        fputs("\\r", f);
+        diagsb_add(sb, "\\r");
         break;
       case '\t':
-        fputs("\\t", f);
+        diagsb_add(sb, "\\t");
         break;
       default:
         if (*p < 0x20)
-          fprintf(f, "\\u%04x", *p);
+          diagsb_addf(sb, "\\u%04x", *p);
         else
-          fputc(*p, f);
+          diagsb_addc(sb, (char)*p);
         break;
     }
   }
 }
 
-void diag_print_json(const DiagList *d) {
-  fputc('[', stdout);
+static void diag_append_json_array(DiagSb *sb, const DiagList *d) {
+  diagsb_addc(sb, '[');
   if (!d) {
-    fputs("]", stdout);
+    diagsb_addc(sb, ']');
     return;
   }
   for (size_t i = 0; i < d->len; i++) {
     const Diagnostic *it = &d->items[i];
-    if (i) fputc(',', stdout);
-    fputs("{\"level\":\"", stdout);
-    fputs(level_str(it->level), stdout);
-    fputs("\",\"file\":\"", stdout);
-    json_escape_f(stdout, it->file && it->file[0] ? it->file : "<input>");
-    fprintf(stdout, "\",\"line\":%d,\"col\":%d,\"message\":\"", it->line,
-            it->col);
-    json_escape_f(stdout, it->message ? it->message : "");
-    fputc('"', stdout);
+    if (i) diagsb_addc(sb, ',');
+    diagsb_add(sb, "{\"level\":\"");
+    diagsb_add(sb, level_str(it->level));
+    diagsb_add(sb, "\",\"file\":\"");
+    json_escape_sb(sb, it->file && it->file[0] ? it->file : "<input>");
+    diagsb_addf(sb, "\",\"line\":%d,\"col\":%d,\"message\":\"", it->line,
+                it->col);
+    json_escape_sb(sb, it->message ? it->message : "");
+    diagsb_addc(sb, '"');
     if (it->code && it->code[0]) {
-      fputs(",\"code\":\"", stdout);
-      json_escape_f(stdout, it->code);
-      fputc('"', stdout);
+      diagsb_add(sb, ",\"code\":\"");
+      json_escape_sb(sb, it->code);
+      diagsb_addc(sb, '"');
     }
     if (it->hint && it->hint[0]) {
-      fputs(",\"hint\":\"", stdout);
-      json_escape_f(stdout, it->hint);
-      fputc('"', stdout);
+      diagsb_add(sb, ",\"hint\":\"");
+      json_escape_sb(sb, it->hint);
+      diagsb_addc(sb, '"');
     }
-    fputc('}', stdout);
+    diagsb_addc(sb, '}');
   }
-  fputs("]", stdout);
+  diagsb_addc(sb, ']');
+}
+
+char *diag_format_json(const DiagList *d) {
+  DiagSb sb = {0};
+  if (!diagsb_grow(&sb, 64)) return strdup("[]");
+  sb.buf[0] = '\0';
+  diag_append_json_array(&sb, d);
+  if (!sb.buf) return strdup("[]");
+  return sb.buf;
+}
+
+void diag_print_json(const DiagList *d) {
+  char *json = diag_format_json(d);
+  if (json) {
+    fputs(json, stdout);
+    free(json);
+  } else {
+    fputs("[]", stdout);
+  }
 }
 
 int diag_error_count(const DiagList *d) {
