@@ -74,11 +74,11 @@ Notas prácticas:
   `diagnostics[]` (`file`/`line`/`col`/`message`/`code`/`hint`, misma forma que
   `cordlang check --json`) + `frame` (excerpt del fuente). El runtime pinta un
   overlay full-screen (`#cord-overlay`). Errores de render / `window.onerror`
-  usan el mismo UI. Al `mount`/`remount` (HMR soft) se limpia el overlay.
-- Watch: al guardar `.cord`, `public/**` o `cordlang.json` el server manda SSE.
-  Leaf `.cord` (no entry) → soft update (`update:` + remount). Entry / public /
-  config / CSS global → `reload` (full page). **Best-effort**; no es HMR de Vite
-  con preservación perfecta de estado.
+  usan el mismo UI. Al `mount`/`remount` se limpia el overlay. Strings sin
+  cerrar (`"`) son error de lexer con línea/columna.
+- Watch: al guardar `.cord`, `public/**` o `cordlang.json` el server manda SSE
+  `reload` (full page). No soft-reimport con `?hmr=`/`?v=` — evita grafos
+  apilados en DevTools Sources.
 
 ## Forma del módulo emitido
 
@@ -245,7 +245,7 @@ Regla práctica:
 | `src/adapters/outbound/backends/esm/esm_css.c` | JIT `base.css` |
 | `src/adapters/outbound/backends/esm/esm_backend.h` | API del backend |
 | `src/adapters/outbound/backends/cord_class.c` | Mapeo attr → clase (compartido con otros backends) |
-| `src/adapters/outbound/runtime/dev_server.c` | HTTP + SSE (`reload` / `update:`) |
+| `src/adapters/outbound/runtime/dev_server.c` | HTTP + SSE (`reload` on change) |
 | `src/application/preview_service.c` | Handler de URLs / compile por request / cache / `build esm` |
 | `src/adapters/outbound/runtime/preview_server.c` | Server del **legacy** `run html` |
 

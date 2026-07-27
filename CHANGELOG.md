@@ -5,6 +5,10 @@ Language surface versions follow [`docs/SPEC.md`](./docs/SPEC.md) and [`docs/VER
 
 ## [Unreleased]
 
+### Added — Preview DX fixes
+- **Unterminated strings** — lexer errors on missing `"` (no silent swallow); overlay shows file:line
+- **Watch reload** — full page reload only (no stacked `?hmr=`/`?v=` module graphs in DevTools)
+
 ### Added — Fase R5: native error overlay (`cordlang run`)
 - Full-screen compile/runtime overlay (`showErrorOverlay` / `showCompileError`) with `file:line:col`, message, `code`/`hint`, and source excerpt
 - Parser spans (`error_line`/`error_col`) propagated through `CompileResult`

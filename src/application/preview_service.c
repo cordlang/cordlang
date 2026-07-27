@@ -335,11 +335,6 @@ static int same_file(const char *a, const char *b) {
   return eq;
 }
 
-static char *bust_query(PreviewCtx *ctx, char *buf, size_t n) {
-  snprintf(buf, n, "?v=%llu", (unsigned long long)ctx->bust);
-  return buf;
-}
-
 static int respond_cord_module(PreviewCtx *ctx, const char *path,
                                DevResponse *out) {
   if (path_has_dotdot(path)) return respond_not_found(out, path);
@@ -428,7 +423,6 @@ static int respond_cord_module(PreviewCtx *ctx, const char *path,
     return -1;
   }
 
-  char qbuf[64];
   EsmModuleCtx mod;
   memset(&mod, 0, sizeof(mod));
   mod.kind = is_entry ? ESM_MOD_ENTRY : ESM_MOD_COMPONENT;
@@ -436,7 +430,9 @@ static int respond_cord_module(PreviewCtx *ctx, const char *path,
   mod.source_rel = rel;
   mod.abs_path = abs;
   mod.project_root = ctx->root_abs[0] ? ctx->root_abs : ctx->root;
-  mod.import_query = bust_query(ctx, qbuf, sizeof(qbuf));
+  /* No ?v= on imports: full-page reload on watch is enough to bust cache and
+   * keeps DevTools Sources as clean /src/….cord URLs. */
+  mod.import_query = NULL;
   mod.truncated = 0;
 
   char *js = esm_generate_module(ir, &mod);

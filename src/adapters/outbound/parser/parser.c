@@ -2702,7 +2702,21 @@ static Node *parse_stmt(Parser *p) {
 AST *parser_parse(Parser *p) {
   lexer_tokenize(p->lexer);
 
+  if (p->lexer && p->lexer->had_error) {
+    parser_fail(p,
+                p->lexer->error_msg ? p->lexer->error_msg : "lex error",
+                p->lexer->error_line, p->lexer->error_col);
+    AST *result = p->ast;
+    p->ast = NULL;
+    return result;
+  }
+
   while (peek(p).type != TOKEN_EOF) {
+    if (peek(p).type == TOKEN_ERROR) {
+      Token t = peek(p);
+      parser_fail(p, "invalid token", t.line, t.col);
+      break;
+    }
     Node *stmt = parse_stmt(p);
     if (stmt) {
       node_add_child(p->ast->root, stmt);

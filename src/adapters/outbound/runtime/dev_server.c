@@ -674,18 +674,13 @@ int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
                                      sizeof(changed_url));
           snap = now;
           if (on_change)
-            on_change(userdata, full ? NULL : changed_url, full);
-          if (full) {
-            printf("cambio detectado -> reload\n");
-            fflush(stdout);
-            sse_broadcast(&sse, "reload");
-          } else {
-            char ev[600];
-            snprintf(ev, sizeof(ev), "update:%s", changed_url);
-            printf("cambio detectado -> soft update %s\n", changed_url);
-            fflush(stdout);
-            sse_broadcast(&sse, ev);
-          }
+            on_change(userdata, NULL, 1);
+          /* Always full reload: soft ?hmr=/?v= reimports stacked DevTools graphs. */
+          (void)full;
+          (void)changed_url;
+          printf("cambio detectado -> reload\n");
+          fflush(stdout);
+          sse_broadcast(&sse, "reload");
         }
       }
     }

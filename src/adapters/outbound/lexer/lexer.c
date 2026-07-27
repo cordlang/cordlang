@@ -95,8 +95,6 @@ static void lexer_fail(Lexer *lexer, const char *msg, int line, int col) {
   lexer->error_msg = msg ? msg : "lex error";
   lexer->error_line = line > 0 ? line : 1;
   lexer->error_col = col > 0 ? col : 1;
-  fprintf(stderr, "Error at line %d: %s\n", lexer->error_line,
-          lexer->error_msg);
 }
 
 static Token read_string(Lexer *lexer, int open_line, int open_col) {
@@ -219,8 +217,10 @@ void lexer_tokenize(Lexer *lexer) {
     at_line_start = 0;
 
     if (c == '"') {
+      int open_line = lexer->line;
+      int open_col = lexer->col;
       advance(lexer);
-      Token t = read_string(lexer);
+      Token t = read_string(lexer, open_line, open_col);
       emit_token(lexer, t.type, t.start, t.len);
       continue;
     }
