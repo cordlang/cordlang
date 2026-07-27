@@ -60,7 +60,8 @@ SRC = \
   src/adapters/outbound/backends/esm/esm_runtime.c \
   src/adapters/outbound/backends/esm/esm_css.c \
   src/adapters/outbound/runtime/preview_server.c \
-  src/adapters/outbound/runtime/dev_server.c
+  src/adapters/outbound/runtime/dev_server.c \
+  src/adapters/outbound/term/term_log.c
 
 # Optional sanitizers: make ASAN=1
 ifeq ($(ASAN),1)

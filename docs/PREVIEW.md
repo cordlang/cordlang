@@ -73,12 +73,13 @@ Notas prácticas:
   (HTTP 200, `no-store`) que llama `showCompileError(payload)` con
   `diagnostics[]` (`file`/`line`/`col`/`message`/`code`/`hint`, misma forma que
   `cordlang check --json`) + `frame` (excerpt del fuente). El runtime pinta un
-  overlay full-screen (`#cord-overlay`). Errores de render / `window.onerror`
-  usan el mismo UI. Al `mount`/`remount` se limpia el overlay. Strings sin
-  cerrar (`"`) son error de lexer con línea/columna.
-- Watch: al guardar `.cord`, `public/**` o `cordlang.json` el server manda SSE
-  `reload` (full page). No soft-reimport con `?hmr=`/`?v=` — evita grafos
-  apilados en DevTools Sources.
+  overlay full-screen (`#cord-overlay`) e inyecta CSS crítico del overlay si
+  hace falta. `/@cord/styles.css` sigue sirviendo base+overlay aunque el
+  proyecto no compile. Strings sin cerrar (`"`) son error de lexer con
+  línea/columna.
+- Watch: leaf `.cord` → soft update (reimport entry, **keep last good UI** if
+  compile fails — error modal on top). Entry / `public/` / `cordlang.json` →
+  full `reload`.
 
 ## Forma del módulo emitido
 

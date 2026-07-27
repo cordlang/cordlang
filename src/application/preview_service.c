@@ -29,6 +29,7 @@
 #include "adapters/outbound/runtime/dev_server.h"
 #include "adapters/outbound/runtime/preview_server.h"
 #include "adapters/outbound/json/json_mini.h"
+#include "adapters/outbound/term/term_log.h"
 #include "domain/diag.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,6 +60,23 @@ typedef struct {
   PreviewCacheEntry cache[PREVIEW_CACHE_MAX];
   int n_cache;
 } PreviewCtx;
+
+static void preview_log_compile_error(PreviewCtx *ctx, const char *rel, int line,
+                                      int col, const char *msg) {
+  static char last_key[700];
+  static unsigned long long last_bust;
+  char key[700];
+  snprintf(key, sizeof(key), "%llu|%s|%d|%d|%s",
+           (unsigned long long)(ctx ? ctx->bust : 0), rel ? rel : "?", line, col,
+           msg ? msg : "");
+  if (ctx && last_bust == ctx->bust && strcmp(last_key, key) == 0) return;
+  last_bust = ctx ? ctx->bust : 0;
+  snprintf(last_key, sizeof(last_key), "%s", key);
+  if (line > 0)
+    term_error("%s:%d:%d  %s", rel ? rel : "?", line, col, msg ? msg : "error");
+  else
+    term_error("%s  %s", rel ? rel : "?", msg ? msg : "error");
+}
 
 static char *read_entry_from_config(const char *project_dir) {
   char *cfg = fs_join(project_dir, "cordlang.json");
@@ -209,11 +227,16 @@ static int respond_project_css(PreviewCtx *ctx, int want_theme, DevResponse *out
 
   CompileResult r = compiler_parse_project(ctx->entry_abs);
   if (!r.ok || !r.ast) {
-    char msg[1024];
-    snprintf(msg, sizeof(msg), "/* cordlang: no compila: %s */\n",
-             r.error ? r.error : "error de parseo");
     compiler_result_free(&r);
-    return respond_static_str(out, 200, "text/css; charset=utf-8", msg, 1);
+    char *css = esm_base_css(NULL);
+    if (!css) css = strdup("/* cordlang: base unavailable */\n");
+    size_t len = strlen(css);
+    char *owned = css;
+    cache_put(ctx, key, 0, 0, "text/css; charset=utf-8", strdup(owned), len);
+    free(owned);
+    hit = cache_find(ctx, key);
+    if (hit) return respond_cached_copy(out, hit);
+    return -1;
   }
   IrProgram *ir = ir_from_ast(r.ast->root, ctx->entry_abs);
   char *css = NULL;
@@ -248,11 +271,16 @@ static int respond_styles_css(PreviewCtx *ctx, DevResponse *out) {
 
   CompileResult r = compiler_parse_project(ctx->entry_abs);
   if (!r.ok || !r.ast) {
-    char msg[1024];
-    snprintf(msg, sizeof(msg), "/* cordlang: no compila: %s */\n",
-             r.error ? r.error : "error de parseo");
     compiler_result_free(&r);
-    return respond_static_str(out, 200, "text/css; charset=utf-8", msg, 1);
+    /* Still serve base+overlay CSS so the error overlay is styled. */
+    char *base = esm_base_css(NULL);
+    if (!base) base = strdup("/* cordlang: base unavailable */\n");
+    size_t len = strlen(base);
+    cache_put(ctx, key, 0, 0, "text/css; charset=utf-8", strdup(base), len);
+    free(base);
+    hit = cache_find(ctx, key);
+    if (hit) return respond_cached_copy(out, hit);
+    return -1;
   }
   IrProgram *ir = ir_from_ast(r.ast->root, ctx->entry_abs);
   char *theme = NULL;
@@ -268,6 +296,7 @@ static int respond_styles_css(PreviewCtx *ctx, DevResponse *out) {
   }
   compiler_result_free(&r);
   if (!theme) theme = strdup("/* theme */\n");
+  if (!base) base = esm_base_css(NULL);
   if (!base) base = strdup("/* base */\n");
   size_t n = strlen(theme) + strlen(base) + 8;
   char *css = malloc(n);
@@ -335,6 +364,11 @@ static int same_file(const char *a, const char *b) {
   return eq;
 }
 
+static char *bust_query(PreviewCtx *ctx, char *buf, size_t n) {
+  snprintf(buf, n, "?v=%llu", (unsigned long long)ctx->bust);
+  return buf;
+}
+
 static int respond_cord_module(PreviewCtx *ctx, const char *path,
                                DevResponse *out) {
   if (path_has_dotdot(path)) return respond_not_found(out, path);
@@ -366,10 +400,10 @@ static int respond_cord_module(PreviewCtx *ctx, const char *path,
               r.error_line > 0 ? r.error_line : 0,
               r.error_col > 0 ? r.error_col : 0, "%s",
               r.error ? r.error : "error de parseo");
-    fprintf(stderr, "cordlang preview: %s:%d:%d: %s\n", rel,
-            r.error_line > 0 ? r.error_line : 0,
-            r.error_col > 0 ? r.error_col : 0,
-            r.error ? r.error : "error de parseo");
+    preview_log_compile_error(ctx, rel,
+                              r.error_line > 0 ? r.error_line : 0,
+                              r.error_col > 0 ? r.error_col : 0,
+                              r.error ? r.error : "error de parseo");
     size_t src_len = 0;
     char *src = fs_read_file(abs, &src_len);
     compiler_result_free(&r);
@@ -399,8 +433,10 @@ static int respond_cord_module(PreviewCtx *ctx, const char *path,
     DiagList diags;
     diag_list_init(&diags);
     if (check_service_on_module(r.ast->root, rel, &diags) != 0) {
-      fprintf(stderr, "cordlang preview: check failed in %s (%d error(s))\n",
-              rel, diag_error_count(&diags));
+      const Diagnostic *d0 = diags.len ? &diags.items[0] : NULL;
+      preview_log_compile_error(
+          ctx, rel, d0 ? d0->line : 0, d0 ? d0->col : 0,
+          d0 && d0->message ? d0->message : "check failed");
       size_t src_len = 0;
       char *src = r.ast->source ? strdup(r.ast->source) : fs_read_file(abs, &src_len);
       if (r.ast->source && src) src_len = strlen(src);
@@ -430,31 +466,33 @@ static int respond_cord_module(PreviewCtx *ctx, const char *path,
   mod.source_rel = rel;
   mod.abs_path = abs;
   mod.project_root = ctx->root_abs[0] ? ctx->root_abs : ctx->root;
-  /* No ?v= on imports: full-page reload on watch is enough to bust cache and
-   * keeps DevTools Sources as clean /src/….cord URLs. */
-  mod.import_query = NULL;
-  mod.truncated = 0;
+  /* Bust imports so soft remount re-fetches the graph without full reload. */
+  {
+    char qbuf[64];
+    mod.import_query = bust_query(ctx, qbuf, sizeof(qbuf));
+    mod.truncated = 0;
 
-  char *js = esm_generate_module(ir, &mod);
-  ir_free(ir);
-  compiler_result_free(&r);
+    char *js = esm_generate_module(ir, &mod);
+    ir_free(ir);
+    compiler_result_free(&r);
 
-  if (mod.truncated)
-    fprintf(stderr,
-            "cordlang preview: import/foreign limit reached in %s (some "
-            "modules omitted)\n",
-            rel);
+    if (mod.truncated)
+      fprintf(stderr,
+              "cordlang preview: import/foreign limit reached in %s (some "
+              "modules omitted)\n",
+              rel);
 
-  free(abs);
-  if (!js) return -1;
+    free(abs);
+    if (!js) return -1;
 
-  size_t len = strlen(js);
-  cache_put(ctx, path, mtime, size, "text/javascript; charset=utf-8",
-            strdup(js), len);
-  free(js);
-  hit = cache_find(ctx, path);
-  if (hit) return respond_cached_copy(out, hit);
-  return -1;
+    size_t len = strlen(js);
+    cache_put(ctx, path, mtime, size, "text/javascript; charset=utf-8",
+              strdup(js), len);
+    free(js);
+    hit = cache_find(ctx, path);
+    if (hit) return respond_cached_copy(out, hit);
+    return -1;
+  }
 }
 
 static int respond_file(const char *abs, const char *path, DevResponse *out) {
@@ -628,7 +666,7 @@ int preview_service_run(const char *project_dir, int open_browser) {
     compiler_result_free(&probe);
   }
 
-  printf("Sirviendo %s como modulos ES nativos...\n", ctx->entry_url);
+  term_info("serving %s", ctx->entry_url);
   fflush(stdout);
 
   int rc = dev_server_serve(4173, dir, ctx->entry_url, open_browser,

@@ -5,6 +5,10 @@ Language surface versions follow [`docs/SPEC.md`](./docs/SPEC.md) and [`docs/VER
 
 ## [Unreleased]
 
+### Fixed — Overlay CSS + preview logs
+- **Overlay CSS** — `/@cord/styles.css` still serves base+overlay when the project does not compile; runtime also injects critical overlay styles
+- **Preview terminal** — colored `info`/`err`/`ok` tags, banner, deduped compile errors (no spam per request)
+
 ### Added — Preview DX fixes
 - **Unterminated strings** — lexer errors on missing `"` (no silent swallow); overlay shows file:line
 - **Watch reload** — full page reload only (no stacked `?hmr=`/`?v=` module graphs in DevTools)

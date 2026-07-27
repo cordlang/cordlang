@@ -15,6 +15,7 @@
 #include "application/ports/fs_port.h"
 #include "adapters/outbound/lexer/lexer.h"
 #include "adapters/outbound/json/json_mini.h"
+#include "adapters/outbound/term/term_log.h"
 #include "domain/ast.h"
 #include "domain/diag.h"
 #include "domain/ir.h"
@@ -630,6 +631,7 @@ static int cmd_build(int argc, char **argv) {
 }
 
 int cli_run(int argc, char **argv) {
+  term_init();
   backend_register_all();
 
   if (argc < 2) {

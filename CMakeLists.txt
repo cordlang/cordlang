@@ -60,6 +60,7 @@ set(SOURCES
   src/adapters/outbound/backends/esm/esm_css.c
   src/adapters/outbound/runtime/preview_server.c
   src/adapters/outbound/runtime/dev_server.c
+  src/adapters/outbound/term/term_log.c
 )
 
 add_executable(cordlang ${SOURCES})

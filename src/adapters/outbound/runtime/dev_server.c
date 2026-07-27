@@ -5,6 +5,7 @@
 
 #include "adapters/outbound/runtime/dev_server.h"
 #include "adapters/outbound/process/process_spawn.h"
+#include "adapters/outbound/term/term_log.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -596,19 +597,7 @@ int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
 
   char url[128];
   snprintf(url, sizeof(url), "http://127.0.0.1:%d", port);
-
-  printf("\n");
-  printf("  Cordlang dev server (modulos ES nativos)\n");
-  printf("  ----------------------------------------\n");
-  printf("  Local:   %s\n", url);
-  printf("  Entry:   %s\n", entry_label ? entry_label : "src/app.cord");
-  printf("  Sirve:   .cord compilado por peticion, sin bundler ni Node\n");
-  if (watch_dir)
-    printf("  Watch:   .cord / public / cordlang.json (soft update o reload)\n");
-  printf("  Stop:    Ctrl+C\n");
-  printf("\n");
-  fflush(stdout);
-
+  term_banner_preview(url, entry_label, watch_dir != NULL);
   if (open_browser) dev_server_open_browser(url);
 
   SseSet sse;
@@ -674,13 +663,16 @@ int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
                                      sizeof(changed_url));
           snap = now;
           if (on_change)
-            on_change(userdata, NULL, 1);
-          /* Always full reload: soft ?hmr=/?v= reimports stacked DevTools graphs. */
-          (void)full;
-          (void)changed_url;
-          printf("cambio detectado -> reload\n");
-          fflush(stdout);
-          sse_broadcast(&sse, "reload");
+            on_change(userdata, full ? NULL : changed_url, full);
+          if (full) {
+            term_info("reload  %s", changed_url[0] ? changed_url : "project");
+            sse_broadcast(&sse, "reload");
+          } else {
+            char ev[600];
+            snprintf(ev, sizeof(ev), "update:%s", changed_url);
+            term_info("update  %s", changed_url);
+            sse_broadcast(&sse, ev);
+          }
         }
       }
     }
@@ -762,6 +754,7 @@ int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
 #ifdef _WIN32
   WSACleanup();
 #endif
-  printf("\nDev server detenido.\n");
+  printf("\n");
+  term_dim("Dev server stopped.");
   return 0;
 }

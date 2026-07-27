@@ -44,7 +44,6 @@ static void parser_fail(Parser *p, const char *msg, int line, int col) {
   p->error_msg = msg;
   p->error_line = line > 0 ? line : 1;
   p->error_col = col > 0 ? col : 1;
-  fprintf(stderr, "Error at line %d: %s\n", p->error_line, msg ? msg : "");
 }
 
 static int consume(Parser *p, TokenType type, const char *msg) {
