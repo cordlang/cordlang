@@ -2,7 +2,7 @@
   "name": "cordlang",
   "displayName": "Cordlang",
   "description": "Cordlang language support: syntax highlighting, snippets, and LSP diagnostics via cordlang lsp",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "publisher": "cordlang",
   "icon": "logo.png",
   "engines": { "vscode": "^1.80.0" },

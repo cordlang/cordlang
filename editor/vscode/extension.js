@@ -3,7 +3,6 @@ const { LanguageClient, TransportKind } = require("vscode-languageclient/node");
 const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
-const os = require("os");
 
 /** @type {LanguageClient | undefined} */
 let client;
@@ -95,24 +94,60 @@ function severityOf(level) {
 }
 
 /**
- * Run `cordlang check --json` on buffer text (temp file).
+ * Temp path beside the real .cord so module resolution still finds cordlang.json.
+ * @param {vscode.TextDocument} doc
+ * @returns {{ checkPath: string, cleanup: string | null } | null}
+ */
+function diagCheckTarget(doc) {
+  if (doc.uri.scheme === "file") {
+    const real = doc.uri.fsPath;
+    const dir = path.dirname(real);
+    const base = path.basename(real);
+    /* Unsaved edits: write sibling temp in the same folder (project jail). */
+    if (doc.isDirty) {
+      const tmp = path.join(dir, `.~cordlang-diag-${base}`);
+      try {
+        fs.writeFileSync(tmp, doc.getText(), "utf8");
+        return { checkPath: tmp, cleanup: tmp };
+      } catch {
+        return null;
+      }
+    }
+    return { checkPath: real, cleanup: null };
+  }
+  /* untitled: try workspace root */
+  const folder = vscode.workspace.workspaceFolders?.[0];
+  if (!folder) return null;
+  const tmp = path.join(
+    folder.uri.fsPath,
+    `.~cordlang-diag-untitled-${process.pid}.cord`
+  );
+  try {
+    fs.writeFileSync(tmp, doc.getText(), "utf8");
+    return { checkPath: tmp, cleanup: tmp };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Run `cordlang check --json` on buffer / file (keeps project-relative paths).
  * @param {vscode.TextDocument} doc
  */
 async function runCheckDiagnostics(doc) {
   if (!diagCollection) return;
   if (doc.languageId !== "cordlang") return;
 
-  const tmp = path.join(
-    os.tmpdir(),
-    `cordlang-diag-${process.pid}-${Date.now()}.cord`
-  );
-  try {
-    fs.writeFileSync(tmp, doc.getText(), "utf8");
-  } catch {
-    return;
-  }
+  const target = diagCheckTarget(doc);
+  if (!target) return;
 
-  const args = ["check", "--json", tmp];
+  const cwd =
+    (doc.uri.scheme === "file" &&
+      vscode.workspace.getWorkspaceFolder(doc.uri)?.uri.fsPath) ||
+    vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ||
+    path.dirname(target.checkPath);
+
+  const args = ["check", "--json", target.checkPath];
   /** @type {string} */
   let stdout = "";
   /** @type {string} */
@@ -120,6 +155,7 @@ async function runCheckDiagnostics(doc) {
 
   await new Promise((resolve) => {
     const child = spawn(cordBin, args, {
+      cwd,
       shell: process.platform === "win32",
       windowsHide: true,
     });
@@ -141,10 +177,12 @@ async function runCheckDiagnostics(doc) {
     }, 8000);
   });
 
-  try {
-    fs.unlinkSync(tmp);
-  } catch {
-    /* ignore */
+  if (target.cleanup) {
+    try {
+      fs.unlinkSync(target.cleanup);
+    } catch {
+      /* ignore */
+    }
   }
 
   /** @type {any[]} */
@@ -159,13 +197,41 @@ async function runCheckDiagnostics(doc) {
   }
 
   const diags = [];
+  const tmpNorm = target.cleanup
+    ? path.normalize(target.cleanup).toLowerCase()
+    : null;
+  const realNorm =
+    doc.uri.scheme === "file"
+      ? path.normalize(doc.uri.fsPath).toLowerCase()
+      : null;
+
   for (const it of items) {
     if (!it || typeof it.message !== "string") continue;
+    /* Only keep diags that belong to this buffer (ignore other project files). */
+    if (it.file) {
+      const f = path.normalize(String(it.file)).toLowerCase();
+      const base = path.basename(f);
+      const mine =
+        (tmpNorm && f === tmpNorm) ||
+        (realNorm && f === realNorm) ||
+        (realNorm && base === path.basename(realNorm).toLowerCase()) ||
+        (tmpNorm && base === path.basename(tmpNorm).toLowerCase()) ||
+        base.startsWith(".~cordlang-diag-");
+      if (!mine && items.length > 1) {
+        /* Multi-file project check may emit other files; skip foreign ones. */
+        const looksOther =
+          !f.includes(".~cordlang-diag-") &&
+          realNorm &&
+          !f.endsWith(path.basename(realNorm).toLowerCase());
+        if (looksOther) continue;
+      }
+    }
     const line = Math.max(0, (it.line | 0) - 1);
     const col = Math.max(0, (it.col | 0) - 1);
-    const lineText = doc.lineAt(Math.min(line, doc.lineCount - 1)).text;
+    const safeLine = Math.min(line, Math.max(0, doc.lineCount - 1));
+    const lineText = doc.lineAt(safeLine).text;
     const endCol = Math.min(lineText.length, Math.max(col + 1, col + 8));
-    const range = new vscode.Range(line, col, line, endCol);
+    const range = new vscode.Range(safeLine, col, safeLine, endCol);
     const d = new vscode.Diagnostic(
       range,
       it.hint ? `${it.message} — ${it.hint}` : it.message,
@@ -176,7 +242,6 @@ async function runCheckDiagnostics(doc) {
     diags.push(d);
   }
 
-  /* If JSON empty but stderr has parse line, surface one diagnostic. */
   if (diags.length === 0 && /unterminated string|error:/i.test(stderr)) {
     const m = stderr.match(/:(\d+):(\d+):\s*(?:error|warning):\s*(.+)/i);
     if (m) {

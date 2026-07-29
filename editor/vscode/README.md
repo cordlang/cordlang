@@ -40,6 +40,6 @@ npm run check
 npx @vscode/vsce package   # → cordlang-*.vsix
 ```
 
-Instalar: **Install from VSIX…** → `cordlang-1.0.3.vsix` (desinstala la
+Instalar: **Install from VSIX…** → `cordlang-1.0.4.vsix` (desinstala la
 versión anterior antes). En Cursor: misma ruta, o *Developer: Install Extension
 from Location…* apuntando a `editor/vscode` en modo desarrollo.
