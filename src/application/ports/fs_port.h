@@ -22,4 +22,12 @@ int fs_copy_file(const char *src, const char *dst);
 /* Recursively copy directory tree (creates dst). 0 = ok. */
 int fs_copy_tree(const char *src, const char *dst);
 
+/*
+ * Walk `root` for *.cord files (skips node_modules, .git, dist).
+ * Invokes cb(abs_path, project_rel_with_slash, userdata) for each.
+ */
+void fs_walk_cord(const char *root,
+                  void (*cb)(const char *abs, const char *rel, void *ud),
+                  void *ud);
+
 #endif

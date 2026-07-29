@@ -47,6 +47,10 @@ typedef struct {
   int *indent_stack;
   size_t indent_cap;
   size_t indent_len;
+  int had_error;
+  const char *error_msg; /* literal; not freed */
+  int error_line;
+  int error_col;
 } Lexer;
 
 Lexer *lexer_create(const char *source, size_t source_len);

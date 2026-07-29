@@ -1,0 +1,108 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Cordlang",
+  "scopeName": "source.cord",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#interpolation" },
+    { "include": "#string" },
+    { "include": "#event" },
+    { "include": "#decl" },
+    { "include": "#control" },
+    { "include": "#module" },
+    { "include": "#number" },
+    { "include": "#boolean" },
+    { "include": "#tag" },
+    { "include": "#attr" }
+  ],
+  "repository": {
+    "comment": {
+      "name": "comment.line.number-sign.cord",
+      "match": "#(?!\\{).*$"
+    },
+    "interpolation": {
+      "name": "meta.interpolation.cord",
+      "begin": "#\\{",
+      "end": "}",
+      "beginCaptures": {
+        "0": { "name": "punctuation.definition.interpolation.begin.cord" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.interpolation.end.cord" }
+      },
+      "patterns": [
+        { "include": "#string" },
+        { "include": "#number" },
+        { "include": "#boolean" },
+        {
+          "name": "variable.other.cord",
+          "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b"
+        },
+        {
+          "name": "keyword.operator.cord",
+          "match": "[+\\-*/%<>=!&|?:.]+"
+        }
+      ]
+    },
+    "string": {
+      "name": "string.quoted.double.cord",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        { "include": "#interpolation" },
+        {
+          "name": "constant.character.escape.cord",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "event": {
+      "match": "(@)([A-Za-z][A-Za-z0-9_]*)(=)",
+      "captures": {
+        "1": { "name": "punctuation.definition.event.cord" },
+        "2": { "name": "entity.other.attribute-name.event.cord" },
+        "3": { "name": "punctuation.separator.key-value.cord" }
+      }
+    },
+    "decl": {
+      "name": "meta.declaration.cord",
+      "match": "^\\s*(def|layout|state|props|computed|effect|layoutEffect|ref|ctx|context|provide|params|action|fetch|store|lazy|theme|foreign)\\b",
+      "captures": {
+        "1": { "name": "keyword.declaration.cord" }
+      }
+    },
+    "control": {
+      "match": "^\\s*(if|else|for|empty|suspense|loading|errorBoundary|portal)\\b",
+      "captures": {
+        "1": { "name": "keyword.control.cord" }
+      }
+    },
+    "module": {
+      "match": "^\\s*(use|import|route|slot)\\b",
+      "captures": {
+        "1": { "name": "keyword.control.import.cord" }
+      }
+    },
+    "number": {
+      "name": "constant.numeric.cord",
+      "match": "\\b\\d+(\\.\\d+)?\\b"
+    },
+    "boolean": {
+      "name": "constant.language.boolean.cord",
+      "match": "\\b(true|false|null)\\b"
+    },
+    "tag": {
+      "match": "^\\s*(col|row|stack|grid|section|card|btn|button|link|input|textarea|select|form|img|span|div|p|h[1-6]|ul|ol|li|nav|header|main|footer|aside|table|tr|td|th|label|checkbox|radio|icon|motion|chart)\\b",
+      "captures": {
+        "1": { "name": "entity.name.tag.cord" }
+      }
+    },
+    "attr": {
+      "match": "\\b([A-Za-z_][A-Za-z0-9_:]*)(=)",
+      "captures": {
+        "1": { "name": "entity.other.attribute-name.cord" },
+        "2": { "name": "punctuation.separator.key-value.cord" }
+      }
+    }
+  }
+}

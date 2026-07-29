@@ -1,5 +1,5 @@
 /* cordlang: source=input.cord */
-import { h, frag, txt, keyed, component } from '/@cord/runtime.js';
+import { h, frag, txt, keyed, component, ErrorBoundary, Portal, Suspense } from '/@cord/runtime.js';
 
 /* cordlang: foreign no disponible en preview ESM: Chart (recharts) */
 const Chart = component('Chart', function () {

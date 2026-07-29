@@ -89,14 +89,27 @@ static Token emit_token(Lexer *lexer, TokenType type, const char *start, size_t 
   return t;
 }
 
-static Token read_string(Lexer *lexer) {
+static void lexer_fail(Lexer *lexer, const char *msg, int line, int col) {
+  if (!lexer || lexer->had_error) return;
+  lexer->had_error = 1;
+  lexer->error_msg = msg ? msg : "lex error";
+  lexer->error_line = line > 0 ? line : 1;
+  lexer->error_col = col > 0 ? col : 1;
+}
+
+static Token read_string(Lexer *lexer, int open_line, int open_col) {
   const char *start = lexer->source + lexer->pos;
   size_t len = 0;
   while (peek(lexer) && peek(lexer) != '"') {
+    if (peek(lexer) == '\n') {
+      lexer_fail(lexer, "unterminated string (missing closing quote)",
+                 open_line, open_col);
+      return make_token(lexer, TOKEN_ERROR, start, len);
+    }
     if (peek(lexer) == '\\') {
       advance(lexer); /* backslash */
       len++;
-      if (peek(lexer)) {
+      if (peek(lexer) && peek(lexer) != '\n') {
         advance(lexer); /* escaped char */
         len++;
       }
@@ -105,9 +118,12 @@ static Token read_string(Lexer *lexer) {
       len++;
     }
   }
-  if (peek(lexer) == '"') {
-    advance(lexer);
+  if (peek(lexer) != '"') {
+    lexer_fail(lexer, "unterminated string (missing closing quote)", open_line,
+               open_col);
+    return make_token(lexer, TOKEN_ERROR, start, len);
   }
+  advance(lexer);
   return make_token(lexer, TOKEN_STRING, start, len);
 }
 
@@ -201,8 +217,10 @@ void lexer_tokenize(Lexer *lexer) {
     at_line_start = 0;
 
     if (c == '"') {
+      int open_line = lexer->line;
+      int open_col = lexer->col;
       advance(lexer);
-      Token t = read_string(lexer);
+      Token t = read_string(lexer, open_line, open_col);
       emit_token(lexer, t.type, t.start, t.len);
       continue;
     }

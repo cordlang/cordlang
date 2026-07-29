@@ -1,6 +1,7 @@
 #include "adapters/outbound/backends/react/react_backend.h"
 #include "adapters/outbound/backends/preset_registry.h"
 #include "adapters/outbound/backends/theme_css.h"
+#include "adapters/outbound/fonts/font_cache.h"
 #include "adapters/outbound/html_escape.h"
 #include "adapters/outbound/json/json_mini.h"
 #include "application/ports/fs_port.h"
@@ -206,9 +207,6 @@ static int write_vite_skeleton(const char *project_dir, const char *out) {
            "    <meta charset=\"UTF-8\" />\n"
            "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
            "    <title>%s</title>\n"
-           "    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n"
-           "    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n"
-           "    <link href=\"https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Syne:wght@600;700;800&display=swap\" rel=\"stylesheet\" />\n"
            "%s"
            "  </head>\n"
            "  <body>\n"
@@ -277,18 +275,18 @@ static int write_vite_skeleton(const char *project_dir, const char *out) {
       "  background-color: var(--color-bg, #fafaf9);\n"
       "  color: var(--color-text, #1c1917);\n"
       "  line-height: 1.6;\n"
-      "  font-family: var(--font-sans, \"IBM Plex Sans\", system-ui, sans-serif);\n"
+      "  font-family: var(--font-sans, system-ui, sans-serif);\n"
       "  --ui-container: 80rem;\n"
       "  --ui-header-height: 4rem;\n"
       "}\n"
       "\n"
       ".font-display {\n"
-      "  font-family: var(--font-display, Syne, \"IBM Plex Sans\", sans-serif);\n"
+      "  font-family: var(--font-display, system-ui, sans-serif);\n"
       "}\n"
       "\n"
       ".font-mono,\n"
       ".font-mono * {\n"
-      "  font-family: var(--font-mono, \"IBM Plex Mono\", ui-monospace, monospace);\n"
+      "  font-family: var(--font-mono, ui-monospace, monospace);\n"
       "}\n"
       "\n"
       ".text-muted {\n"
@@ -662,6 +660,11 @@ int react_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
       fprintf(stderr, "Error: failed writing theme.css\n");
       free(out);
       return rc;
+    }
+    char *fonts_dir = fs_join(out, "public/fonts");
+    if (fonts_dir) {
+      font_cache_install_from_ir(ir, fonts_dir);
+      free(fonts_dir);
     }
   }
 

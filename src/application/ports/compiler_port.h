@@ -8,6 +8,8 @@ typedef struct {
   AST *ast;
   int ok;
   const char *error;
+  int error_line; /* 1-based when ok==0 and known; else 0 */
+  int error_col;  /* 1-based when ok==0 and known; else 0 */
 } CompileResult;
 
 CompileResult compiler_parse_source(const char *source, size_t source_len);

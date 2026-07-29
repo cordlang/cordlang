@@ -38,16 +38,21 @@ static int match(Parser *p, TokenType type) {
   return 0;
 }
 
+static void parser_fail(Parser *p, const char *msg, int line, int col) {
+  if (!p || p->had_error) return;
+  p->had_error = 1;
+  p->error_msg = msg;
+  p->error_line = line > 0 ? line : 1;
+  p->error_col = col > 0 ? col : 1;
+}
+
 static int consume(Parser *p, TokenType type, const char *msg) {
   if (peek(p).type == type) {
     advance(p);
     return 1;
   }
-  if (!p->had_error) {
-    p->had_error = 1;
-    p->error_msg = msg;
-    fprintf(stderr, "Error at line %d: %s\n", peek(p).line, msg);
-  }
+  Token t = peek(p);
+  parser_fail(p, msg, t.line, t.col);
   return 0;
 }
 
@@ -2366,8 +2371,8 @@ static Node *parse_render(Parser *p) {
 static Node *parse_foreign(Parser *p) {
   Token tok = advance(p); /* foreign */
   if (peek(p).type != TOKEN_IDENTIFIER) {
-    p->had_error = 1;
-    p->error_msg = "expected component name after foreign";
+    Token t = peek(p);
+    parser_fail(p, "expected component name after foreign", t.line, t.col);
     return NULL;
   }
   Token name = advance(p);
@@ -2696,7 +2701,21 @@ static Node *parse_stmt(Parser *p) {
 AST *parser_parse(Parser *p) {
   lexer_tokenize(p->lexer);
 
+  if (p->lexer && p->lexer->had_error) {
+    parser_fail(p,
+                p->lexer->error_msg ? p->lexer->error_msg : "lex error",
+                p->lexer->error_line, p->lexer->error_col);
+    AST *result = p->ast;
+    p->ast = NULL;
+    return result;
+  }
+
   while (peek(p).type != TOKEN_EOF) {
+    if (peek(p).type == TOKEN_ERROR) {
+      Token t = peek(p);
+      parser_fail(p, "invalid token", t.line, t.col);
+      break;
+    }
     Node *stmt = parse_stmt(p);
     if (stmt) {
       node_add_child(p->ast->root, stmt);

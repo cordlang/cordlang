@@ -1,4 +1,5 @@
 #include "adapters/outbound/backends/theme_css.h"
+#include "adapters/outbound/fonts/font_cache.h"
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -203,8 +204,29 @@ static void emit_css_var(Sb *sb, const char *key, const char *val) {
                css_prop_key_ok(key) ? key : "?");
     return;
   }
-  if (strcmp(key, "font") == 0 || strcmp(key, "font-sans") == 0) {
-    sb_appendf(sb, "  --font-sans: %s, system-ui, sans-serif;\n", val);
+  if (strcmp(key, "font") == 0 || strcmp(key, "font-sans") == 0 ||
+      strcmp(key, "font-mono") == 0 || strcmp(key, "font-display") == 0) {
+    /* Strip optional quotes from Cord string tokens. */
+    const char *raw = val;
+    char tmp[256];
+    size_t vn = strlen(val);
+    if (vn >= 2 && ((val[0] == '"' && val[vn - 1] == '"') ||
+                    (val[0] == '\'' && val[vn - 1] == '\''))) {
+      if (vn - 1 < sizeof(tmp)) {
+        memcpy(tmp, val + 1, vn - 2);
+        tmp[vn - 2] = '\0';
+        raw = tmp;
+      }
+    }
+    if (strcmp(key, "font-mono") == 0) {
+      sb_appendf(sb, "  --font-mono: \"%s\", ui-monospace, monospace;\n", raw);
+      return;
+    }
+    if (strcmp(key, "font-display") == 0) {
+      sb_appendf(sb, "  --font-display: \"%s\", system-ui, sans-serif;\n", raw);
+      return;
+    }
+    sb_appendf(sb, "  --font-sans: \"%s\", system-ui, sans-serif;\n", raw);
     return;
   }
   if (entry_is_color(key, val)) {
@@ -383,12 +405,33 @@ static void emit_utilities(Sb *sb, Node *theme) {
   }
 }
 
-char *theme_css_generate(Node *root) {
+static ThemeCssOpts theme_css_defaults(const ThemeCssOpts *opts) {
+  ThemeCssOpts o;
+  o.font_url_prefix = "/fonts";
+  o.resolve_fonts = 1;
+  if (opts) {
+    if (opts->font_url_prefix && *opts->font_url_prefix)
+      o.font_url_prefix = opts->font_url_prefix;
+    o.resolve_fonts = opts->resolve_fonts;
+  }
+  return o;
+}
+
+char *theme_css_generate_opts(Node *root, const ThemeCssOpts *opts) {
+  ThemeCssOpts o = theme_css_defaults(opts);
   Sb sb;
   sb_init(&sb);
   if (!sb.buf) return strdup("/* theme.css: allocation failed */\n");
 
   emit_header(&sb);
+
+  {
+    char *faces = font_faces_css_from_ast(root, o.font_url_prefix, o.resolve_fonts);
+    if (faces) {
+      if (faces[0]) sb_append(&sb, faces);
+      free(faces);
+    }
+  }
 
   if (!root) {
     sb_append(&sb, "/* No theme declared. */\n:root {}\n");
@@ -438,6 +481,10 @@ char *theme_css_generate(Node *root) {
   return sb.buf;
 }
 
+char *theme_css_generate(Node *root) {
+  return theme_css_generate_opts(root, NULL);
+}
+
 /* ── IR path (scaffold_from_ir) ─────────────────────────── */
 
 static int ir_is_theme_hook(const IrNode *n) {
@@ -484,12 +531,23 @@ static void emit_utilities_ir(Sb *sb, const IrNode *theme) {
   }
 }
 
-char *theme_css_generate_from_ir(const IrProgram *ir) {
+char *theme_css_generate_from_ir_opts(const IrProgram *ir,
+                                      const ThemeCssOpts *opts) {
+  ThemeCssOpts o = theme_css_defaults(opts);
   Sb sb;
   sb_init(&sb);
   if (!sb.buf) return strdup("/* theme.css: allocation failed */\n");
 
   emit_header(&sb);
+
+  {
+    char *faces =
+        font_faces_css_from_ir(ir, o.font_url_prefix, o.resolve_fonts);
+    if (faces) {
+      if (faces[0]) sb_append(&sb, faces);
+      free(faces);
+    }
+  }
 
   if (!ir || !ir->root) {
     sb_append(&sb, "/* No theme declared. */\n:root {}\n");
@@ -539,4 +597,8 @@ char *theme_css_generate_from_ir(const IrProgram *ir) {
   }
 
   return sb.buf;
+}
+
+char *theme_css_generate_from_ir(const IrProgram *ir) {
+  return theme_css_generate_from_ir_opts(ir, NULL);
 }

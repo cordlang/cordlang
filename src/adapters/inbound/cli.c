@@ -15,6 +15,7 @@
 #include "application/ports/fs_port.h"
 #include "adapters/outbound/lexer/lexer.h"
 #include "adapters/outbound/json/json_mini.h"
+#include "adapters/outbound/term/term_log.h"
 #include "domain/ast.h"
 #include "domain/diag.h"
 #include "domain/ir.h"
@@ -38,6 +39,7 @@ static void print_usage(void) {
   printf("  cordlang run <backend> --check Scaffold + npm install (if needed) + vite build\n");
   printf("  cordlang run <backend> --watch Watch src/**/*.cord and rebuild on change\n");
   printf("  cordlang build <backend>       Compile entry to dist only\n");
+  printf("  cordlang build esm             Static ESM export → dist/esm (no Node)\n");
   printf("  cordlang check [path] [--json] Semantic checks (diagnostics)\n");
   printf("  cordlang analyze [path] [--json] Deterministic score / heuristics (no LLM)\n");
   printf("  cordlang ai                    AI workflow help (propose → check)\n");
@@ -608,6 +610,9 @@ static int cmd_build(int argc, char **argv) {
   const char *backend = argc > 0 ? argv[0] : "react";
   const char *dir = ".";
 
+  if (strcmp(backend, "esm") == 0)
+    return preview_service_build_esm(dir);
+
   char *entry_cfg = fs_join(dir, "cordlang.json");
   if (!fs_exists(entry_cfg)) {
     fprintf(stderr, "Error: not a Cordlang project. Run: cordlang init\n");
@@ -626,6 +631,7 @@ static int cmd_build(int argc, char **argv) {
 }
 
 int cli_run(int argc, char **argv) {
+  term_init();
   backend_register_all();
 
   if (argc < 2) {
@@ -716,8 +722,12 @@ int cli_run(int argc, char **argv) {
     for (int i = 2; i < argc; i++)
       if (strcmp(argv[i], "--no-open") == 0) no_open = 1;
 
-    if (argc < 3 || argv[2][0] == '-' || strcmp(argv[2], "preview") == 0)
+    if (argc < 3 || argv[2][0] == '-' || strcmp(argv[2], "preview") == 0) {
+      for (int i = 2; i < argc; i++)
+        if (strcmp(argv[i], "--smoke") == 0)
+          return preview_service_smoke(".");
       return preview_service_run(".", !no_open);
+    }
     if (strcmp(argv[2], "html") == 0) return preview_service_run_html(".");
     int check = 0;
     int watch = 0;

@@ -10,6 +10,8 @@ typedef struct {
   AST *ast;
   int had_error;
   const char *error_msg;
+  int error_line;
+  int error_col;
 } Parser;
 
 Parser *parser_create(Lexer *lexer);

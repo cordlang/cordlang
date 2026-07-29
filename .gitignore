@@ -8,10 +8,12 @@ cordlang_debug.exe
 *.lib
 build/
 cmake-build-*/
+.grok/
 out/
 .tmp*
 *.tmp
 *.map
+.~cordlang-diag-*
 
 # ── Generated app output / deps ──────────────────────────
 # Root-level dist (if any)
@@ -30,6 +32,9 @@ out/
 Thumbs.db
 .DS_Store
 Desktop.ini
+
+# ── Framework score harness output ───────────────────────
+score-out/
 
 # ── Logs / noise ─────────────────────────────────────────
 *.log

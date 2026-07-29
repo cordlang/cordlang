@@ -680,7 +680,7 @@ static const char *BASE_CSS =
     "  background-color: var(--color-bg, #fafaf9);\n"
     "  color: var(--color-text, #1c1917);\n"
     "  line-height: 1.6;\n"
-    "  font-family: var(--font-sans, 'IBM Plex Sans', system-ui, sans-serif);\n"
+    "  font-family: var(--font-sans, system-ui, sans-serif);\n"
     "  --ui-container: 80rem;\n"
     "  --ui-header-height: 4rem;\n"
     "}\n"
@@ -693,10 +693,10 @@ static const char *BASE_CSS =
     "ul, ol { margin: 0 0 0.75rem; padding-left: 1.25rem; }\n"
     "pre { margin: 0; overflow-x: auto; }\n"
     "code, pre, .font-mono, .font-mono * {\n"
-    "  font-family: var(--font-mono, 'IBM Plex Mono', ui-monospace, monospace);\n"
+    "  font-family: var(--font-mono, ui-monospace, monospace);\n"
     "}\n"
     ".font-display {\n"
-    "  font-family: var(--font-display, Syne, 'IBM Plex Sans', sans-serif);\n"
+    "  font-family: var(--font-display, system-ui, sans-serif);\n"
     "}\n"
     ".text-muted { color: var(--color-muted, #57534e); }\n"
     "\n"
@@ -825,42 +825,152 @@ static const char *BASE_CSS =
     ".cord-notfound { padding: 3rem 1.25rem; text-align: center; }\n"
     "#cord-overlay {\n"
     "  position: fixed;\n"
-    "  inset: auto 1rem 1rem 1rem;\n"
+    "  inset: 0;\n"
     "  z-index: 99999;\n"
-    "  max-height: 60vh;\n"
-    "  overflow: auto;\n"
-    "  padding: 1rem 1.1rem;\n"
-    "  border-radius: 10px;\n"
-    "  border: 1px solid #f0a3a3;\n"
-    "  background: #1c1917;\n"
+    "  display: flex;\n"
+    "  align-items: center;\n"
+    "  justify-content: center;\n"
+    "  padding: 1.25rem;\n"
+    "  background: rgba(15, 12, 10, 0.55);\n"
+    "  backdrop-filter: blur(2px);\n"
+    "  -webkit-backdrop-filter: blur(2px);\n"
     "  color: #fecaca;\n"
     "  font-family: var(--font-mono, ui-monospace, monospace);\n"
-    "  font-size: 0.8rem;\n"
-    "  box-shadow: 0 12px 30px rgba(0,0,0,0.35);\n"
+    "  font-size: 0.85rem;\n"
+    "  overflow: auto;\n"
     "}\n"
-    "#cord-overlay pre { white-space: pre-wrap; margin: 0.6rem 0; }\n"
-    "#cord-overlay button {\n"
+    "#cord-overlay .cord-overlay-panel {\n"
+    "  width: min(36rem, 100%);\n"
+    "  max-height: min(80vh, 40rem);\n"
+    "  overflow: auto;\n"
+    "  padding: 1.1rem 1.2rem 1.25rem;\n"
+    "  border-radius: 12px;\n"
+    "  border: 1px solid rgba(248, 113, 113, 0.35);\n"
+    "  border-left: 4px solid #f87171;\n"
+    "  background: #1c1917;\n"
+    "  box-shadow: 0 24px 60px rgba(0,0,0,0.45);\n"
+    "}\n"
+    "#cord-overlay .cord-overlay-head {\n"
+    "  display: flex;\n"
+    "  align-items: center;\n"
+    "  justify-content: space-between;\n"
+    "  gap: 1rem;\n"
+    "  margin-bottom: 0.85rem;\n"
+    "}\n"
+    "#cord-overlay .cord-overlay-title {\n"
+    "  color: #fecaca;\n"
+    "  font-size: 1.05rem;\n"
+    "  font-weight: 700;\n"
+    "}\n"
+    "#cord-overlay .cord-overlay-diag { margin: 0.65rem 0; }\n"
+    "#cord-overlay .cord-overlay-loc {\n"
+    "  color: #fdba74;\n"
+    "  margin-bottom: 0.25rem;\n"
+    "}\n"
+    "#cord-overlay .cord-overlay-msg { color: #fee2e2; white-space: pre-wrap; }\n"
+    "#cord-overlay .cord-overlay-code,\n"
+    "#cord-overlay .cord-overlay-hint {\n"
+    "  color: #a8a29e;\n"
+    "  margin-top: 0.35rem;\n"
+    "  font-size: 0.8rem;\n"
+    "}\n"
+    "#cord-overlay .cord-overlay-hint { color: #86efac; }\n"
+    "#cord-overlay .cord-overlay-frame,\n"
+    "#cord-overlay .cord-overlay-detail {\n"
+    "  margin: 0.85rem 0 0;\n"
+    "  padding: 0.65rem 0.75rem;\n"
+    "  background: #0c0a09;\n"
+    "  border-radius: 8px;\n"
+    "  overflow: auto;\n"
+    "  white-space: pre-wrap;\n"
+    "  color: #e7e5e4;\n"
+    "}\n"
+    "#cord-overlay .cord-overlay-line {\n"
+    "  display: flex;\n"
+    "  gap: 0.85rem;\n"
+    "  padding: 0.1rem 0.25rem;\n"
+    "}\n"
+    "#cord-overlay .cord-overlay-line-err {\n"
+    "  background: rgba(248, 113, 113, 0.18);\n"
+    "  color: #fecaca;\n"
+    "}\n"
+    "#cord-overlay .cord-overlay-ln {\n"
+    "  width: 2.5rem;\n"
+    "  text-align: right;\n"
+    "  color: #78716c;\n"
+    "  user-select: none;\n"
+    "  flex-shrink: 0;\n"
+    "}\n"
+    "#cord-overlay .cord-overlay-src { white-space: pre; }\n"
+    "#cord-overlay .cord-overlay-close {\n"
     "  border: none;\n"
-    "  border-radius: 999px;\n"
+    "  border-radius: 6px;\n"
     "  padding: 0.35rem 0.9rem;\n"
     "  cursor: pointer;\n"
     "  background: #fecaca;\n"
     "  color: #1c1917;\n"
     "  font-weight: 600;\n"
+    "}\n"
+    ".cord-icon { display: inline-flex; align-items: center; line-height: 1; }\n"
+    ".cord-icon-svg { display: block; }\n"
+    ".cord-motion-fade { animation: cord-fade-in 0.35s ease-out; }\n"
+    "@keyframes cord-fade-in {\n"
+    "  from { opacity: 0; transform: translateY(4px); }\n"
+    "  to { opacity: 1; transform: none; }\n"
     "}\n";
 
+static const char *BASE_CSS_CHART =
+    ".cord-chart {\n"
+    "  min-height: 8rem;\n"
+    "  padding: 0.75rem;\n"
+    "  border: 1px dashed var(--color-border, #d6d3d1);\n"
+    "  border-radius: 8px;\n"
+    "  color: var(--color-muted, #78716c);\n"
+    "  font-size: 0.85rem;\n"
+    "}\n"
+    ".cord-chart-axes { display: flex; gap: 0.5rem; height: 100%; min-height: 6rem; }\n"
+    ".cord-chart-y {\n"
+    "  width: 2px;\n"
+    "  background: var(--color-border, #d6d3d1);\n"
+    "}\n"
+    ".cord-chart-plot {\n"
+    "  flex: 1;\n"
+    "  display: flex;\n"
+    "  align-items: flex-end;\n"
+    "  border-bottom: 2px solid var(--color-border, #d6d3d1);\n"
+    "}\n";
+
+static const char *BASE_CSS_PORTAL =
+    ".cord-portal { position: relative; z-index: 1000; }\n";
+
 /* ── entry point ────────────────────────────────────────── */
+
+static int class_set_has_prefix(ClassSet *set, const char *prefix) {
+  if (!set || !prefix) return 0;
+  size_t n = strlen(prefix);
+  for (int i = 0; i < set->count; i++) {
+    if (strncmp(set->names[i], prefix, n) == 0) return 1;
+  }
+  return 0;
+}
 
 char *esm_base_css(IrProgram *ir) {
   Cb out;
   cb_init(&out);
   cb_add(&out, BASE_CSS);
 
-  if (!ir || !ir->root) return out.buf;
+  ClassSet *set = NULL;
+  if (ir && ir->root) {
+    set = calloc(1, sizeof(ClassSet));
+    if (set) collect_from_ir(ir->root, set);
+  }
 
-  ClassSet *set = calloc(1, sizeof(ClassSet));
+  if (set && class_set_has_prefix(set, "cord-chart"))
+    cb_add(&out, BASE_CSS_CHART);
+  if (set && class_set_has_prefix(set, "cord-portal"))
+    cb_add(&out, BASE_CSS_PORTAL);
+
   if (!set) return out.buf;
-  collect_from_ir(ir->root, set);
 
   cb_add(&out, "\n/* utilities for the classes this project emits */\n");
 

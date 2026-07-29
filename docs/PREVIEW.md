@@ -4,8 +4,9 @@ Dev server embebido en el CLI (`cordlang run`). Cada `.cord` se compila **por
 petición** a un módulo ES real; el navegador camina el grafo con `import`. Sin
 Node, sin npm, sin bundler.
 
-No es un claim de paridad con React/Svelte ni un target de despliegue
-(`cordlang build esm` no existe todavía). Es el **loop de preview** por defecto.
+No es un claim de paridad con React/Svelte. El loop de preview por defecto es
+`cordlang run`; el export estático es `cordlang build esm` → `dist/esm`
+(mismo subset del runtime, sin HMR).
 
 ## Uso
 
@@ -14,6 +15,7 @@ cordlang init demo --template counter && cd demo
 cordlang run              # http://127.0.0.1:4173 — abre el navegador
 cordlang run --no-open    # mismo server, sin open
 cordlang run preview      # alias de cordlang run
+cordlang build esm        # export estático → dist/esm
 
 cordlang run html         # preview legacy: un solo HTML estático
 cordlang run react        # Vite + React (necesita Node)
@@ -34,8 +36,10 @@ y un cuerpo que **sí** es un ES module válido (`import` / `export`). El shell
 carga la entry como Vite:
 
 ```html
-<script type="module" src="/@cord/client"></script>
+<link rel="modulepreload" href="/@cord/runtime.js" />
+<link rel="stylesheet" href="/@cord/styles.css" />
 <script type="module" src="/src/app.cord"></script>
+<!-- HMR client se carga idle (requestIdleCallback) -->
 ```
 
 El browser pide ese URL; el server compila on-the-fly; los
@@ -50,10 +54,12 @@ Eso es el mismo truco que Vite con SFC: **el servidor es el compilador**.
 |-----|----------------|
 | `/` | Shell HTML compacto (estilo Vite: `#app` + scripts `src=`) |
 | `*.cord` | Módulo ES compilado JIT (`text/javascript`) — entry o componente |
-| `/@cord/runtime.js` | Runtime embebido: `h`, diff, hooks, router, `mount` |
+| `/@cord/runtime.js` | Runtime embebido (`immutable` cache) |
+| `/@cord/styles.css` | theme + base en un solo request |
 | `/@cord/base.css` | CSS utilitario JIT (clases del proyecto) + reset/base |
-| `/@cord/theme.css` | Tokens del bloque `theme` del entry (custom properties) |
-| `/@cord/client` | Cliente SSE de reload (equivalente a `/@vite/client`) |
+| `/@cord/theme.css` | Tokens `theme` + `@font-face` nativos |
+| `/@cord/fonts/<file>` | WOFF2 desde `~/.cordlang/cache/fonts` (`immutable`) |
+| `/@cord/client` | Cliente SSE de reload (carga diferida) |
 | `/@cord/hmr.js` | Alias de `/@cord/client` |
 | `/@cord/hmr` | Canal SSE (`text/event-stream`); mensaje `reload` → `location.reload()` |
 | estáticos | `public/**` primero (raíz del sitio), luego archivos del proyecto |
@@ -63,10 +69,17 @@ Eso es el mismo truco que Vite con SFC: **el servidor es el compilador**.
 Notas prácticas:
 
 - `public/site.css` y `public/site.js` se enganchan en el shell si existen.
-- Parse error en un `.cord` → módulo de error (HTTP 200) que pinta overlay vía
-  `moduleError` — el browser sigue pudiendo ejecutar el grafo.
-- Watch: al guardar cualquier `.cord` (o `cordlang.json`) el server manda
-  `reload` por SSE. **No** es HMR con preservación de estado (ver límites).
+- **Error overlay (R5):** parse fail o `check` error en un `.cord` → módulo JS
+  (HTTP 200, `no-store`) que llama `showCompileError(payload)` con
+  `diagnostics[]` (`file`/`line`/`col`/`message`/`code`/`hint`, misma forma que
+  `cordlang check --json`) + `frame` (excerpt del fuente). El runtime pinta un
+  overlay full-screen (`#cord-overlay`) e inyecta CSS crítico del overlay si
+  hace falta. `/@cord/styles.css` sigue sirviendo base+overlay aunque el
+  proyecto no compile. Strings sin cerrar (`"`) son error de lexer con
+  línea/columna.
+- Watch: leaf `.cord` → soft update (reimport entry, **keep last good UI** if
+  compile fails — error modal on top). Entry / `public/` / `cordlang.json` →
+  full `reload`.
 
 ## Forma del módulo emitido
 
@@ -193,20 +206,21 @@ runtime; documentarlos evita que un agente “arregle” lo que no debe.
 
 | Superficie Cord | Comportamiento en ESM |
 |-----------------|------------------------|
-| `suspense` / `loading` / `errorBoundary` / `portal` | Renderizan el **contenido inline** (fragmento). No hay frontera async ni portal DOM |
-| `icon` / `motion` / `chart` (presets) | Degradan a `span` / `div` con clase `cord-<tag>` (+ utilidades de attrs). Sin npm / lucide / framer / recharts |
-| HMR | **Recarga de página completa** vía SSE (`location.reload()`). No preserva estado de componentes |
-| `class=` en fuente | Las clases **custom** no generan CSS en el JIT. Usa utilidades Cord (attrs → `base.css`) o escribe reglas en **`public/site.css`** |
-| `foreign` / `IR_FOREIGN` | Sin bundler ni npm: no se resuelve un import de paquete. Emite un **stub visible** con clase `cord-runtime-error` (comentario `cordlang: foreign … no disponible en preview ESM`) — no un identificador colgando ni `import` de npm. Pin de compilación: `tests/regression/esm-foreign-stub/` |
+| `errorBoundary` | Boundary local: captura throw en render de hijos; UI fallback |
+| `portal` | Monta hijos en `document.body` (host `.cord-portal`) |
+| `suspense` / `loading` | Wrapper mínimo; muestra `__fallback__` si `loading` |
+| `icon` / `motion` / `chart` (presets) | SVG inline / CSS fade / axes placeholder — **sin** lucide/framer/recharts |
+| HMR | Soft update best-effort en leaf `.cord`; full reload en entry/public/config. Estado puede perderse |
+| `class=` en fuente | Las clases **custom** no generan CSS en el JIT. Usa utilidades Cord o **`public/site.css`** |
+| `foreign` / `IR_FOREIGN` | Stub visible `cord-runtime-error` (sin npm) |
 
 Otros matices:
 
 - Rutas client-side (`pathname` + `pushState`), no file-based SSR.
 - Un módulo no encontrado en el grafo → stub `cord-runtime-error` en el emit.
-- Error de render en un componente → overlay + caja `cord-runtime-error`.
-- **No** hay `cordlang build esm` para desplegar estáticos (fuera de alcance
-  actual del preview).
-
+- Error de render en un componente → overlay full-screen + caja `cord-runtime-error`.
+- `cordlang build esm` escribe `dist/esm/` (shell sin HMR + módulos `.js` + runtime).
+  Mismo subset de preview; no es paridad React.
 ## `esm` vs `react` (y el resto)
 
 | Comando | Cuándo usarlo |
@@ -228,12 +242,12 @@ Regla práctica:
 | Path | Rol |
 |------|-----|
 | `src/adapters/outbound/backends/esm/esm_ir.c` | Emit IR → ES module |
-| `src/adapters/outbound/backends/esm/esm_runtime.c` | Runtime JS + shell HTML + HMR client |
+| `src/adapters/outbound/backends/esm/esm_runtime.c` | Runtime JS + shell HTML + soft-update client |
 | `src/adapters/outbound/backends/esm/esm_css.c` | JIT `base.css` |
 | `src/adapters/outbound/backends/esm/esm_backend.h` | API del backend |
 | `src/adapters/outbound/backends/cord_class.c` | Mapeo attr → clase (compartido con otros backends) |
-| `src/adapters/outbound/runtime/dev_server.c` | HTTP + SSE |
-| `src/application/preview_service.c` | Handler de URLs / compile por request |
+| `src/adapters/outbound/runtime/dev_server.c` | HTTP + SSE (`reload` on change) |
+| `src/application/preview_service.c` | Handler de URLs / compile por request / cache / `build esm` |
 | `src/adapters/outbound/runtime/preview_server.c` | Server del **legacy** `run html` |
 
 Regresiones: `tests/regression/esm-attr-not-identifier/`,

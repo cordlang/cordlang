@@ -19,6 +19,8 @@ Editors get DX from the **CLI** plus the VS Code/Cursor package under `editor/vs
 - Snippets + `language-configuration.json`
 - Tasks: `cordlang check`
 - **LanguageClient** (`extension.js`) → `cordlang lsp` via `cordlang.lsp.path`
+  (auto-detects workspace `cordlang.exe`); **fallback** `cordlang check --json`
+  for squiggles if LSP cannot start
 
 Install (dev): `cd editor/vscode && npm install`, then open as extension folder.
 

@@ -38,6 +38,7 @@ SRC = \
   src/adapters/outbound/backends/source_attr.c \
   src/adapters/outbound/backends/cord_class.c \
   src/adapters/outbound/backends/theme_css.c \
+  src/adapters/outbound/fonts/font_cache.c \
   src/adapters/outbound/backends/react/react_backend.c \
   src/adapters/outbound/backends/react/react_ir.c \
   src/adapters/outbound/backends/react/react_scaffold.c \
@@ -59,7 +60,8 @@ SRC = \
   src/adapters/outbound/backends/esm/esm_runtime.c \
   src/adapters/outbound/backends/esm/esm_css.c \
   src/adapters/outbound/runtime/preview_server.c \
-  src/adapters/outbound/runtime/dev_server.c
+  src/adapters/outbound/runtime/dev_server.c \
+  src/adapters/outbound/term/term_log.c
 
 # Optional sanitizers: make ASAN=1
 ifeq ($(ASAN),1)

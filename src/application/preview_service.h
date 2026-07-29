@@ -17,4 +17,16 @@ int preview_service_run(const char *project_dir, int open_browser);
  */
 int preview_service_run_html(const char *project_dir);
 
+/*
+ * `cordlang build esm` — write a static tree under dist/esm/ (shell + runtime +
+ * per-file modules). Preview subset only; no Node. Returns 0 on success.
+ */
+int preview_service_build_esm(const char *project_dir);
+
+/*
+ * In-process smoke for the preview URL map (used by tests/run_preview_smoke).
+ * Returns 0 when checks pass.
+ */
+int preview_service_smoke(const char *project_dir);
+
 #endif

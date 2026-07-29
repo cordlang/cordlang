@@ -1,9 +1,10 @@
 {
   "name": "cordlang",
   "displayName": "Cordlang",
-  "description": "Cordlang language support (snippets, check tasks, LSP via cordlang lsp)",
-  "version": "1.0.0",
+  "description": "Cordlang language support: syntax highlighting, snippets, and LSP diagnostics via cordlang lsp",
+  "version": "1.0.4",
   "publisher": "cordlang",
+  "icon": "logo.png",
   "engines": { "vscode": "^1.80.0" },
   "categories": ["Programming Languages"],
   "main": "./extension.js",
@@ -23,7 +24,18 @@
         "id": "cordlang",
         "aliases": ["Cordlang", "cord"],
         "extensions": [".cord"],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./logo.png",
+          "dark": "./logo.png"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "cordlang",
+        "scopeName": "source.cord",
+        "path": "./syntaxes/cordlang.tmLanguage.json"
       }
     ],
     "snippets": [
@@ -62,7 +74,12 @@
         "cordlang.lsp.path": {
           "type": "string",
           "default": "cordlang",
-          "description": "Path to cordlang binary (run with args: lsp)"
+          "description": "Path to cordlang binary (run with args: lsp). Also auto-detects cordlang.exe in the workspace root."
+        },
+        "cordlang.diagnostics.fallback": {
+          "type": "boolean",
+          "default": true,
+          "description": "If LSP cannot start, run cordlang check --json on .cord buffers for squiggles."
         }
       }
     }

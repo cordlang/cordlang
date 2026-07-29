@@ -1,6 +1,7 @@
 #include "adapters/outbound/backends/svelte/svelte_backend.h"
 #include "adapters/outbound/backends/preset_registry.h"
 #include "adapters/outbound/backends/theme_css.h"
+#include "adapters/outbound/fonts/font_cache.h"
 #include "adapters/outbound/html_escape.h"
 #include "adapters/outbound/json/json_mini.h"
 #include "application/ports/fs_port.h"
@@ -415,6 +416,11 @@ int svelte_scaffold_from_ast(const char *project_dir, Node *root) {
       free(out);
       return rc;
     }
+    char *fonts_dir = fs_join(out, "public/fonts");
+    if (fonts_dir) {
+      font_cache_install_from_ast(root, fonts_dir);
+      free(fonts_dir);
+    }
   }
 
   ScaffoldCtx ctx;
@@ -502,6 +508,11 @@ int svelte_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
       fprintf(stderr, "Error: failed writing theme.css\n");
       free(out);
       return rc;
+    }
+    char *fonts_dir = fs_join(out, "public/fonts");
+    if (fonts_dir) {
+      font_cache_install_from_ir(ir, fonts_dir);
+      free(fonts_dir);
     }
   }
 

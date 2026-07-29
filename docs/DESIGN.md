@@ -16,14 +16,17 @@ theme brand
   font: "IBM Plex Sans"
 ```
 
-`cordlang run react|svelte` writes `src/theme.css` with:
+`cordlang run` / `run react|svelte|…` writes `theme.css` with:
 
 - `--color-*` from color keys (plus semantic fallbacks: `surface`, `surface-2`, `border`, `on-primary`)
+- **Native fonts:** `font` / `font-sans` / `font-mono` / `font-display` → `--font-*` **and** `@font-face` (WOFF2 cached under `~/.cordlang/cache/fonts`, copied to `public/fonts` or served as `/@cord/fonts/…`). No Google Fonts `<link>` in the shell.
 - Type scale: `.type-display|title|body|caption|code`
 - Elevation: `.elevate-0` … `.elevate-4`
 - Density: `.density-compact|comfortable|spacious`
 - Motion: `--duration-fast|normal|slow`, `--ease-standard`
 - `.cord-section` max-width container
+
+Without any `font*` key, the UI uses `system-ui` (zero font bytes). Declaring `font: "Inter"` downloads once (needs `curl` + network), then every project reuses the disk cache.
 
 ## Typography
 

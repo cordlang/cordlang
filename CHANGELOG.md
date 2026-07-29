@@ -5,6 +5,26 @@ Language surface versions follow [`docs/SPEC.md`](./docs/SPEC.md) and [`docs/VER
 
 ## [Unreleased]
 
+### Fixed — Overlay CSS + preview logs
+- **Overlay CSS** — `/@cord/styles.css` still serves base+overlay when the project does not compile; runtime also injects critical overlay styles
+- **Preview terminal** — colored `info`/`err`/`ok` tags, banner, deduped compile errors (no spam per request)
+
+### Added — Preview DX fixes
+- **Unterminated strings** — lexer errors on missing `"` (no silent swallow); overlay shows file:line
+- **Watch reload** — full page reload only (no stacked `?hmr=`/`?v=` module graphs in DevTools)
+
+### Added — Fase R5: native error overlay (`cordlang run`)
+- Full-screen compile/runtime overlay (`showErrorOverlay` / `showCompileError`) with `file:line:col`, message, `code`/`hint`, and source excerpt
+- Parser spans (`error_line`/`error_col`) propagated through `CompileResult`
+- ESM JIT runs `check_service_on_ast` per `.cord`; failures emit structured error modules (HTTP 200, `no-store`)
+- Docs: ROADMAP R5, PREVIEW.md overlay contract; smoke covers parse + `jsx-attr` paths
+
+### Added — Fase R: ESM preview perfection
+- **R1 DX/perf** — in-process emit cache (mtime+bust), watch `public/**`, stderr on import truncation / parse errors, `cordlang run --smoke`, docs drift (GUIDE/LIBRARIES/skills)
+- **R2 Soft HMR** — SSE `update:/path.cord` remounts entry (import bust `?v=`); entry/public/config → full `reload`
+- **R3 `cordlang build esm`** — static tree under `dist/esm/` (no Node, no HMR client)
+- **R4 Runtime** — `ErrorBoundary` / `Portal` / `Suspense`; presets icon (SVG) / motion (CSS fade) / chart (axes stub)
+
 ### Added — ESM native preview (`cordlang run`)
 - **ESM backend** (`src/adapters/outbound/backends/esm/`): one ES module per `.cord`, JIT-compiled by the embedded dev server (no Node / npm / bundler). Docs: [`docs/PREVIEW.md`](./docs/PREVIEW.md)
   - `esm_ir.c` — IR → module emit (`component` modules + entry with `routes` / `theme`)

@@ -1,5 +1,8 @@
 name: VS Code extension
 
+# Package the Cordlang language VSIX on extension changes.
+# Downloadable GitHub Release: Actions → "VS Code extension" → Run workflow
+# (create_release=true). Tag: vscode-v<package.json version>.
 on:
   push:
     branches: [main, master]
@@ -12,6 +15,11 @@ on:
       - "editor/vscode/**"
       - ".github/workflows/vscode-extension.yml"
   workflow_dispatch:
+    inputs:
+      create_release:
+        description: "Create a GitHub Release with the VSIX"
+        type: boolean
+        default: true
 
 defaults:
   run:
@@ -22,6 +30,10 @@ jobs:
     name: Install + package
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
@@ -46,9 +58,50 @@ jobs:
       - name: Package VSIX
         run: npx --yes @vscode/vsce@3 package --no-update-package-json --allow-missing-repository
 
+      - name: Resolve VSIX metadata
+        id: meta
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          VSIX=$(ls -1 *.vsix | head -n1)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Packed $VSIX (v$VERSION)"
+
       - name: Upload VSIX artifact
         uses: actions/upload-artifact@v4
         with:
           name: cordlang-vscode
           path: editor/vscode/*.vsix
           if-no-files-found: error
+
+  release:
+    name: GitHub Release
+    needs: package
+    if: github.event_name == 'workflow_dispatch' && inputs.create_release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download VSIX
+        uses: actions/download-artifact@v4
+        with:
+          name: cordlang-vscode
+          path: dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: vscode-v${{ needs.package.outputs.version }}
+          name: Cordlang VS Code extension v${{ needs.package.outputs.version }}
+          body: |
+            Language extension for Cordlang (`.cord`): snippets, check tasks, and LSP via `cordlang lsp`.
+
+            ## Install
+            1. Download the `.vsix` asset below
+            2. In VS Code / Cursor: **Extensions: Install from VSIX…**
+          files: dist/*.vsix
+          draft: false
+          make_latest: true
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -5,6 +5,7 @@
 
 #include "adapters/outbound/runtime/dev_server.h"
 #include "adapters/outbound/process/process_spawn.h"
+#include "adapters/outbound/term/term_log.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -140,6 +141,20 @@ static int recv_headers(SOCKET s, char *buf, size_t cap) {
   return (int)total;
 }
 
+/* Browsers often open idle TCP sockets (preconnect). Without a recv timeout the
+ * single-threaded accept loop blocks forever on those and never serves / again. */
+static void set_recv_timeout_ms(SOCKET s, int ms) {
+#ifdef _WIN32
+  DWORD tv = (DWORD)(ms > 0 ? ms : 1);
+  setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
+#else
+  struct timeval tv;
+  tv.tv_sec = ms / 1000;
+  tv.tv_usec = (ms % 1000) * 1000;
+  setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+#endif
+}
+
 static int hexval(char c) {
   if (c >= '0' && c <= '9') return c - '0';
   if (c >= 'a' && c <= 'f') return c - 'a' + 10;
@@ -165,8 +180,17 @@ static void percent_decode(const char *in, char *out, size_t cap) {
 
 static void send_simple(SOCKET s, int status, const char *reason,
                         const char *ctype, const char *body, size_t len,
-                        int no_store, int head_only) {
-  char header[512];
+                        int no_store, const char *cache_control,
+                        int head_only) {
+  char cache_line[160];
+  cache_line[0] = '\0';
+  if (cache_control && *cache_control)
+    snprintf(cache_line, sizeof(cache_line), "Cache-Control: %s\r\n",
+             cache_control);
+  else if (no_store)
+    snprintf(cache_line, sizeof(cache_line), "Cache-Control: no-store\r\n");
+
+  char header[640];
   int hlen = snprintf(header, sizeof(header),
                       "HTTP/1.1 %d %s\r\n"
                       "Content-Type: %s\r\n"
@@ -175,7 +199,7 @@ static void send_simple(SOCKET s, int status, const char *reason,
                       "Connection: close\r\n"
                       "\r\n",
                       status, reason, ctype ? ctype : "text/plain; charset=utf-8",
-                      len, no_store ? "Cache-Control: no-store\r\n" : "");
+                      len, cache_line);
   if (hlen > 0) send_all(s, header, (size_t)hlen);
   if (!head_only && body && len) send_all(s, body, len);
 }
@@ -212,9 +236,9 @@ static void sse_add(SseSet *set, SOCKET s) {
 }
 
 static void sse_broadcast(SseSet *set, const char *event) {
-  char msg[128];
-  int n = snprintf(msg, sizeof(msg), "data: %s\n\n", event);
-  if (n <= 0) return;
+  char msg[640];
+  int n = snprintf(msg, sizeof(msg), "data: %s\n\n", event ? event : "reload");
+  if (n <= 0 || (size_t)n >= sizeof(msg)) return;
   for (int i = 0; i < set->count;) {
     if (send_all(set->socks[i], msg, (size_t)n) != 0) {
       CLOSESOCK(set->socks[i]);
@@ -235,17 +259,43 @@ static void sse_close_all(SseSet *set) {
 /* ── change detection ───────────────────────────────────── */
 
 /*
- * Fingerprint of every .cord under the project plus cordlang.json. Comparing a
- * rolling hash avoids keeping a file list alive between ticks.
+ * Fingerprint of every .cord under the project, every file under public/, and
+ * cordlang.json. A file list lets soft HMR know whether a single leaf .cord
+ * changed (update) vs entry / public / config (full reload).
  */
 typedef struct {
   unsigned long long hash;
   int files;
 } WatchStamp;
 
-static void stamp_mix(WatchStamp *st, const char *path, time_t mtime,
-                      long long size) {
-  unsigned long long h = st->hash;
+#define MAX_WATCH_FILES 512
+
+typedef struct {
+  char rel[512]; /* project-relative, / separators, e.g. src/app.cord */
+  unsigned long long sig;
+} WatchFile;
+
+typedef struct {
+  WatchStamp stamp;
+  WatchFile files[MAX_WATCH_FILES];
+  int n_files;
+} WatchSnapshot;
+
+static void path_to_rel(const char *root, const char *abs, char *out, size_t n) {
+  size_t rl = root ? strlen(root) : 0;
+  const char *p = abs;
+  if (root && strncmp(abs, root, rl) == 0) {
+    p = abs + rl;
+    while (*p == '/' || *p == '\\') p++;
+  }
+  size_t i = 0;
+  for (; p[i] && i + 1 < n; i++)
+    out[i] = (p[i] == '\\') ? '/' : p[i];
+  out[i] = '\0';
+}
+
+static unsigned long long file_sig(const char *path, time_t mtime, long long size) {
+  unsigned long long h = 14695981039346656037ULL;
   for (const char *p = path; *p; p++) {
     char c = *p;
     if (c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a');
@@ -254,8 +304,19 @@ static void stamp_mix(WatchStamp *st, const char *path, time_t mtime,
   }
   h = h * 1099511628211ULL ^ (unsigned long long)mtime;
   h = h * 1099511628211ULL ^ (unsigned long long)size;
-  st->hash = h;
-  st->files++;
+  return h;
+}
+
+static void stamp_add(WatchSnapshot *snap, const char *root, const char *abs,
+                      time_t mtime, long long size) {
+  unsigned long long sig = file_sig(abs, mtime, size);
+  snap->stamp.hash ^= sig + (unsigned long long)snap->stamp.files * 0x9e3779b97f4a7c15ULL;
+  snap->stamp.files++;
+  if (snap->n_files < MAX_WATCH_FILES) {
+    WatchFile *f = &snap->files[snap->n_files++];
+    path_to_rel(root, abs, f->rel, sizeof(f->rel));
+    f->sig = sig;
+  }
 }
 
 static int is_cord_file(const char *name) {
@@ -270,8 +331,16 @@ static int skip_dir(const char *name) {
          strcmp(name, "dist") == 0;
 }
 
+static int basename_is(const char *path, const char *name) {
+  const char *base = path;
+  for (const char *p = path; *p; p++)
+    if (*p == '/' || *p == '\\') base = p + 1;
+  return strcmp(base, name) == 0;
+}
+
 #ifdef _WIN32
-static void walk_stamp(const char *dir, WatchStamp *st, int depth) {
+static void walk_stamp(const char *root, const char *dir, WatchSnapshot *snap,
+                       int depth, int in_public) {
   if (depth > 16) return;
   char pattern[4096];
   snprintf(pattern, sizeof(pattern), "%s\\*", dir);
@@ -282,20 +351,24 @@ static void walk_stamp(const char *dir, WatchStamp *st, int depth) {
     if (skip_dir(fd.cFileName)) continue;
     char path[4096];
     snprintf(path, sizeof(path), "%s\\%s", dir, fd.cFileName);
+    int next_pub = in_public || basename_is(path, "public");
     if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-      walk_stamp(path, st, depth + 1);
-    } else if (is_cord_file(fd.cFileName)) {
+      walk_stamp(root, path, snap, depth + 1, next_pub);
+    } else if (is_cord_file(fd.cFileName) || in_public || next_pub) {
+      /* Files directly in public/ are stamped when parent is public. */
+      if (!(is_cord_file(fd.cFileName) || in_public)) continue;
       ULARGE_INTEGER t;
       t.LowPart = fd.ftLastWriteTime.dwLowDateTime;
       t.HighPart = fd.ftLastWriteTime.dwHighDateTime;
-      stamp_mix(st, path, (time_t)(t.QuadPart / 10000000ULL),
+      stamp_add(snap, root, path, (time_t)(t.QuadPart / 10000000ULL),
                 (long long)fd.nFileSizeLow);
     }
   } while (FindNextFileA(h, &fd));
   FindClose(h);
 }
 #else
-static void walk_stamp(const char *dir, WatchStamp *st, int depth) {
+static void walk_stamp(const char *root, const char *dir, WatchSnapshot *snap,
+                       int depth, int in_public) {
   if (depth > 16) return;
   DIR *d = opendir(dir);
   if (!d) return;
@@ -306,31 +379,107 @@ static void walk_stamp(const char *dir, WatchStamp *st, int depth) {
     snprintf(path, sizeof(path), "%s/%s", dir, ent->d_name);
     struct stat sb;
     if (stat(path, &sb) != 0) continue;
+    int next_pub = in_public || basename_is(path, "public");
     if (S_ISDIR(sb.st_mode)) {
-      walk_stamp(path, st, depth + 1);
-    } else if (is_cord_file(ent->d_name)) {
-      stamp_mix(st, path, sb.st_mtime, (long long)sb.st_size);
+      walk_stamp(root, path, snap, depth + 1, next_pub);
+    } else if (is_cord_file(ent->d_name) || in_public) {
+      stamp_add(snap, root, path, sb.st_mtime, (long long)sb.st_size);
     }
   }
   closedir(d);
 }
 #endif
 
-static WatchStamp take_stamp(const char *root) {
-  WatchStamp st;
-  st.hash = 14695981039346656037ULL;
-  st.files = 0;
-  if (!root) return st;
-  walk_stamp(root, &st, 0);
+static WatchSnapshot take_snapshot(const char *root) {
+  WatchSnapshot snap;
+  memset(&snap, 0, sizeof(snap));
+  snap.stamp.hash = 14695981039346656037ULL;
+  if (!root) return snap;
+  walk_stamp(root, root, &snap, 0, 0);
   char cfg[4096];
   snprintf(cfg, sizeof(cfg), "%s/cordlang.json", root);
   struct stat sb;
-  if (stat(cfg, &sb) == 0) stamp_mix(&st, cfg, sb.st_mtime, (long long)sb.st_size);
-  return st;
+  if (stat(cfg, &sb) == 0)
+    stamp_add(&snap, root, cfg, sb.st_mtime, (long long)sb.st_size);
+  return snap;
+}
+
+static WatchStamp take_stamp(const char *root) {
+  return take_snapshot(root).stamp;
+}
+
+unsigned long long dev_server_project_stamp(const char *watch_dir) {
+  return take_stamp(watch_dir).hash;
 }
 
 static int stamp_equal(const WatchStamp *a, const WatchStamp *b) {
   return a->hash == b->hash && a->files == b->files;
+}
+
+/*
+ * Compare snapshots. Sets *out_url to "/rel" for a single soft-updatable .cord
+ * change, or leaves it empty for full reload. Returns 1 if full_reload.
+ */
+static int classify_change(const WatchSnapshot *prev, const WatchSnapshot *now,
+                           const char *entry_rel, char *out_url, size_t out_n) {
+  if (out_url && out_n) out_url[0] = '\0';
+  int changed = 0;
+  char only[512];
+  only[0] = '\0';
+
+  for (int i = 0; i < now->n_files; i++) {
+    const WatchFile *nf = &now->files[i];
+    int found = 0;
+    unsigned long long old_sig = 0;
+    for (int j = 0; j < prev->n_files; j++) {
+      if (strcmp(prev->files[j].rel, nf->rel) == 0) {
+        found = 1;
+        old_sig = prev->files[j].sig;
+        break;
+      }
+    }
+    if (!found || old_sig != nf->sig) {
+      changed++;
+      if (changed == 1) snprintf(only, sizeof(only), "%s", nf->rel);
+      else only[0] = '\0';
+    }
+  }
+  for (int j = 0; j < prev->n_files; j++) {
+    int found = 0;
+    for (int i = 0; i < now->n_files; i++) {
+      if (strcmp(now->files[i].rel, prev->files[j].rel) == 0) {
+        found = 1;
+        break;
+      }
+    }
+    if (!found) {
+      changed++;
+      only[0] = '\0';
+    }
+  }
+
+  if (changed != 1 || !only[0]) return 1;
+
+  /* public/ or cordlang.json → full reload */
+  if (strncmp(only, "public/", 7) == 0 || strcmp(only, "cordlang.json") == 0)
+    return 1;
+  size_t n = strlen(only);
+  if (n < 6 || strcmp(only + n - 5, ".cord") != 0) return 1;
+
+  /* entry file → full reload (routes/theme) */
+  if (entry_rel && *entry_rel) {
+    char er[512];
+    size_t i = 0;
+    const char *e = entry_rel;
+    while (*e == '/') e++;
+    for (; e[i] && i + 1 < sizeof(er); i++)
+      er[i] = (e[i] == '\\') ? '/' : e[i];
+    er[i] = '\0';
+    if (strcmp(only, er) == 0) return 1;
+  }
+
+  if (out_url && out_n) snprintf(out_url, out_n, "/%s", only);
+  return 0;
 }
 
 /*
@@ -383,7 +532,8 @@ static int parse_request(const char *req, char *method, size_t mcap, char *path,
 }
 
 int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
-                     int open_browser, DevHandlerFn handler, void *userdata) {
+                     int open_browser, DevHandlerFn handler, void *userdata,
+                     DevWatchFn on_change) {
   if (!handler) return 1;
   if (port <= 0) port = 4173;
 
@@ -447,18 +597,7 @@ int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
 
   char url[128];
   snprintf(url, sizeof(url), "http://127.0.0.1:%d", port);
-
-  printf("\n");
-  printf("  Cordlang dev server (modulos ES nativos)\n");
-  printf("  ----------------------------------------\n");
-  printf("  Local:   %s\n", url);
-  printf("  Entry:   %s\n", entry_label ? entry_label : "src/app.cord");
-  printf("  Sirve:   .cord compilado por peticion, sin bundler ni Node\n");
-  if (watch_dir) printf("  Watch:   recarga al guardar cualquier .cord\n");
-  printf("  Stop:    Ctrl+C\n");
-  printf("\n");
-  fflush(stdout);
-
+  term_banner_preview(url, entry_label, watch_dir != NULL);
   if (open_browser) dev_server_open_browser(url);
 
   SseSet sse;
@@ -466,7 +605,7 @@ int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
   for (int i = 0; i < MAX_SSE; i++) sse.socks[i] = INVALID_SOCKET;
   sse.count = 0;
 
-  WatchStamp stamp = take_stamp(watch_dir);
+  WatchSnapshot snap = take_snapshot(watch_dir);
   unsigned long long last_check = now_ms();
 
   g_running = 1;
@@ -517,12 +656,23 @@ int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
       unsigned long long tnow = now_ms();
       if (tnow - last_check > 400ULL) {
         last_check = tnow;
-        WatchStamp now = take_stamp(watch_dir);
-        if (!stamp_equal(&stamp, &now)) {
-          stamp = now;
-          printf("cambio detectado -> recargando navegador\n");
-          fflush(stdout);
-          sse_broadcast(&sse, "reload");
+        WatchSnapshot now = take_snapshot(watch_dir);
+        if (!stamp_equal(&snap.stamp, &now.stamp)) {
+          char changed_url[560];
+          int full = classify_change(&snap, &now, entry_label, changed_url,
+                                     sizeof(changed_url));
+          snap = now;
+          if (on_change)
+            on_change(userdata, full ? NULL : changed_url, full);
+          if (full) {
+            term_info("reload  %s", changed_url[0] ? changed_url : "project");
+            sse_broadcast(&sse, "reload");
+          } else {
+            char ev[600];
+            snprintf(ev, sizeof(ev), "update:%s", changed_url);
+            term_info("update  %s", changed_url);
+            sse_broadcast(&sse, ev);
+          }
         }
       }
     }
@@ -533,6 +683,8 @@ int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
     socklen_t clen = sizeof(caddr);
     SOCKET client = accept(server, (struct sockaddr *)&caddr, &clen);
     if (client == INVALID_SOCKET) continue;
+
+    set_recv_timeout_ms(client, 2000);
 
     char req[8192];
     int n = recv_headers(client, req, sizeof(req));
@@ -546,7 +698,7 @@ int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
     if (parse_request(req, method, sizeof(method), path, sizeof(path)) != 0) {
       const char *msg = "bad request";
       send_simple(client, 400, "Bad Request", "text/plain; charset=utf-8", msg,
-                  strlen(msg), 1, 0);
+                  strlen(msg), 1, NULL, 0);
       CLOSESOCK(client);
       continue;
     }
@@ -555,15 +707,17 @@ int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
     int is_head = strcmp(method, "HEAD") == 0;
     if (!is_get && !is_head) {
       send_simple(client, 405, "Method Not Allowed", "text/plain; charset=utf-8",
-                  "", 0, 1, 0);
+                  "", 0, 1, NULL, 0);
       CLOSESOCK(client);
       continue;
     }
 
-    /* The reload channel stays open; everything else is one-shot. */
+    /* The reload channel stays open; everything else is one-shot.
+     * (Keep-alive without a timeout starves this single-threaded accept loop
+     * when the browser opens parallel connections.) */
     if (strcmp(path, "/@cord/hmr") == 0) {
       if (is_head) {
-        send_simple(client, 200, "OK", "text/event-stream", "", 0, 1, 1);
+        send_simple(client, 200, "OK", "text/event-stream", "", 0, 1, NULL, 1);
         CLOSESOCK(client);
       } else {
         sse_add(&sse, client);
@@ -577,19 +731,20 @@ int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
     if (rc != 0) {
       const char *msg = "internal error";
       send_simple(client, 500, "Internal Server Error",
-                  "text/plain; charset=utf-8", msg, strlen(msg), 1, is_head);
+                  "text/plain; charset=utf-8", msg, strlen(msg), 1, NULL,
+                  is_head);
       free(res.body);
       CLOSESOCK(client);
       continue;
     }
 
     size_t len = res.len ? res.len : (res.body ? strlen(res.body) : 0);
-    const char *reason = res.status == 404 ? "Not Found"
+    const char *reason = res.status == 404   ? "Not Found"
                          : res.status == 500 ? "Internal Server Error"
                          : res.status == 304 ? "Not Modified"
                                              : "OK";
     send_simple(client, res.status ? res.status : 200, reason, res.content_type,
-                res.body, len, res.no_store, is_head);
+                res.body, len, res.no_store, res.cache_control, is_head);
     free(res.body);
     CLOSESOCK(client);
   }
@@ -599,6 +754,7 @@ int dev_server_serve(int port, const char *watch_dir, const char *entry_label,
 #ifdef _WIN32
   WSACleanup();
 #endif
-  printf("\nDev server detenido.\n");
+  printf("\n");
+  term_dim("Dev server stopped.");
   return 0;
 }

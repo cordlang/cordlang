@@ -18,6 +18,7 @@
  */
 #include "adapters/outbound/backends/esm/esm_backend.h"
 #include "adapters/outbound/html_escape.h"
+#include "domain/diag.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -194,6 +195,7 @@ static const char *RUNTIME_JS =
     "let mountDepth = 0;\n"
     "const effectQueue = [];\n"
     "const dirtySet = new Set();\n"
+    "const boundaryStack = [];\n"
     "let scheduled = false;\n"
     "\n"
     "function Instance(fn, name, depth) {\n"
@@ -317,10 +319,27 @@ static const char *RUNTIME_JS =
     "  try {\n"
     "    out = inst.fn(vn.props || {}, inst.api);\n"
     "  } catch (e) {\n"
-    "    logErr(e);\n"
-    "    showOverlay('Error en ' + inst.name, e && e.stack ? e.stack : String(e));\n"
-    "    out = h('div', { class: 'cord-runtime-error' },\n"
-    "            inst.name + ': ' + (e && e.message ? e.message : String(e)));\n"
+    "    if (boundaryStack.length) {\n"
+    "      const b = boundaryStack[boundaryStack.length - 1];\n"
+    "      try { b.store.set('eb', { err: e }); invalidate(b); } catch (x) {}\n"
+    "      const fb = (b.vnode && b.vnode.props && b.vnode.props.fallback)\n"
+    "        ? b.vnode.props.fallback\n"
+    "        : h('div', { class: 'cord-runtime-error' },\n"
+    "            String(e && e.message ? e.message : e));\n"
+    "      out = fb;\n"
+    "    } else {\n"
+    "      logErr(e);\n"
+    "      showErrorOverlay({\n"
+    "        title: 'Runtime Error',\n"
+    "        diagnostics: [{\n"
+    "          level: 'error', file: inst.name || '<runtime>', line: 0, col: 0,\n"
+    "          message: e && e.message ? e.message : String(e)\n"
+    "        }],\n"
+    "        detail: e && e.stack ? e.stack : String(e)\n"
+    "      });\n"
+    "      out = h('div', { class: 'cord-runtime-error' },\n"
+    "              inst.name + ': ' + (e && e.message ? e.message : String(e)));\n"
+    "    }\n"
     "  }\n"
     "  currentInst = prev;\n"
     "  effectQueue.push(inst);\n"
@@ -352,8 +371,14 @@ static const char *RUNTIME_JS =
     "    const inst = new Instance(vn.type, vn.type.cordName || vn.type.name, mountDepth++);\n"
     "    inst.vnode = vn;\n"
     "    vn.inst = inst;\n"
-    "    vn.child = renderInst(vn, inst);\n"
-    "    mountVnode(vn.child, parent, before);\n"
+    "    const isEB = inst.name === 'ErrorBoundary';\n"
+    "    if (isEB) boundaryStack.push(inst);\n"
+    "    try {\n"
+    "      vn.child = renderInst(vn, inst);\n"
+    "      mountVnode(vn.child, parent, before);\n"
+    "    } finally {\n"
+    "      if (isEB) boundaryStack.pop();\n"
+    "    }\n"
     "    mountDepth--;\n"
     "    return;\n"
     "  }\n"
@@ -607,7 +632,58 @@ static const char *RUNTIME_JS =
     "\n"
     "function logErr(e) { if (window.console) console.error('[cordlang]', e); }\n"
     "\n"
-    "export function showOverlay(title, detail) {\n"
+    "export function clearErrorOverlay() {\n"
+    "  const box = document.getElementById('cord-overlay');\n"
+    "  if (box) box.remove();\n"
+    "  if (window.__cordOverlayEsc) {\n"
+    "    document.removeEventListener('keydown', window.__cordOverlayEsc);\n"
+    "    window.__cordOverlayEsc = null;\n"
+    "  }\n"
+    "}\n"
+    "\n"
+    "function el(tag, cls, text) {\n"
+    "  const n = document.createElement(tag);\n"
+    "  if (cls) n.className = cls;\n"
+    "  if (text !== undefined && text !== null) n.textContent = String(text);\n"
+    "  return n;\n"
+    "}\n"
+    "\n"
+    "export function showErrorOverlay(payload) {\n"
+    "  if (!document.getElementById('cord-overlay-css')) {\n"
+    "    const s = document.createElement('style');\n"
+    "    s.id = 'cord-overlay-css';\n"
+    "    s.textContent = '#cord-overlay{position:fixed;inset:0;z-index:99999;display:flex;"
+    "align-items:center;justify-content:center;padding:1.25rem;background:rgba(15,12,10,.55);"
+    "backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);color:#fecaca;"
+    "font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:0.85rem;overflow:auto}"
+    "#cord-overlay .cord-overlay-panel{width:min(36rem,100%);max-height:min(80vh,40rem);"
+    "overflow:auto;padding:1.1rem 1.2rem 1.25rem;border-radius:12px;"
+    "border:1px solid rgba(248,113,113,.35);border-left:4px solid #f87171;background:#1c1917;"
+    "box-shadow:0 24px 60px rgba(0,0,0,.45)}"
+    "#cord-overlay .cord-overlay-head{display:flex;align-items:center;"
+    "justify-content:space-between;gap:1rem;margin-bottom:0.85rem}"
+    "#cord-overlay .cord-overlay-title{color:#fecaca;font-size:1.05rem;font-weight:700}"
+    "#cord-overlay .cord-overlay-diag{margin:0.65rem 0}"
+    "#cord-overlay .cord-overlay-loc{color:#fdba74;margin-bottom:0.25rem}"
+    "#cord-overlay .cord-overlay-msg{color:#fee2e2;white-space:pre-wrap}"
+    "#cord-overlay .cord-overlay-code,#cord-overlay .cord-overlay-hint{"
+    "color:#a8a29e;margin-top:0.35rem;font-size:0.8rem}"
+    "#cord-overlay .cord-overlay-hint{color:#86efac}"
+    "#cord-overlay .cord-overlay-frame,#cord-overlay .cord-overlay-detail{"
+    "margin:0.85rem 0 0;padding:0.65rem 0.75rem;background:#0c0a09;border-radius:8px;"
+    "overflow:auto;white-space:pre-wrap;color:#e7e5e4}"
+    "#cord-overlay .cord-overlay-line{display:flex;gap:0.85rem;padding:0.1rem 0.25rem}"
+    "#cord-overlay .cord-overlay-line-err{background:rgba(248,113,113,.18);color:#fecaca}"
+    "#cord-overlay .cord-overlay-ln{width:2.5rem;text-align:right;color:#78716c;"
+    "user-select:none;flex-shrink:0}"
+    "#cord-overlay .cord-overlay-src{white-space:pre}"
+    "#cord-overlay .cord-overlay-close{border:none;border-radius:6px;"
+    "padding:0.35rem 0.9rem;cursor:pointer;background:#fecaca;color:#1c1917;font-weight:600}';\n"
+    "    document.head.appendChild(s);\n"
+    "  }\n"
+    "  const p = payload || {};\n"
+    "  const diags = Array.isArray(p.diagnostics) ? p.diagnostics : [];\n"
+    "  const title = p.title || (diags.length ? 'Failed to compile' : 'Error');\n"
     "  let box = document.getElementById('cord-overlay');\n"
     "  if (!box) {\n"
     "    box = document.createElement('div');\n"
@@ -615,22 +691,104 @@ static const char *RUNTIME_JS =
     "    document.body.appendChild(box);\n"
     "  }\n"
     "  box.textContent = '';\n"
-    "  const head = document.createElement('strong');\n"
-    "  head.textContent = title;\n"
-    "  const pre = document.createElement('pre');\n"
-    "  pre.textContent = detail === undefined || detail === null ? '' : String(detail);\n"
-    "  const close = document.createElement('button');\n"
+    "  box.className = 'cord-overlay-open';\n"
+    "  box.setAttribute('role', 'dialog');\n"
+    "  box.setAttribute('aria-modal', 'true');\n"
+    "  box.setAttribute('aria-label', title);\n"
+    "  box.onclick = function (ev) {\n"
+    "    if (ev.target === box) clearErrorOverlay();\n"
+    "  };\n"
+    "  const panel = el('div', 'cord-overlay-panel');\n"
+    "  panel.onclick = function (ev) { ev.stopPropagation(); };\n"
+    "  const head = el('div', 'cord-overlay-head');\n"
+    "  head.appendChild(el('strong', 'cord-overlay-title', title));\n"
+    "  const close = el('button', 'cord-overlay-close', 'Close');\n"
     "  close.type = 'button';\n"
-    "  close.textContent = 'Cerrar';\n"
-    "  close.onclick = function () { box.remove(); };\n"
-    "  box.appendChild(head);\n"
-    "  box.appendChild(pre);\n"
-    "  box.appendChild(close);\n"
+    "  close.onclick = function () { clearErrorOverlay(); };\n"
+    "  head.appendChild(close);\n"
+    "  panel.appendChild(head);\n"
+    "  for (let i = 0; i < diags.length; i++) {\n"
+    "    const d = diags[i] || {};\n"
+    "    const block = el('div', 'cord-overlay-diag');\n"
+    "    const loc = (d.file || '<unknown>') +\n"
+    "      (d.line > 0 ? (':' + d.line + (d.col > 0 ? (':' + d.col) : '')) : '');\n"
+    "    block.appendChild(el('div', 'cord-overlay-loc', loc));\n"
+    "    block.appendChild(el('div', 'cord-overlay-msg', d.message || ''));\n"
+    "    if (d.code) block.appendChild(el('div', 'cord-overlay-code', 'code: ' + d.code));\n"
+    "    if (d.hint) block.appendChild(el('div', 'cord-overlay-hint', 'hint: ' + d.hint));\n"
+    "    panel.appendChild(block);\n"
+    "  }\n"
+    "  const frame = p.frame;\n"
+    "  if (frame && Array.isArray(frame.lines) && frame.lines.length) {\n"
+    "    const pre = el('pre', 'cord-overlay-frame');\n"
+    "    const start = frame.startLine > 0 ? frame.startLine : 1;\n"
+    "    const errLine = (diags[0] && diags[0].line > 0) ? diags[0].line : 0;\n"
+    "    for (let i = 0; i < frame.lines.length; i++) {\n"
+    "      const ln = start + i;\n"
+    "      const row = el('div', ln === errLine ? 'cord-overlay-line cord-overlay-line-err' : 'cord-overlay-line');\n"
+    "      row.appendChild(el('span', 'cord-overlay-ln', String(ln)));\n"
+    "      row.appendChild(el('span', 'cord-overlay-src', frame.lines[i]));\n"
+    "      pre.appendChild(row);\n"
+    "    }\n"
+    "    panel.appendChild(pre);\n"
+    "  }\n"
+    "  if (p.detail) panel.appendChild(el('pre', 'cord-overlay-detail', p.detail));\n"
+    "  if (!diags.length && !p.detail) panel.appendChild(el('pre', 'cord-overlay-detail', String(p.message || '')));\n"
+    "  box.appendChild(panel);\n"
+    "  if (!window.__cordOverlayEsc) {\n"
+    "    window.__cordOverlayEsc = function (ev) {\n"
+    "      if (ev && ev.key === 'Escape') clearErrorOverlay();\n"
+    "    };\n"
+    "    document.addEventListener('keydown', window.__cordOverlayEsc);\n"
+    "  }\n"
+    "}\n"
+    "\n"
+    "export function showOverlay(title, detail) {\n"
+    "  showErrorOverlay({ title: title || 'Error', detail: detail, diagnostics: [] });\n"
     "}\n"
     "\n"
     "export function moduleError(file, message) {\n"
-    "  showOverlay('No compila: ' + file, message);\n"
-    "  throw new Error(file + ': ' + message);\n"
+    "  showErrorOverlay({\n"
+    "    title: 'Failed to compile',\n"
+    "    diagnostics: [{ level: 'error', file: file || '<unknown>', line: 0, col: 0,\n"
+    "                    message: message || 'error' }]\n"
+    "  });\n"
+    "  throw new Error((file || 'cordlang') + ': ' + (message || 'error'));\n"
+    "}\n"
+    "\n"
+    "export function showCompileError(payload) {\n"
+    "  showErrorOverlay(payload || {});\n"
+    "  const d0 = payload && payload.diagnostics && payload.diagnostics[0];\n"
+    "  const msg = d0 && d0.message ? d0.message : 'compile error';\n"
+    "  const file = d0 && d0.file ? d0.file : 'cordlang';\n"
+    "  throw new Error(file + ': ' + msg);\n"
+    "}\n"
+    "\n"
+    "if (typeof window !== 'undefined' && !window.__cordErrHooks) {\n"
+    "  window.__cordErrHooks = 1;\n"
+    "  window.addEventListener('error', function (ev) {\n"
+    "    if (!ev || ev.defaultPrevented) return;\n"
+    "    if (document.getElementById('cord-overlay')) return;\n"
+    "    const err = ev.error;\n"
+    "    showErrorOverlay({\n"
+    "      title: 'Runtime Error',\n"
+    "      diagnostics: [{ level: 'error', file: ev.filename || '<runtime>',\n"
+    "                      line: ev.lineno || 0, col: ev.colno || 0,\n"
+    "                      message: err && err.message ? err.message : (ev.message || 'error') }],\n"
+    "      detail: err && err.stack ? err.stack : undefined\n"
+    "    });\n"
+    "  });\n"
+    "  window.addEventListener('unhandledrejection', function (ev) {\n"
+    "    if (!ev) return;\n"
+    "    if (document.getElementById('cord-overlay')) return;\n"
+    "    const r = ev.reason;\n"
+    "    showErrorOverlay({\n"
+    "      title: 'Unhandled Rejection',\n"
+    "      diagnostics: [{ level: 'error', file: '<runtime>', line: 0, col: 0,\n"
+    "                      message: r && r.message ? r.message : String(r) }],\n"
+    "      detail: r && r.stack ? r.stack : undefined\n"
+    "    });\n"
+    "  });\n"
     "}\n"
     "\n"
     "/* ── mount ──────────────────────────────────────────── */\n"
@@ -650,9 +808,24 @@ static const char *RUNTIME_JS =
     "}\n"
     "\n"
     "let booted = false;\n"
+    "let mountHost = null;\n"
+    "let mountRoot = null;\n"
+    "\n"
+    "export function remount(mod, el) {\n"
+    "  clearErrorOverlay();\n"
+    "  const target = el || mountHost || document.getElementById('app') || document.body;\n"
+    "  if (mountRoot) {\n"
+    "    try { unmountVnode(mountRoot); } catch (e) { logErr(e); }\n"
+    "    mountRoot = null;\n"
+    "  }\n"
+    "  target.textContent = '';\n"
+    "  return mount(mod, target);\n"
+    "}\n"
     "\n"
     "export function mount(mod, el) {\n"
+    "  clearErrorOverlay();\n"
     "  const target = el || document.getElementById('app') || document.body;\n"
+    "  mountHost = target;\n"
     "  if (!booted) {\n"
     "    document.addEventListener('click', onDocClick);\n"
     "    booted = true;\n"
@@ -662,37 +835,112 @@ static const char *RUNTIME_JS =
     "  target.textContent = '';\n"
     "  mountDepth = 0;\n"
     "  mountVnode(root, target, null);\n"
+    "  mountRoot = root;\n"
     "  drainEffects();\n"
     "  updateActiveLinks();\n"
     "  return root;\n"
     "}\n"
     "\n"
-    "export default { h: h, frag: frag, txt: txt, mount: mount, component: component,\n"
-    "                 navigate: navigate, Frag: FRAG };\n";
-
-static const char *HMR_CLIENT_JS =
-    "/* Cordlang dev reload: SSE from the compiler process. */\n"
-    "(function () {\n"
-    "  let es = null;\n"
-    "  let retry = 0;\n"
-    "  function connect() {\n"
-    "    try { es = new EventSource('/@cord/hmr'); } catch (e) { return; }\n"
-    "    es.onopen = function () { retry = 0; };\n"
-    "    es.onmessage = function (ev) {\n"
-    "      if (ev.data === 'reload') location.reload();\n"
-    "    };\n"
-    "    es.onerror = function () {\n"
-    "      if (es) { es.close(); es = null; }\n"
-    "      retry = Math.min(retry + 1, 10);\n"
-    "      setTimeout(connect, 250 * retry);\n"
-    "    };\n"
+    "export function ErrorBoundary(props, $) {\n"
+    "  const st = $.state('eb', { err: null });\n"
+    "  if (st[0].err) {\n"
+    "    return props.fallback || h('div', { class: 'cord-runtime-error' },\n"
+    "      String(st[0].err && st[0].err.message ? st[0].err.message : st[0].err));\n"
     "  }\n"
-    "  connect();\n"
-    "})();\n";
+    "  return props.children || null;\n"
+    "}\n"
+    "ErrorBoundary.cordName = 'ErrorBoundary';\n"
+    "\n"
+    "export function Portal(props, $) {\n"
+    "  const kids = props.children;\n"
+    "  $.effect(function () {\n"
+    "    const host = document.createElement('div');\n"
+    "    host.className = 'cord-portal';\n"
+    "    const target = (props.target === 'body' || !props.target)\n"
+    "      ? document.body\n"
+    "      : (document.querySelector(props.target) || document.body);\n"
+    "    target.appendChild(host);\n"
+    "    const vn = asVnode(kids);\n"
+    "    mountVnode(vn, host, null);\n"
+    "    drainEffects();\n"
+    "    return function () {\n"
+    "      try { unmountVnode(vn); } catch (e) {}\n"
+    "      host.remove();\n"
+    "    };\n"
+    "  }, [kids]);\n"
+    "  return frag(null);\n"
+    "}\n"
+    "Portal.cordName = 'Portal';\n"
+    "\n"
+    "export function Suspense(props) {\n"
+    "  if (props.loading) return props.fallback || null;\n"
+    "  return props.children || null;\n"
+    "}\n"
+    "Suspense.cordName = 'Suspense';\n"
+    "\n"
+    "export default { h: h, frag: frag, txt: txt, mount: mount, remount: remount,\n"
+    "                 component: component, navigate: navigate, Frag: FRAG,\n"
+    "                 ErrorBoundary: ErrorBoundary, Portal: Portal, Suspense: Suspense };\n";
+
+static char HMR_CLIENT_BUF[4096];
 
 const char *esm_runtime_js(void) { return RUNTIME_JS; }
 
-const char *esm_hmr_client_js(void) { return HMR_CLIENT_JS; }
+const char *esm_hmr_client_js(const char *entry_url) {
+  const char *entry = entry_url && *entry_url ? entry_url : "/src/app.cord";
+  char esc[512];
+  size_t j = 0;
+  esc[j++] = '\'';
+  for (const char *p = entry; *p && j + 3 < sizeof(esc); p++) {
+    if (*p == '\'' || *p == '\\') esc[j++] = '\\';
+    esc[j++] = *p;
+  }
+  esc[j++] = '\'';
+  esc[j] = '\0';
+  snprintf(
+      HMR_CLIENT_BUF, sizeof(HMR_CLIENT_BUF),
+      "/* Cordlang soft update / reload: SSE from the compiler process. */\n"
+      "(function () {\n"
+      "  var ENTRY = %s;\n"
+      "  var es = null;\n"
+      "  var retry = 0;\n"
+      "  var updating = 0;\n"
+      "  function fullReload() { location.reload(); }\n"
+      "  function softUpdate(url) {\n"
+      "    if (updating) return;\n"
+      "    updating = 1;\n"
+      "    var bust = Date.now();\n"
+      "    var entryUrl = ENTRY + (ENTRY.indexOf('?') >= 0 ? '&' : '?') + 't=' + bust;\n"
+      "    import('/@cord/runtime.js').then(function (rt) {\n"
+      "      return import(entryUrl).then(function (mod) {\n"
+      "        var el = document.getElementById('app');\n"
+      "        if (!el || !rt.remount) { fullReload(); return; }\n"
+      "        /* Success: remount replaces UI and clears any error modal. */\n"
+      "        rt.remount(mod.default !== undefined ? mod.default : mod, el);\n"
+      "      });\n"
+      "    }).catch(function () {\n"
+      "      /* Compile error: keep last good page; modal already painted. */\n"
+      "    }).then(function () { updating = 0; });\n"
+      "  }\n"
+      "  function connect() {\n"
+      "    try { es = new EventSource('/@cord/hmr'); } catch (e) { return; }\n"
+      "    es.onopen = function () { retry = 0; };\n"
+      "    es.onmessage = function (ev) {\n"
+      "      if (!ev || !ev.data) return;\n"
+      "      if (ev.data === 'reload') { fullReload(); return; }\n"
+      "      if (ev.data.indexOf('update:') === 0) softUpdate(ev.data.slice(7));\n"
+      "    };\n"
+      "    es.onerror = function () {\n"
+      "      if (es) { es.close(); es = null; }\n"
+      "      retry = Math.min(retry + 1, 10);\n"
+      "      setTimeout(connect, 250 * retry);\n"
+      "    };\n"
+      "  }\n"
+      "  connect();\n"
+      "})();\n",
+      esc);
+  return HMR_CLIENT_BUF;
+}
 
 /*
  * Vite-style shell: no inline bootstrap. The entry .cord is loaded as
@@ -702,7 +950,7 @@ const char *esm_hmr_client_js(void) { return HMR_CLIENT_JS; }
  */
 char *esm_index_html(const char *lang, const char *title, const char *entry_url,
                      int has_site_css, int has_site_js, int has_favicon,
-                     int has_logo_svg) {
+                     int has_logo_svg, int with_hmr) {
   char lang_e[64];
   char title_e[512];
   html_escape_to(lang_e, sizeof(lang_e), lang && *lang ? lang : "en");
@@ -725,18 +973,15 @@ char *esm_index_html(const char *lang, const char *title, const char *entry_url,
       "%s"
       "%s"
       "    <title>%s</title>\n"
-      "    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n"
-      "    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n"
-      "    <link href=\"https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Syne:wght@600;700;800&display=swap\" rel=\"stylesheet\" />\n"
-      "    <link rel=\"stylesheet\" href=\"/@cord/theme.css\" />\n"
-      "    <link rel=\"stylesheet\" href=\"/@cord/base.css\" />\n"
+      "    <link rel=\"modulepreload\" href=\"/@cord/runtime.js\" />\n"
+      "    <link rel=\"stylesheet\" href=\"/@cord/styles.css\" />\n"
       "%s"
       "%s"
       "  </head>\n"
       "  <body>\n"
       "    <div id=\"app\"></div>\n"
-      "    <script type=\"module\" src=\"/@cord/client\"></script>\n"
       "    <script type=\"module\" src=\"%s\"></script>\n"
+      "%s"
       "%s"
       "  </body>\n"
       "</html>\n",
@@ -760,24 +1005,181 @@ char *esm_index_html(const char *lang, const char *title, const char *entry_url,
             "    </script>\n"
           : "",
       entry,
-      has_site_js ? "    <script type=\"module\" src=\"/site.js\"></script>\n" : "");
+      has_site_js ? "    <script type=\"module\" src=\"/site.js\"></script>\n" : "",
+      with_hmr
+          ? "    <script>\n"
+            "    (function(){function load(){import('/@cord/client').catch(function(){})}"
+            "if('requestIdleCallback' in window)requestIdleCallback(load,{timeout:2000});"
+            "else setTimeout(load,1);})();\n"
+            "    </script>\n"
+          : "");
   return out;
 }
 
 char *esm_error_module(const char *message) {
-  const char *msg = message ? message : "error desconocido";
-  char *esc = js_escape_dq_dup(msg);
-  size_t need = strlen(esc ? esc : "") + 256;
+  DiagList diags;
+  diag_list_init(&diags);
+  diag_emit(&diags, DIAG_ERROR, "cordlang", 0, 0, "%s",
+            message ? message : "error desconocido");
+  char *out = esm_error_module_from_diags(&diags, NULL, 0);
+  diag_list_free(&diags);
+  return out;
+}
+
+static void frame_json_append(char **buf, size_t *len, size_t *cap,
+                              const char *s) {
+  if (!s) return;
+  size_t n = strlen(s);
+  if (*len + n + 1 > *cap) {
+    size_t ncap = *cap ? *cap * 2 : 512;
+    while (ncap < *len + n + 1) ncap *= 2;
+    char *nb = realloc(*buf, ncap);
+    if (!nb) return;
+    *buf = nb;
+    *cap = ncap;
+  }
+  memcpy(*buf + *len, s, n);
+  *len += n;
+  (*buf)[*len] = '\0';
+}
+
+static void frame_json_escape(char **buf, size_t *len, size_t *cap,
+                              const char *s) {
+  if (!s) return;
+  for (const unsigned char *p = (const unsigned char *)s; *p; p++) {
+    char tmp[8];
+    switch (*p) {
+      case '"':
+        frame_json_append(buf, len, cap, "\\\"");
+        break;
+      case '\\':
+        frame_json_append(buf, len, cap, "\\\\");
+        break;
+      case '\n':
+        frame_json_append(buf, len, cap, "\\n");
+        break;
+      case '\r':
+        frame_json_append(buf, len, cap, "\\r");
+        break;
+      case '\t':
+        frame_json_append(buf, len, cap, "\\t");
+        break;
+      default:
+        if (*p < 0x20) {
+          snprintf(tmp, sizeof(tmp), "\\u%04x", *p);
+          frame_json_append(buf, len, cap, tmp);
+        } else {
+          tmp[0] = (char)*p;
+          tmp[1] = '\0';
+          frame_json_append(buf, len, cap, tmp);
+        }
+        break;
+    }
+  }
+}
+
+/* Build { "file", "startLine", "lines": [...] } around the first diag with line>0. */
+static char *build_frame_json(const DiagList *diags, const char *source,
+                              size_t source_len) {
+  if (!diags || !diags->len || !source) return NULL;
+  const Diagnostic *hit = NULL;
+  for (size_t i = 0; i < diags->len; i++) {
+    if (diags->items[i].line > 0) {
+      hit = &diags->items[i];
+      break;
+    }
+  }
+  if (!hit) hit = &diags->items[0];
+  if (hit->line <= 0) return NULL;
+
+  int err_line = hit->line;
+  int start = err_line - 3;
+  if (start < 1) start = 1;
+  int end = err_line + 3;
+
+  /* Collect lines 1..end */
+  const char *p = source;
+  size_t remain = source_len;
+  int lineno = 1;
+  char *out = NULL;
+  size_t len = 0, cap = 0;
+  frame_json_append(&out, &len, &cap, "{\"file\":\"");
+  frame_json_escape(&out, &len, &cap, hit->file ? hit->file : "<input>");
+  {
+    char hdr[64];
+    snprintf(hdr, sizeof(hdr), "\",\"startLine\":%d,\"lines\":[", start);
+    frame_json_append(&out, &len, &cap, hdr);
+  }
+  int wrote = 0;
+  while (remain > 0 && lineno <= end) {
+    const char *nl = memchr(p, '\n', remain);
+    size_t line_len = nl ? (size_t)(nl - p) : remain;
+    if (lineno >= start) {
+      if (wrote) frame_json_append(&out, &len, &cap, ",");
+      frame_json_append(&out, &len, &cap, "\"");
+      /* strip trailing \r */
+      size_t use = line_len;
+      if (use > 0 && p[use - 1] == '\r') use--;
+      char *tmp = malloc(use + 1);
+      if (tmp) {
+        memcpy(tmp, p, use);
+        tmp[use] = '\0';
+        frame_json_escape(&out, &len, &cap, tmp);
+        free(tmp);
+      }
+      frame_json_append(&out, &len, &cap, "\"");
+      wrote = 1;
+    }
+    if (!nl) break;
+    size_t step = line_len + 1;
+    p += step;
+    remain -= step;
+    lineno++;
+  }
+  frame_json_append(&out, &len, &cap, "]}");
+  return out;
+}
+
+char *esm_error_module_from_diags(const DiagList *diags, const char *source,
+                                  size_t source_len) {
+  char *diag_json = diag_format_json(diags);
+  char *frame_json = build_frame_json(diags, source, source_len);
+
+  size_t payload_cap = (diag_json ? strlen(diag_json) : 2) +
+                       (frame_json ? strlen(frame_json) : 0) + 128;
+  char *payload = malloc(payload_cap);
+  if (!payload) {
+    free(diag_json);
+    free(frame_json);
+    return NULL;
+  }
+  if (frame_json) {
+    snprintf(payload, payload_cap,
+             "{\"title\":\"Failed to compile\",\"diagnostics\":%s,\"frame\":%s}",
+             diag_json ? diag_json : "[]", frame_json);
+  } else {
+    snprintf(payload, payload_cap,
+             "{\"title\":\"Failed to compile\",\"diagnostics\":%s}",
+             diag_json ? diag_json : "[]");
+  }
+  free(diag_json);
+  free(frame_json);
+
+  char *esc = js_escape_dq_dup(payload);
+  free(payload);
+  if (!esc) return NULL;
+
+  size_t need = strlen(esc) + 256;
   char *out = malloc(need);
   if (!out) {
     free(esc);
     return NULL;
   }
   snprintf(out, need,
-           "import { moduleError } from '/@cord/runtime.js';\n"
-           "moduleError('cordlang', \"%s\");\n"
+           "import { showCompileError } from '/@cord/runtime.js';\n"
+           "showCompileError(JSON.parse(\"%s\"));\n"
            "export default null;\n",
-           esc ? esc : "");
+           esc);
   free(esc);
   return out;
 }

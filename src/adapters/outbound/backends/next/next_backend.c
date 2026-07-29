@@ -1,6 +1,7 @@
 #include "adapters/outbound/backends/next/next_backend.h"
 #include "adapters/outbound/backends/react/react_backend.h"
 #include "adapters/outbound/backends/theme_css.h"
+#include "adapters/outbound/fonts/font_cache.h"
 #include "application/ports/fs_port.h"
 #include "domain/ir.h"
 #include <stdio.h>
@@ -160,6 +161,11 @@ int next_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
     if (theme_css) {
       rc |= write_path(out, "src/theme.css", theme_css);
       free(theme_css);
+    }
+    char *fonts_dir = fs_join(out, "public/fonts");
+    if (fonts_dir) {
+      font_cache_install_from_ir(ir, fonts_dir);
+      free(fonts_dir);
     }
   }
 

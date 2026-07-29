@@ -12,6 +12,7 @@ Documentos relacionados:
 - [`docs/SVELTE.md`](./SVELTE.md) — mapa Svelte → Cordlang + checklist de paridad
 - [`docs/IR.md`](./IR.md) — contrato del IR para backends
 - [`docs/AI.md`](./AI.md) — contrato para modelos + schema de attrs
+- [`docs/PREVIEW.md`](./PREVIEW.md) — ESM native preview (`cordlang run`)
 - [`docs/TEMPLATES.md`](./TEMPLATES.md) — plantillas Cord-nativas
 - [`docs/LSP.md`](./LSP.md) — editor / LSP mínimo
 
@@ -24,23 +25,25 @@ src/**/*.cord
    │
    ├─► AST / IR canónico
    │
+   ├──► Backend ESM      → cordlang run (JIT .cord → ES modules, sin Node)
    ├──► Backend React   → dist/react  (Vite + RR)
    ├──► Backend Svelte  → dist/svelte (Vite + runes)
-   ├──► Backend HTML    → preview nativo en el CLI
+   ├──► Backend HTML    → cordlang run html (legacy single-document)
    └──► (Horizonte B) Vue / Solid / email / …
 
 IA / skills / cordlang ai  ──escribe──►  .cord
 check / fmt / LSP / analyze ──valida──►  .cord
 ```
 
-**Éxito 12 meses (Horizonte A):** IA escribe `.cord` → `check`/`analyze` atrapan traps (incl. `jsx-hook`/`jsx-map`/`jsx-tag`) → LSP buffer diags + hints → `run react|svelte --check` verde; preview HTML honest (state/bind/if); paridad SPA documentada; 3+ templates Cord.
+**Éxito 12 meses (Horizonte A):** IA escribe `.cord` → `check`/`analyze` atrapan traps (incl. `jsx-hook`/`jsx-map`/`jsx-tag`) → LSP buffer diags + hints → `run` (ESM) + `run react|svelte --check` verdes; paridad SPA documentada; 3+ templates Cord.
 
 **Éxito producto:** el mismo `src/**/*.cord` sin reescribir UI:
 
 ```bash
-cordlang run              # preview limitado (state · setX · #{x} · bind)
-cordlang run react        # app React (default)
-cordlang run svelte       # app Svelte (default)
+cordlang run              # ESM native preview (default, sin Node) — PREVIEW.md
+cordlang run html         # legacy HTML single-document escape hatch
+cordlang run react        # app React (Vite scaffold)
+cordlang run svelte       # app Svelte (Vite scaffold)
 ```
 
 Vue / Solid / email / PDF / Next / Kit son **meta / experimental** — no el contrato IA default.
@@ -295,10 +298,24 @@ Mapa completo: [`docs/SVELTE.md`](./SVELTE.md) (basado en [svelte.dev/docs/svelt
 5. **Semántica / AI-score LLM** solo cuando el núcleo sea aburridamente sólido.
 
 ```
-Hecho ──► Fases A–E MVP + IR-1/IR-2 + Fase G/H + traps/LSP buffer/preview bind
-AHORA ──► Horizonte A residual (loop IA): polish LSP + preview honest + traps
+Hecho ──► Fases A–E MVP + IR-1/IR-2 + Fase G/H + traps/LSP + ESM preview MVP
+AHORA ──► Horizonte A residual / meta backends
 DESPUÉS ► Meta backends / WASM playground / registry remoto (no diluir A)
 ```
+
+### 4.0 Fase R — ESM native preview perfection
+
+Track por fases (**E** = ejecutar R1→R4 en orden, un PR por fase). Contrato: [`PREVIEW.md`](./PREVIEW.md).
+
+| # | Opción | Entregable | Estado |
+|---|--------|------------|--------|
+| **R1** | A — DX + rendimiento | Caché emit, watch `public/`, overlay/stderr, docs drift, smoke handler | ✅ |
+| **R2** | B — Soft HMR | SSE `update` + reimport best-effort; full reload en entry/theme/css | ✅ |
+| **R3** | C — `build esm` | `cordlang build esm` → `dist/esm` estático (subset preview) | ✅ |
+| **R4** | D — Paridad runtime | errorBoundary / portal / suspense mínimos + degrade útil presets | ✅ |
+| **R5** | E — Error overlay nativo | Overlay full-screen tipo Next: spans file:line:col, check en JIT, excerpt, code/hint | ✅ |
+
+Orden fijo: **R1 → R2 → R3 → R4 → R5**. No mezclar fases en el mismo PR.
 
 ### 4.1 Horizonte A — épicas ejecutables
 
@@ -384,12 +401,18 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 1. ~~HTML estático compartido~~ ✅ `static_html` + backends `email` / `pdf`  
 2. Conversión PDF externa documentada (`run pdf --check` soft)
 
-### HTML preview
+### ESM preview (`cordlang run`)
+
+1. JIT `.cord` → ES modules + SSE reload ✅ MVP — [`PREVIEW.md`](./PREVIEW.md)  
+2. Fase R (R1–R5) — perfeccionamiento ✅ — ver §4.0  
+3. `cordlang run html` queda como **escape hatch** legacy (no el default)
+
+### HTML preview (legacy — `cordlang run html`)
 
 1. State básico ✅ (C8) + IR path (G2)  
 2. `bind` inputs + live `if` + assign handlers ✅  
 3. `for` = lista **estática** explícita (no fingir each)  
-4. Contrato documentado en GUIDE / badge runtime — **no** paridad SPA  
+4. Contrato documentado — **no** paridad SPA; usar ESM o React/Svelte para apps reales  
 
 ---
 
@@ -433,8 +456,9 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 | **M7 — Horizonte A** | A1–A6 (DX, contratos, paridad, IA workflow, templates, analyze) | ✅ gate 1.0 |
 | **M8 — Madurez** | Fase H (regresión, ARCHITECTURE, SPEC, bench, IR passes) | ✅ |
 | **M9 — Horizonte B / meta** | Platform → Vue → Solid → email/PDF → Next/Kit → ecosystem (`add`, templates, versioning, playground stub) → native spike | 🟡 en curso |
+| **M10 — ESM preview** | Fase R (R1 DX → R2 soft HMR → R3 build esm → R4 runtime → R5 error overlay) | ✅ |
 
-Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `ir`, `dx`, `ci`, `docs`.
+Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `backend:esm`, `ir`, `dx`, `ci`, `docs`.
 
 ---
 
@@ -447,4 +471,4 @@ Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `ir`, `dx`, `ci`
 
 ---
 
-*Última actualización: tooling IA (check --json / hints / ai context|doctor / fix-cord-check / analyze ampliado / LSP codeAction / ai_eval); playground WASM real y MCP Cordlang = pendientes.*
+*Última actualización: Fase R5 (error overlay nativo Next-style) ✅; playground WASM real y MCP Cordlang = pendientes.*

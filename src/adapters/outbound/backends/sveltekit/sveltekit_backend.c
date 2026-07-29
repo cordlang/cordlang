@@ -1,6 +1,7 @@
 #include "adapters/outbound/backends/sveltekit/sveltekit_backend.h"
 #include "adapters/outbound/backends/svelte/svelte_backend.h"
 #include "adapters/outbound/backends/theme_css.h"
+#include "adapters/outbound/fonts/font_cache.h"
 #include "application/ports/fs_port.h"
 #include "domain/ir.h"
 #include <stdio.h>
@@ -173,6 +174,12 @@ int sveltekit_scaffold_from_ir(const char *project_dir, IrProgram *ir) {
     if (theme_css) {
       rc |= write_path(out, "src/lib/theme.css", theme_css);
       free(theme_css);
+    }
+    /* SvelteKit serves static/ at site root as /fonts/... */
+    char *fonts_dir = fs_join(out, "static/fonts");
+    if (fonts_dir) {
+      font_cache_install_from_ir(ir, fonts_dir);
+      free(fonts_dir);
     }
   }
 

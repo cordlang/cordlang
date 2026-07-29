@@ -1,0 +1,155 @@
+# Public framework scoreboard: build once → many projects × every backend → score 0–100.
+#
+# Does not re-compile the compiler in the score job: it downloads the binary
+# artifact from the build job (or uses a same-job path on workflow_dispatch).
+#
+# Local equivalent:
+#   make && ./tests/run_framework_score.sh
+#   SCORE_MODE=full ./tests/run_framework_score.sh
+
+name: Framework Score
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "compile = emit only (fast, default on PR); scaffold = + project scaffold; full = + vite --check (slow)"
+        type: choice
+        options:
+          - compile
+          - scaffold
+          - full
+        default: compile
+      fail_under:
+        description: "Optional: fail the job if any framework score is below this (0–100). Empty = never fail on score."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  # ── 1) Build the CLI once ───────────────────────────────────────────
+  build:
+    name: Build cordlang
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y build-essential
+
+      - name: Build (-Werror)
+        run: make -j"$(nproc)"
+
+      - name: Smoke binary
+        run: |
+          test -x ./cordlang
+          ./cordlang --version || ./cordlang -v || true
+          ./cordlang help | head -20
+
+      - name: Upload cordlang binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: cordlang-linux-x64
+          path: cordlang
+          if-no-files-found: error
+          retention-days: 14
+
+  # ── 2) Materialize projects, run matrix, score per framework ───────
+  score:
+    name: Projects × frameworks score
+    needs: build
+    runs-on: ubuntu-latest
+    # compile mode should finish in a few minutes; scaffold/full need more headroom
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Download cordlang binary
+        uses: actions/download-artifact@v4
+        with:
+          name: cordlang-linux-x64
+          path: .
+
+      - name: Make binary executable
+        run: chmod +x ./cordlang && ./cordlang help | head -5
+
+      - name: Setup Node.js
+        # Needed when SCORE_MODE=full (npm install + vite). Harmless for compile mode.
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+
+      - name: Cache npm (SPA --check)
+        if: ${{ github.event_name == 'workflow_dispatch' && (inputs.mode == 'full' || inputs.mode == 'scaffold') }}
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            score-out/projects/**/dist/**/node_modules
+          key: ${{ runner.os }}-fwscore-npm-v1-${{ hashFiles('templates/**/*.cord', 'templates/**/cordlang.json') }}
+          restore-keys: |
+            ${{ runner.os }}-fwscore-npm-v1-
+
+      - name: Resolve score mode
+        id: mode
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            MODE="${{ inputs.mode }}"
+          else
+            # PRs / pushes: compile-only matrix (fast public scoreboard)
+            MODE="compile"
+          fi
+          echo "mode=$MODE" >>"$GITHUB_OUTPUT"
+          echo "Score mode: $MODE"
+
+      - name: Run framework score harness
+        shell: bash
+        env:
+          CORDLANG_BIN: ${{ github.workspace }}/cordlang
+          OUT_DIR: ${{ github.workspace }}/score-out
+          SCORE_MODE: ${{ steps.mode.outputs.mode }}
+          CASE_TIMEOUT_SEC: "90"
+          # Unbuffered-ish progress in GHA logs
+          PYTHONUNBUFFERED: "1"
+          SCORE_FAIL_UNDER: ${{ github.event_name == 'workflow_dispatch' && inputs.fail_under || '' }}
+        run: |
+          chmod +x tests/run_framework_score.sh
+          # line-buffered stdout if available so each case appears live
+          if command -v stdbuf >/dev/null 2>&1; then
+            stdbuf -oL -eL ./tests/run_framework_score.sh
+          else
+            ./tests/run_framework_score.sh
+          fi
+
+      - name: Publish scoreboard to job summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f score-out/SCOREBOARD.md ]]; then
+            cat score-out/SCOREBOARD.md >>"$GITHUB_STEP_SUMMARY"
+          else
+            echo "No SCOREBOARD.md produced." >>"$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload score report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: framework-scoreboard
+          path: |
+            score-out/SCOREBOARD.md
+            score-out/results.json
+            score-out/results.tsv
+            score-out/logs/**
+          if-no-files-found: warn
+          retention-days: 30
