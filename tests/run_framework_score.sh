@@ -15,10 +15,14 @@
 # Env:
 #   CORDLANG_BIN   path to cordlang (default: ./cordlang or ./cordlang.exe)
 #   OUT_DIR        report + projects workspace (default: score-out)
-#   SCORE_MODE     compile (default) | full
+#   SCORE_MODE     compile (default, fast) | scaffold | full
+#                    compile  = compile/build emit only (~minutes on CI)
+#                    scaffold = compile + `cordlang run <fw>` project scaffold
+#                    full     = scaffold + vite `--check` for SPA backends (slow)
 #   SCORE_FAIL_UNDER  if set (0-100), exit 1 when any framework score is below it
 #   FRAMEWORKS     space-separated override (default: all public backends)
 #   MAX_LOG_BYTES  stderr capture cap per case (default: 4000)
+#   CASE_TIMEOUT_SEC  kill a hung case after N seconds (default: 120; 0 = off)
 
 set -u
 # do not set -e: we collect failures
@@ -40,6 +44,14 @@ fi
 OUT_DIR="$OUT_DIR_ABS"
 MODE="${SCORE_MODE:-compile}"
 MAX_LOG_BYTES="${MAX_LOG_BYTES:-4000}"
+CASE_TIMEOUT_SEC="${CASE_TIMEOUT_SEC:-120}"
+case "$MODE" in
+  compile|scaffold|full) ;;
+  *)
+    echo "FAIL: SCORE_MODE must be compile|scaffold|full (got: $MODE)" >&2
+    exit 1
+    ;;
+esac
 PROJECTS_DIR="$OUT_DIR/projects"
 PROJECTS_DIR_REL="$OUT_DIR_REL/projects"
 LOGS_DIR="$OUT_DIR/logs"
@@ -223,6 +235,15 @@ cli_path() {
   fi
 }
 
+# Run a command under optional timeout (GNU timeout on Ubuntu CI).
+run_with_timeout() {
+  if [[ "${CASE_TIMEOUT_SEC}" -gt 0 ]] && command -v timeout >/dev/null 2>&1; then
+    timeout --signal=KILL "${CASE_TIMEOUT_SEC}" "$@"
+  else
+    "$@"
+  fi
+}
+
 run_case() {
   local project="$1"
   local fw="$2"
@@ -258,9 +279,9 @@ run_case() {
     cd "$proj_cli" || cd "$proj_dir" || exit 1
     if [[ "$fw" == "esm" ]]; then
       # ESM static export is the project-level path
-      "$CORDLANG" build esm
+      run_with_timeout "$CORDLANG" build esm
     else
-      "$CORDLANG" compile "$entry" --backend "$fw"
+      run_with_timeout "$CORDLANG" compile "$entry" --backend "$fw"
     fi
   ) >>"$log" 2>&1; then
     LAST_STATUS="fail"
@@ -269,26 +290,35 @@ run_case() {
     return 1
   fi
 
-  # Step 2: scaffold via `run` (full project shape) — skip pure compile-only re-run for esm already built
-  if [[ "$fw" != "esm" ]]; then
-    LAST_STEP="scaffold"
-    if ! (
-      cd "$proj_cli" || cd "$proj_dir" || exit 1
-      "$CORDLANG" run "$fw"
-    ) >>"$log" 2>&1; then
-      LAST_STATUS="fail"
-      LAST_DETAIL="$(truncate_log "$log" | tr '\n' ' ' | tr '\t' ' ' | cut -c1-500)"
-      [[ -z "$LAST_DETAIL" ]] && LAST_DETAIL="run $fw scaffold exit non-zero"
-      return 1
+  # Step 2: scaffold via `run` — only in scaffold|full (NOT default compile).
+  # Doing full scaffold for every project×framework is what made GitHub look
+  # "stuck" for 30+ minutes (250× heavy filesystem writes).
+  if [[ "$MODE" == "scaffold" || "$MODE" == "full" ]]; then
+    if [[ "$fw" != "esm" ]]; then
+      LAST_STEP="scaffold"
+      if ! (
+        cd "$proj_cli" || cd "$proj_dir" || exit 1
+        run_with_timeout "$CORDLANG" run "$fw"
+      ) >>"$log" 2>&1; then
+        LAST_STATUS="fail"
+        LAST_DETAIL="$(truncate_log "$log" | tr '\n' ' ' | tr '\t' ' ' | cut -c1-500)"
+        [[ -z "$LAST_DETAIL" ]] && LAST_DETAIL="run $fw scaffold exit non-zero"
+        return 1
+      fi
     fi
   fi
 
-  # Step 3 (full mode): vite production build for SPA/meta backends
+  # Step 3 (full mode only): vite production build for SPA/meta backends
   if [[ "$MODE" == "full" ]] && is_spa_checkable "$fw"; then
     LAST_STEP="vite-check"
     if ! (
       cd "$proj_cli" || cd "$proj_dir" || exit 1
-      "$CORDLANG" run "$fw" --check
+      # vite can be slow; allow 2× case timeout when available
+      if [[ "${CASE_TIMEOUT_SEC}" -gt 0 ]] && command -v timeout >/dev/null 2>&1; then
+        timeout --signal=KILL "$((CASE_TIMEOUT_SEC * 3))" "$CORDLANG" run "$fw" --check
+      else
+        "$CORDLANG" run "$fw" --check
+      fi
     ) >>"$log" 2>&1; then
       LAST_STATUS="fail"
       LAST_DETAIL="$(truncate_log "$log" | tr '\n' ' ' | tr '\t' ' ' | cut -c1-500)"
@@ -304,20 +334,31 @@ run_case() {
 }
 
 # ── matrix ───────────────────────────────────────────────────────────
-echo "== Running project × framework matrix =="
+echo "== Running project × framework matrix (mode=$MODE) =="
 case_i=0
 total_cases=$(( ${#PROJECT_NAMES[@]} * ${#FRAMEWORKS_ARR[@]} ))
+# Force line-buffered progress so GitHub Actions live logs update per case.
+if command -v stdbuf >/dev/null 2>&1; then
+  # re-exec self with line buffering only when we are not already wrapped
+  :
+fi
 
 for project in "${PROJECT_NAMES[@]}"; do
   for fw in "${FRAMEWORKS_ARR[@]}"; do
     case_i=$((case_i + 1))
-    printf '  [%3d/%3d] %-22s %-12s ... ' "$case_i" "$total_cases" "$project" "$fw"
+    # One full line per case (not "… " then later PASS) so GHA streams progress.
+    start_ts=$(date +%s 2>/dev/null || echo 0)
     if run_case "$project" "$fw"; then
-      echo "PASS"
+      end_ts=$(date +%s 2>/dev/null || echo 0)
+      dur=0
+      [[ "$start_ts" != 0 && "$end_ts" != 0 ]] && dur=$((end_ts - start_ts))
+      echo "  [${case_i}/${total_cases}] ${project} × ${fw} → PASS (${dur}s)"
       printf '%s\t%s\tpass\t%s\t%s\n' "$project" "$fw" "$LAST_STEP" "$LAST_DETAIL" >>"$RESULTS_TSV"
     else
-      echo "FAIL ($LAST_STEP)"
-      # escape tabs/newlines already flattened
+      end_ts=$(date +%s 2>/dev/null || echo 0)
+      dur=0
+      [[ "$start_ts" != 0 && "$end_ts" != 0 ]] && dur=$((end_ts - start_ts))
+      echo "  [${case_i}/${total_cases}] ${project} × ${fw} → FAIL @ ${LAST_STEP} (${dur}s)"
       printf '%s\t%s\tfail\t%s\t%s\n' "$project" "$fw" "$LAST_STEP" "$LAST_DETAIL" >>"$RESULTS_TSV"
     fi
   done
