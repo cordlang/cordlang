@@ -5,6 +5,16 @@ CFLAGS = -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-function \
 	-D_DEFAULT_SOURCE -D_POSIX_C_SOURCE=200809L -Isrc
 TARGET = cordlang
 
+# Optional: make VERSION=0.0.013-alpha.1  (embeds into cordlang --version)
+ifdef VERSION
+  CFLAGS += -DCORDLANG_VERSION=\"$(VERSION)\"
+endif
+
+# Optional: make RELEASE=1  → -O2, drop debug -g
+ifeq ($(RELEASE),1)
+  CFLAGS := $(filter-out -g,$(CFLAGS)) -O2
+endif
+
 SRC = \
   src/main.c \
   src/domain/ast.c \
@@ -76,7 +86,7 @@ else
   LDFLAGS =
 endif
 
-.PHONY: all clean test goldens bench
+.PHONY: all clean test goldens bench wasm
 
 all: $(TARGET)
 
@@ -85,6 +95,44 @@ $(TARGET): $(SRC)
 
 clean:
 	rm -f $(TARGET) $(TARGET).exe
+
+# ── WASM playground (Docker + emscripten/emsdk) ───────────
+# Requires Docker. Outputs playground/cordlang.js + playground/cordlang.wasm
+WASM_SRC = \
+  src/adapters/inbound/wasm_api.c \
+  src/domain/ast.c \
+  src/domain/diag.c \
+  src/domain/interp.c \
+  src/domain/ir.c \
+  src/domain/ir_pass.c \
+  src/domain/expr.c \
+  src/application/compile_service.c \
+  src/application/check_service.c \
+  src/adapters/outbound/fs/fs.c \
+  src/adapters/outbound/process/process_spawn.c \
+  src/adapters/outbound/json/json_mini.c \
+  src/adapters/outbound/html_escape.c \
+  src/adapters/outbound/lexer/lexer.c \
+  src/adapters/outbound/parser/parser.c \
+  src/adapters/outbound/compiler/compiler.c \
+  src/adapters/outbound/backends/registry.c \
+  src/adapters/outbound/backends/preset_registry.c \
+  src/adapters/outbound/backends/source_attr.c \
+  src/adapters/outbound/backends/cord_class.c \
+  src/adapters/outbound/backends/theme_css.c \
+  src/adapters/outbound/fonts/font_cache.c \
+  src/adapters/outbound/backends/react/react_backend.c \
+  src/adapters/outbound/backends/react/react_ir.c \
+  src/adapters/outbound/backends/svelte/svelte_backend.c \
+  src/adapters/outbound/backends/vue/vue_backend.c \
+  src/adapters/outbound/backends/vue/vue_ir.c \
+  src/adapters/outbound/backends/static_html/static_html.c \
+  src/adapters/outbound/backends/email/email_backend.c \
+  src/adapters/outbound/backends/html/html_backend.c \
+  src/adapters/outbound/backends/esm/esm_ir.c
+
+wasm:
+	@bash playground/build_wasm.sh
 
 # Golden snapshot tests (react + svelte codegen)
 # On Windows: powershell -File tests/run_tests.ps1

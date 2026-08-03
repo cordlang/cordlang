@@ -14,6 +14,7 @@ out/
 *.tmp
 *.map
 .~cordlang-diag-*
+playground/smoke_native.exe
 
 # ── Generated app output / deps ──────────────────────────
 # Root-level dist (if any)

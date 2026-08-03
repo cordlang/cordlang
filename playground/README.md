@@ -1,23 +1,15 @@
-# Cordlang Playground (stub)
+# Cordlang Playground
 
-Static MVP — **no WASM binary** yet. Use the Cordlang CLI locally and open `index.html` for a sample + workflow notes.
+In-browser compiler (WASM). Build artifacts with:
 
-See also: [`docs/PLAYGROUND.md`](../docs/PLAYGROUND.md).
-
-## Local compile workflow
-
-```bash
-# from repo root
-make
-./cordlang compile examples/counter.cord --ir
-./cordlang compile examples/counter.cord --backend react
-./cordlang check examples/counter.cord
+```powershell
+powershell -ExecutionPolicy Bypass -File playground\build_wasm.ps1
 ```
 
-## Future WASM path
+Then serve this folder over HTTP:
 
-1. Compile lexer/parser/IR/codegen to WASM (Emscripten).
-2. JS API: `compile(source, opts) → { code, ir, diagnostics }`.
-3. Replace this stub with an in-browser editor.
+```bash
+npx --yes serve playground
+```
 
-Open `index.html` in a browser (file:// is fine for the stub).
+Docs: [`docs/PLAYGROUND.md`](../docs/PLAYGROUND.md).

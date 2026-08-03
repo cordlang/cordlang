@@ -26,7 +26,7 @@ Start here for humans and for AI tools.
 | [TEMPLATES.md](./TEMPLATES.md) | Seeds | `init --template` + templates/ |
 | [PACKAGES.md](./PACKAGES.md) | Ecosystem | `cordlang add` local packages |
 | [VERSIONING.md](./VERSIONING.md) | Policy | Language 1.0 vs CLI semver |
-| [PLAYGROUND.md](./PLAYGROUND.md) | Ecosystem | WASM playground stub |
+| [PLAYGROUND.md](./PLAYGROUND.md) | Ecosystem | WASM playground MVP |
 | [NATIVE.md](./NATIVE.md) | Experimental | Flutter / SwiftUI / Compose contract |
 | [IR.md](./IR.md) | Compiler | IR pipeline |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Contributors | Parser → AST → IR → codegen |

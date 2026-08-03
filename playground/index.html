@@ -3,99 +3,258 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cordlang Playground (stub)</title>
+  <title>Cordlang Playground</title>
   <style>
     :root {
-      --bg: #0c1222;
-      --panel: #141c2e;
+      --bg: #0b1220;
+      --panel: #121a2b;
       --text: #e8eefc;
       --muted: #9aa8c7;
       --accent: #5b8def;
-      --code: #0a0f1a;
+      --ok: #3ecf8e;
+      --err: #f07178;
       --border: #243049;
+      --code: #070b14;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
-      background: radial-gradient(1200px 600px at 10% -10%, #1a2744, var(--bg));
+      background: radial-gradient(1000px 500px at 0% -20%, #1a2744, var(--bg));
       color: var(--text);
-      line-height: 1.5;
       min-height: 100vh;
     }
-    main {
-      max-width: 880px;
-      margin: 0 auto;
-      padding: 2.5rem 1.25rem 4rem;
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem 1rem;
+      padding: 0.85rem 1.1rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(12, 18, 34, 0.85);
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 2;
     }
-    h1 { font-size: 1.75rem; margin: 0 0 0.35rem; letter-spacing: -0.02em; }
+    h1 { font-size: 1.05rem; margin: 0; letter-spacing: -0.02em; }
     .tag {
-      display: inline-block;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       color: var(--muted);
       border: 1px solid var(--border);
-      padding: 0.15rem 0.5rem;
-      margin-bottom: 1.25rem;
+      padding: 0.12rem 0.45rem;
     }
-    p { color: var(--muted); max-width: 62ch; }
-    pre {
-      background: var(--code);
-      border: 1px solid var(--border);
-      padding: 1rem 1.1rem;
-      overflow: auto;
-      font-family: "IBM Plex Mono", ui-monospace, monospace;
+    .tag.ready { color: var(--ok); border-color: #2a5a44; }
+    .tag.err { color: var(--err); border-color: #5a2a30; }
+    select, button {
+      font: inherit;
       font-size: 0.85rem;
-      color: var(--text);
-    }
-    code { font-family: inherit; }
-    .panel {
       background: var(--panel);
+      color: var(--text);
       border: 1px solid var(--border);
-      padding: 1.25rem;
-      margin: 1.5rem 0;
+      padding: 0.35rem 0.65rem;
+      cursor: pointer;
     }
-    a { color: var(--accent); }
-    ol { color: var(--muted); }
+    button.primary {
+      background: var(--accent);
+      border-color: transparent;
+      color: #061018;
+      font-weight: 600;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    main {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      min-height: calc(100vh - 52px);
+    }
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+    }
+    .pane {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      min-height: 50vh;
+    }
+    .pane:last-child { border-right: none; }
+    .pane-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      padding: 0.45rem 0.85rem;
+      border-bottom: 1px solid var(--border);
+    }
+    textarea, pre {
+      flex: 1;
+      margin: 0;
+      padding: 0.85rem 1rem;
+      border: 0;
+      background: var(--code);
+      color: var(--text);
+      font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+      font-size: 0.82rem;
+      line-height: 1.45;
+      resize: none;
+      outline: none;
+      white-space: pre;
+      overflow: auto;
+    }
+    #status {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-left: auto;
+    }
+    #status.error { color: var(--err); }
+    #diags {
+      max-height: 8rem;
+      overflow: auto;
+      background: #140e12;
+      border-top: 1px solid var(--border);
+      padding: 0.5rem 0.85rem;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.78rem;
+      color: var(--err);
+      display: none;
+    }
+    #diags.show { display: block; }
   </style>
 </head>
 <body>
-  <main>
-    <span class="tag">MVP stub · WASM not bundled</span>
+  <header>
     <h1>Cordlang Playground</h1>
-    <p>
-      Compile <code>.cord</code> with the <strong>Cordlang CLI</strong> for now.
-      A future build will ship a WASM compiler for in-browser codegen.
-    </p>
-
-    <div class="panel">
-      <p style="margin-top:0;color:var(--text)"><strong>CLI workflow</strong></p>
-      <pre><code>cordlang compile sample.cord --ir
-cordlang compile sample.cord --backend react
-cordlang check sample.cord</code></pre>
-    </div>
-
-    <p><strong>Sample</strong> <code>counter.cord</code></p>
-    <pre id="sample"><code>def Counter
+    <span id="badge" class="tag">loading…</span>
+    <label>
+      <select id="backend" title="Backend">
+        <option value="react">react</option>
+        <option value="svelte">svelte</option>
+        <option value="vue">vue</option>
+        <option value="html">html</option>
+        <option value="esm">esm</option>
+        <option value="email">email</option>
+        <option value="ir">ir</option>
+      </select>
+    </label>
+    <button id="run" class="primary" disabled>Compile</button>
+    <span id="status">Booting WASM…</span>
+  </header>
+  <main>
+    <section class="pane">
+      <div class="pane-label">input · .cord</div>
+      <textarea id="src" spellcheck="false" aria-label="Cord source">def Counter
   state count=0
   props label: string = "Counter"
   col gap=16 p=24 center
-    h1 "#{label}" size=xl bold
+    h1 "#{label}" size=2xl bold
     span "#{count}" size=4xl bold
-    row gap=8 center
-      btn "-" @click=setCount(count - 1) variant=outline
-      btn "+" @click=setCount(count + 1) variant=primary</code></pre>
-
-    <ol>
-      <li>Save the sample as <code>sample.cord</code></li>
-      <li>Run <code>cordlang compile sample.cord --ir</code> to inspect the IR</li>
-      <li>Run with <code>--backend react|svelte|vue|solid</code> for codegen</li>
-    </ol>
-
-    <p>
-      Docs: <a href="../docs/PLAYGROUND.md">docs/PLAYGROUND.md</a> ·
-      <a href="../docs/IR.md">IR.md</a> ·
-      <a href="../docs/GUIDE.md">GUIDE.md</a>
-    </p>
+    row gap=8
+      btn "-" @click=setCount(count - 1)
+      btn "+" @click=setCount(count + 1)
+</textarea>
+      <div id="diags"></div>
+    </section>
+    <section class="pane">
+      <div class="pane-label">output</div>
+      <pre id="out">// codegen appears here</pre>
+    </section>
   </main>
+
+  <script type="module">
+    const SAMPLE = document.getElementById("src").value;
+    const badge = document.getElementById("badge");
+    const status = document.getElementById("status");
+    const out = document.getElementById("out");
+    const diagsEl = document.getElementById("diags");
+    const runBtn = document.getElementById("run");
+    const backendSel = document.getElementById("backend");
+    const srcEl = document.getElementById("src");
+
+    let compileFn = null;
+    let freeFn = null;
+    let versionFn = null;
+    let Module = null;
+
+    function setBadge(text, cls) {
+      badge.textContent = text;
+      badge.className = "tag" + (cls ? " " + cls : "");
+    }
+
+    function showDiags(list) {
+      if (!list || !list.length) {
+        diagsEl.classList.remove("show");
+        diagsEl.textContent = "";
+        return;
+      }
+      diagsEl.classList.add("show");
+      diagsEl.textContent = list
+        .map((d) => `${d.line}:${d.col}: ${d.level}: ${d.message}${d.code ? " [" + d.code + "]" : ""}`)
+        .join("\n");
+    }
+
+    function compile() {
+      if (!compileFn || !Module) return;
+      const source = srcEl.value;
+      const backend = backendSel.value;
+      status.textContent = "Compiling…";
+      status.className = "";
+      try {
+        const ptr = compileFn(source, backend);
+        const json = Module.UTF8ToString(ptr);
+        freeFn(ptr);
+        const result = JSON.parse(json);
+        showDiags(result.diagnostics || []);
+        if (result.ok) {
+          out.textContent = result.code || "";
+          status.textContent = `ok · ${result.backend}`;
+        } else {
+          out.textContent = result.code || "// compile failed — see diagnostics";
+          status.textContent = "error";
+          status.className = "error";
+        }
+      } catch (e) {
+        status.textContent = String(e);
+        status.className = "error";
+      }
+    }
+
+    async function boot() {
+      try {
+        const { default: createCordlang } = await import("./cordlang.js");
+        Module = await createCordlang();
+        compileFn = Module.cwrap("cordlang_compile", "number", ["string", "string"]);
+        freeFn = Module.cwrap("cordlang_free", null, ["number"]);
+        versionFn = Module.cwrap("cordlang_version", "string", []);
+        const ver = versionFn();
+        setBadge("WASM · v" + ver, "ready");
+        status.textContent = "Ready — compile in the browser";
+        runBtn.disabled = false;
+        compile();
+      } catch (e) {
+        setBadge("WASM missing", "err");
+        status.textContent = "Build WASM first (see docs/PLAYGROUND.md)";
+        status.className = "error";
+        out.textContent =
+          "// WASM not loaded.\n" +
+          "// From repo root:\n" +
+          "//   powershell -File playground\\build_wasm.ps1\n" +
+          "//   # or: bash playground/build_wasm.sh\n" +
+          "// Then serve this folder over HTTP (file:// cannot load ES modules):\n" +
+          "//   npx --yes serve playground\n\n" +
+          String(e);
+        srcEl.value = SAMPLE;
+      }
+    }
+
+    runBtn.addEventListener("click", compile);
+    backendSel.addEventListener("change", compile);
+    let t = null;
+    srcEl.addEventListener("input", () => {
+      clearTimeout(t);
+      t = setTimeout(compile, 350);
+    });
+
+    boot();
+  </script>
 </body>
 </html>

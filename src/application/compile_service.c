@@ -72,6 +72,46 @@ static void load_passes_from_config(const char *cord_path, char ***names,
   free(passes);
 }
 
+char *compile_service_source(const char *source, size_t source_len,
+                             const char *backend_name, const char *file_label) {
+  if (!source) return NULL;
+  backend_register_all();
+
+  int want_ir = backend_name && strcmp(backend_name, "ir") == 0;
+  const BackendPort *backend = NULL;
+  if (!want_ir) {
+    backend = backend_find(backend_name);
+    if (!backend) {
+      fprintf(stderr, "Error: unknown backend '%s'\n",
+              backend_name ? backend_name : "(null)");
+      return NULL;
+    }
+  }
+
+  CompileResult result = compiler_parse_source(source, source_len);
+  if (!result.ok || !result.ast) {
+    fprintf(stderr, "Error: failed to parse '%s'%s%s\n",
+            file_label ? file_label : "<buffer>", result.error ? ": " : "",
+            result.error ? result.error : "");
+    compiler_result_free(&result);
+    return NULL;
+  }
+
+  const char *label = file_label ? file_label : "<buffer>";
+  IrProgram *ir = ir_from_ast(result.ast->root, label);
+  char *out = NULL;
+  if (want_ir) {
+    out = ir_dump(ir);
+  } else if (ir && backend && backend->generate_from_ir) {
+    out = backend->generate_from_ir(ir);
+  } else if (backend && backend->generate) {
+    out = backend->generate(result.ast->root);
+  }
+  ir_free(ir);
+  compiler_result_free(&result);
+  return out;
+}
+
 char *compile_service_file(const char *cord_path, const char *backend_name) {
   return compile_service_file_ex(cord_path, backend_name, 0, NULL);
 }

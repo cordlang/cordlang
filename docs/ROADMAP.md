@@ -276,7 +276,7 @@ Mapa completo: [`docs/SVELTE.md`](./SVELTE.md) (basado en [svelte.dev/docs/svelt
 | F2 | Backend **Solid** | ✅ `backends/solid/` + goldens + `docs/SOLID.md` |
 | F3 | Package registry de componentes `.cord` | ✅ MVP local: `cordlang add` → `src/vendor|lib/` + [`PACKAGES.md`](./PACKAGES.md) (sin registry remoto) |
 | F4 | AI prompts / skill “write cord not jsx” | ✅ `docs/AI.md` + `AGENTS.md` + `skills/write-cord` |
-| F5 | Playground web (WASM compile) | ✅ stub: `playground/` + [`PLAYGROUND.md`](./PLAYGROUND.md) (WASM real pendiente) |
+| F5 | Playground web (WASM compile) | 🟡 MVP: `wasm_api` + `playground/` UI + Docker/`emcc` build ([PLAYGROUND.md](./PLAYGROUND.md)) |
 | F6 | CI multi-backend | ✅ goldens Win/Linux; demo `--check` = G4 |
 | F7 | Versionado del lenguaje (0.x → 1.0 freeze) | ✅ [`VERSIONING.md`](./VERSIONING.md) + `CORDLANG_VERSION` / `cordlang --version` |
 | F8 | Backend **email** HTML estático | ✅ `backends/email/` + `static_html` + `docs/EMAIL.md` |
@@ -299,7 +299,7 @@ Mapa completo: [`docs/SVELTE.md`](./SVELTE.md) (basado en [svelte.dev/docs/svelt
 
 ```
 Hecho ──► Fases A–E MVP + IR + G/H + traps/LSP + ESM preview + Vue Official
-AHORA ──► Cerrar a medias: WASM playground (F5 real) — no nuevos backends
+AHORA ──► Playground WASM MVP (build + serve) → polish multi-file / CI artifact
 DESPUÉS ► Registry remoto / MCP / native (no diluir Official)
 ```
 
@@ -310,7 +310,7 @@ DESPUÉS ► Registry remoto / MCP / native (no diluir Official)
 | 1 | Paridad SPA React ↔ Svelte (A3) | ✅ | Residual idiomático ≠ bloqueo: `$bindable`, `{#key}`, `@attach`, Kit SSR |
 | 2 | Vue → Official | ✅ | [VUE_PROMOTION.md](./VUE_PROMOTION.md) + template `--check` CI |
 | 3 | Freeze meta backends | ✅ | Claims congelados en BACKENDS / NEXT / SVELTEKIT — no ampliar superficie |
-| 4 | Playground WASM real | 🟡 stub | [PLAYGROUND.md](./PLAYGROUND.md) — próximo epic de adopción |
+| 4 | Playground WASM real | 🟡 MVP | API + UI + Docker build — [PLAYGROUND.md](./PLAYGROUND.md); multi-file TBD |
 
 ### 4.0 Fase R — ESM native preview perfection
 
@@ -376,7 +376,7 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 | Vue / Solid | Vue = **Official**; Solid = **experimental** |
 | SvelteKit / Next | ✅ **meta** client wrap; no RSC/SSR real — claims congelados |
 | Flutter / SwiftUI / Compose | 🟡 spike [`NATIVE.md`](./NATIVE.md) |
-| Playground WASM | 🟡 **stub → next epic** (F5; no nuevos backends antes) |
+| Playground WASM | 🟡 **MVP** — `playground/build_wasm.*` + UI; single-buffer only |
 | MCP Cordlang | ⏳ post-plan |
 | `@ai` en fuente | Evitar en build |
 
@@ -466,7 +466,7 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 | **M8 — Madurez** | Fase H (regresión, ARCHITECTURE, SPEC, bench, IR passes) | ✅ |
 | **M9 — Horizonte B / meta** | Platform → Vue Official → Solid/email/PDF/Next/Kit (frozen) → native spike | 🟡 meta frozen |
 | **M10 — ESM preview** | Fase R (R1 DX → R2 soft HMR → R3 build esm → R4 runtime → R5 error overlay) | ✅ |
-| **M11 — WASM playground** | Emscripten core + browser UI (cerrar F5 stub) | ⏳ next |
+| **M11 — WASM playground** | Emscripten core + browser UI (`cordlang_compile`) | 🟡 MVP (single-file) |
 
 Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `backend:vue`, `backend:esm`, `ir`, `dx`, `ci`, `docs`.
 
@@ -481,4 +481,4 @@ Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `backend:vue`, `
 
 ---
 
-*Última actualización: Vue → Official ✅; cerrar a medias → WASM playground real (M11); no nuevos backends.*
+*Última actualización: Vue Official ✅; playground WASM MVP (M11) — build Docker + UI; multi-file / CI artifact pendientes.*

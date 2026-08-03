@@ -1,8 +1,18 @@
 #ifndef CORDLANG_COMPILE_SERVICE_H
 #define CORDLANG_COMPILE_SERVICE_H
 
+#include <stddef.h>
+
 /* Use case: compile .cord → target source string */
 char *compile_service_file(const char *cord_path, const char *backend_name);
+
+/*
+ * Single-buffer compile (playground / WASM / tests): parse source in memory,
+ * lower to IR, emit with backend. No multi-file `use` resolution.
+ * backend_name "ir" returns ir_dump. Caller frees. NULL on failure.
+ */
+char *compile_service_source(const char *source, size_t source_len,
+                             const char *backend_name, const char *file_label);
 int compile_service_to_file(const char *cord_path, const char *backend_name,
                             const char *out_path);
 /* Same as to_file, optionally write a Source Map v3 stub (out_path.map). */

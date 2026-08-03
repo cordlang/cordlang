@@ -1,22 +1,52 @@
-# Playground (WASM) — stub → next adoption epic
+# Playground (WASM)
 
-El playground **en el navegador** (compilar `.cord` vía WASM) es el siguiente cierre de ecosistema tras Vue Official (ROADMAP F5 / “cerrar a medias”). **Aplazado** respecto al loop IA (check / LSP / preview) y a no sumar más backends. Este directorio es el **stub estático**: documenta el camino y deja una página HTML mínima sin binario WASM.
+Compile `.cord` **in the browser** — no CLI install. Same IR path as
+`cordlang compile` (single-buffer; no multi-file `use` resolution).
 
-## Estado
+## Status
 
 | Pieza | Estado |
 |-------|--------|
-| Compilar Cordlang a WASM | No empaquetado aún (C → Emscripten / similar) |
-| UI playground | Stub HTML en [`../playground/index.html`](../playground/index.html) |
-| Workflow local equivalente | `cordlang compile file.cord --ir` (+ backends) |
+| Núcleo C → WASM | ✅ `playground/build_wasm.ps1` / `.sh` (Docker `emscripten/emsdk` o `emcc` local) |
+| API JS | ✅ `cordlang_compile(source, backend)` → JSON |
+| UI | ✅ editor + panel codegen en [`../playground/index.html`](../playground/index.html) |
+| Multi-file `use` / routes | ❌ single buffer only (CLI / `cordlang run` for apps) |
 
-## Camino WASM (plan)
+## Build WASM
 
-1. Compilar el núcleo (lexer → parser → AST → IR → emit) a WASM con Emscripten o similar.
-2. Exponer una API JS mínima: `compile(source, { backend, ir }) → string | diagnostics`.
-3. Sustituir el stub HTML por un editor + panel IR/codegen (tipo Rust playground / Svelte REPL).
+```bash
+# Docker (recommended if emcc not installed)
+powershell -ExecutionPolicy Bypass -File playground/build_wasm.ps1
+# or
+bash playground/build_wasm.sh
+# or
+make wasm
+```
 
-Hasta entonces, el flujo recomendado es el CLI:
+Outputs: `playground/cordlang.js` + `playground/cordlang.wasm`.
+
+## Serve (required)
+
+Browsers block ES-module WASM from `file://`:
+
+```bash
+npx --yes serve playground
+# open the printed URL
+```
+
+## JS API
+
+```js
+const Module = await createCordlang();
+const compile = Module.cwrap("cordlang_compile", "number", ["string", "string"]);
+const free = Module.cwrap("cordlang_free", null, ["number"]);
+const ptr = compile(source, "react"); // react|svelte|vue|html|esm|email|ir
+const result = JSON.parse(Module.UTF8ToString(ptr));
+free(ptr);
+// result: { ok, backend, code, diagnostics:[{level,message,line,col,code?}] }
+```
+
+## CLI equivalent
 
 ```bash
 cordlang compile examples/counter.cord --ir
@@ -24,4 +54,4 @@ cordlang compile examples/counter.cord --backend react
 cordlang check examples/counter.cord
 ```
 
-Abrir [`../playground/index.html`](../playground/index.html) en el navegador para ver el sample embebido y las instrucciones.
+Roadmap: F5 / M11 — [`ROADMAP.md`](./ROADMAP.md).

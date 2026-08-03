@@ -9,9 +9,9 @@ Single source of truth for Cordlang target status. If README / ROADMAP / CLI hel
 | **Official** | `esm` / `preview`, `react`, `svelte`, `vue` | AI / product contract. Goldens + template `--check` + preview smoke. |
 | **Experimental / meta** | `solid`, `html` (legacy), `email`, `pdf`, `next`, `sveltekit` | Useful, not the default AI loop. Soft / smoke only. |
 
-Native (Flutter / SwiftUI / Compose) and WASM playground are **experimental** and not registered CLI backends yet — see [NATIVE.md](./NATIVE.md), [PLAYGROUND.md](./PLAYGROUND.md).
+Native (Flutter / SwiftUI / Compose) is **experimental** and not a registered CLI backend — see [NATIVE.md](./NATIVE.md). WASM playground MVP ships under `playground/` — see [PLAYGROUND.md](./PLAYGROUND.md).
 
-**Freeze:** do not add new backends until the WASM playground epic lands (or an explicit ROADMAP exception). Close half-done work first: Official SPA parity → Vue Official (done) → WASM playground.
+**Freeze:** do not add new CLI backends until multi-file WASM / registry epics need them. Close half-done work first.
 
 ## Feature matrix (honesty, not marketing)
 

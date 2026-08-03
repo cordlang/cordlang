@@ -4,6 +4,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(__EMSCRIPTEN__) || defined(CORDLANG_WASM)
+
+/* Browser / WASI playground: no subprocesses (font curl, npm, …). Soft-fail. */
+int process_run(const char *cwd, char *const argv[], int wait_child) {
+  (void)cwd;
+  (void)argv;
+  (void)wait_child;
+  return -1;
+}
+
+#else
+
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -171,4 +183,6 @@ int process_run(const char *cwd, char *const argv[], int wait_child) {
   return 1;
 }
 
-#endif
+#endif /* POSIX */
+
+#endif /* !CORDLANG_WASM */

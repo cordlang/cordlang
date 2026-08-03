@@ -251,6 +251,8 @@ make && ./tests/run_tests.sh
 
 CI (`.github/workflows/ci.yml`) runs goldens **and** `templates/counter` `--check` on Windows and Ubuntu. Extension CI: `.github/workflows/vscode-extension.yml`.
 
+**Releases (alpha/beta):** [`.github/workflows/release.yml`](./.github/workflows/release.yml) builds Windows / Linux (Ubuntu + Fedora) / Linux ARM64 / macOS arm64+x64 and publishes a GitHub Release. Tag `v0.0.013-alpha.1` (or Actions → Release → Run workflow). See [`docs/VERSIONING.md`](./docs/VERSIONING.md).
+
 ---
 
 ## Documentation
@@ -308,4 +310,4 @@ Free to use, modify, and redistribute (including commercial use), with attributi
 ## Next
 
 **Loop IA (Horizonte A residual):** traps `check` + LSP buffer/hints + preview honest — see [docs/ROADMAP.md](./docs/ROADMAP.md).  
-**Official:** ESM preview / React / Svelte / Vue. **Experimental:** Solid, email, PDF, Next/Kit SPA wraps, legacy HTML. Tiers: [docs/BACKENDS.md](./docs/BACKENDS.md). Next close: WASM playground ([docs/PLAYGROUND.md](./docs/PLAYGROUND.md)) — no new backends until then.
+**Official:** ESM preview / React / Svelte / Vue. **Experimental:** Solid, email, PDF, Next/Kit SPA wraps, legacy HTML. Tiers: [docs/BACKENDS.md](./docs/BACKENDS.md). Playground WASM MVP: [docs/PLAYGROUND.md](./docs/PLAYGROUND.md) (`playground/build_wasm.ps1`).
