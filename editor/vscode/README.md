@@ -1,45 +1,27 @@
-# VS Code / Cursor — Cordlang
+# Cordlang for VS Code / Cursor
 
-Soporte de lenguaje para `.cord`: resaltado, snippets y **errores en el
-editor** (subrayados + Problems).
+Editor support for [Cordlang](https://github.com/cordlang/cordlang) — the dense UI language that compiles to React, Svelte, or a native ESM preview.
 
-Ver [`docs/LSP.md`](../../docs/LSP.md).
+## What you get
 
-## Qué incluye
+Open a `.cord` file and the extension gives you:
 
-| Pieza | Rol |
-|-------|-----|
-| Language id `cordlang` + `.cord` | Detecta archivos |
-| `languages.icon` (`logo.png`) | Icono fallback (estilo Vue) |
-| TextMate grammar | Color de sintaxis |
-| Snippets | Plantillas rápidas |
-| **Language Client → `cordlang lsp`** | Diagnósticos en vivo (buffer) + code actions |
-| **Fallback `check --json`** | Si el LSP no arranca, igual hay squiggles |
-| Task `cordlang: check` | Problem matcher |
+- **Syntax highlighting** for Cordlang keywords, tags, `#{…}`, events, and attrs
+- **Snippets** for common patterns (`state`, `props`, `if`/`for`, routes, components)
+- **Live diagnostics** — red/yellow squiggles and Problems panel entries as you type (via `cordlang lsp`)
+- **Quick fixes** for common mistakes (e.g. `className` → `class`, `{x}` → `#{x}`)
+- **Completion, hover, go-to-definition, symbols, and format-on-save** through the language server
+- **Task** `cordlang: check` to validate the whole project from the command palette
 
-## Errores en el editor
+Requires the `cordlang` CLI on your `PATH` (or set `cordlang.lsp.path` to the binary). If the language server cannot start, the extension falls back to `cordlang check --json` so you still get squiggles.
 
-1. Abre un `.cord`.
-2. Escribe algo inválido (`className=`, `"string sin cerrar`, etc.).
-3. Deberías ver subrayado rojo/amarillo y entradas en **Problems**.
+## Settings
 
-La extensión busca el binario en este orden:
+| Setting | Default | Purpose |
+|---------|---------|---------|
+| `cordlang.lsp.path` | `cordlang` | Path to the CLI binary |
+| `cordlang.diagnostics.fallback` | `true` | Use `check --json` when LSP fails |
 
-1. Setting `cordlang.lsp.path`
-2. `cordlang.exe` / `cordlang` / `cordlang_r5.exe` en la raíz del workspace
-3. `cordlang` en el `PATH`
+The extension also auto-detects `cordlang.exe` in the workspace root.
 
-Barra de estado: `Cordlang LSP` (ok) o `Cordlang check` (fallback).
-
-## Desarrollo
-
-```bash
-cd editor/vscode
-npm install
-npm run check
-npx @vscode/vsce package   # → cordlang-*.vsix
-```
-
-Instalar: **Install from VSIX…** → `cordlang-1.0.4.vsix` (desinstala la
-versión anterior antes). En Cursor: misma ruta, o *Developer: Install Extension
-from Location…* apuntando a `editor/vscode` en modo desarrollo.
+Status bar: **Cordlang LSP** when the server is up, **Cordlang check** when using the fallback.
