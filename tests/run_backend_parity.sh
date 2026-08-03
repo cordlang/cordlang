@@ -31,8 +31,7 @@ echo "Cordlang backend parity"
 echo "  root: $ROOT"
 echo ""
 echo "Tiers (docs/BACKENDS.md):"
-echo "  Official:     esm/preview, react, svelte"
-echo "  Candidate:    vue"
+echo "  Official:     esm/preview, react, svelte, vue"
 echo "  Experimental: solid, html, email, pdf, next, sveltekit"
 echo ""
 
@@ -52,7 +51,7 @@ compile_be() {
 
 compile_be react Official || failed=$((failed + 1))
 compile_be svelte Official || failed=$((failed + 1))
-compile_be vue Candidate || failed=$((failed + 1))
+compile_be vue Official || failed=$((failed + 1))
 
 APP="$ROOT/templates/counter"
 echo "=== build [Official] esm (templates/counter) ==="
@@ -80,8 +79,6 @@ if [[ "$FULL" -eq 1 ]]; then
   if [[ -x "$ROOT/tests/run_template_check.sh" ]]; then
     "$ROOT/tests/run_template_check.sh" || failed=$((failed + 1))
   fi
-  echo "=== cordlang run vue --check (Candidate) ==="
-  (cd "$APP" && "$COR" run vue --check) || { echo "FAIL: run vue --check"; failed=$((failed + 1)); }
   if [[ -f "$ROOT/tests/run_preview_smoke.ps1" ]] && command -v pwsh >/dev/null 2>&1; then
     pwsh -File "$ROOT/tests/run_preview_smoke.ps1" || failed=$((failed + 1))
   elif [[ -x "$COR" ]]; then
@@ -92,7 +89,8 @@ fi
 echo ""
 echo "Matrix:"
 echo "  feature           esm  react  svelte  vue"
-echo "  compile smoke     yes  yes    yes     yes (candidate)"
+echo "  compile smoke     yes  yes    yes     yes"
+echo "  template --check  n/a  yes*   yes*    yes*"
 echo ""
 
 if [[ "$meta_failed" -gt 0 ]]; then
@@ -100,9 +98,9 @@ if [[ "$meta_failed" -gt 0 ]]; then
 fi
 
 if [[ "$failed" -gt 0 ]]; then
-  echo "Results: $failed Official/Candidate failure(s)"
+  echo "Results: $failed Official failure(s)"
   exit 1
 fi
 
-echo "Results: Official + Candidate OK"
+echo "Results: Official OK"
 exit 0

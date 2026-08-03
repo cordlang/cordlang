@@ -1,5 +1,7 @@
 # Cordlang ↔ SolidJS
 
+**Tier: Experimental** — not Official. Tiers: [BACKENDS.md](./BACKENDS.md).
+
 Mapeo del modelo mental de [Solid](https://www.solidjs.com/) al lenguaje `.cord`.
 Cordlang compila a **JSX** + Vite (`vite-plugin-solid`) + Tailwind +
 [`@solidjs/router`](https://github.com/solidjs/solid-router).

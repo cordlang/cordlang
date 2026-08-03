@@ -60,8 +60,7 @@ static void print_usage(void) {
   printf("  esm                            ES modules + built-in runtime (no npm)\n");
   printf("  react                          React + Vite + Tailwind scaffold\n");
   printf("  svelte                         Svelte 5 + Vite + Tailwind + hash router\n");
-  printf("  Candidate:\n");
-  printf("  vue                            Vue 3 + Vite + Tailwind + vue-router\n");
+  printf("  vue                            Vue 3 + Vite + Tailwind + vue-router (not Nuxt)\n");
   printf("  Experimental / meta:\n");
   printf("  html                           Legacy static single-document preview\n");
   printf("  solid                          SolidJS + Vite + Tailwind + @solidjs/router\n");

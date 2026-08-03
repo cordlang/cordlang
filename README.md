@@ -39,7 +39,7 @@ Same multi-file `src/**/*.cord` for every backend.
 | **Token cost / vibecode** | Dense `.cord` → cheaper prompts, context, and diffs vs JSX |
 | Less boilerplate for UI | Indent + attrs + `#{expr}` instead of JSX/Svelte ceremony |
 | AI-friendly surface | Schema + deterministic `check` / `analyze` (no LLM in compile) |
-| One source, many targets | IR → ESM preview / React / Svelte / HTML (meta backends after the AI loop) |
+| One source, many targets | IR → ESM preview / React / Svelte / Vue (meta backends after the AI loop) |
 | Real apps | Routes, layouts, state, forms, lazy, context, fetch… |
 
 **No somos “JSX más corto”.** Somos el IR + DX alrededor para que la IA escriba UI válida.
@@ -186,7 +186,7 @@ cordlang goto Counter [entry]   # definition path
 | `fmt [path]` / `fmt --check` | Formatter |
 | `symbols` / `goto <Name>` | Project symbols |
 
-Backends (tiers): see [`docs/BACKENDS.md`](./docs/BACKENDS.md) — **Official** `preview`/`esm`, `react`, `svelte`; **Candidate** `vue`; **Experimental** `solid`, `html`, `email`, `pdf`, `next`, `sveltekit`.  
+Backends (tiers): see [`docs/BACKENDS.md`](./docs/BACKENDS.md) — **Official** `preview`/`esm`, `react`, `svelte`, `vue`; **Experimental** `solid`, `html`, `email`, `pdf`, `next`, `sveltekit`.  
 Preview details: [`docs/PREVIEW.md`](./docs/PREVIEW.md).
 
 ---
@@ -238,7 +238,7 @@ build.bat
 powershell -ExecutionPolicy Bypass -File tests\run_tests.ps1
 # Template: scaffold + vite build (react + svelte)
 powershell -ExecutionPolicy Bypass -File tests\run_template_check.ps1
-# Backend tiers + compile smoke (Official + Candidate)
+# Backend tiers + compile smoke (Official)
 powershell -ExecutionPolicy Bypass -File tests\run_backend_parity.ps1
 
 # Update goldens after intentional codegen changes:
@@ -261,10 +261,10 @@ CI (`.github/workflows/ci.yml`) runs goldens **and** `templates/counter` `--chec
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Compiler internals (parser → IR → codegen) |
 | [docs/SPEC.md](./docs/SPEC.md) | Normative language specification (v0.x) |
 | [docs/LANGUAGE.md](./docs/LANGUAGE.md) | Language design & syntax |
-| [docs/BACKENDS.md](./docs/BACKENDS.md) | Official / Candidate / Experimental tiers |
+| [docs/BACKENDS.md](./docs/BACKENDS.md) | Official / Experimental tiers |
 | [docs/REACT.md](./docs/REACT.md) | Mapping to React APIs |
 | [docs/SVELTE.md](./docs/SVELTE.md) | Mapping to Svelte 5 |
-| [docs/VUE.md](./docs/VUE.md) | Mapping to Vue 3 (Candidate) |
+| [docs/VUE.md](./docs/VUE.md) | Mapping to Vue 3 (Official) |
 | [docs/IR.md](./docs/IR.md) | Intermediate representation |
 
 ---
@@ -308,4 +308,4 @@ Free to use, modify, and redistribute (including commercial use), with attributi
 ## Next
 
 **Loop IA (Horizonte A residual):** traps `check` + LSP buffer/hints + preview honest — see [docs/ROADMAP.md](./docs/ROADMAP.md).  
-**Official:** ESM preview / React / Svelte. **Candidate:** Vue ([docs/VUE_PROMOTION.md](./docs/VUE_PROMOTION.md)). **Experimental:** Solid, email, PDF, Next/Kit SPA wraps, legacy HTML. Tiers: [docs/BACKENDS.md](./docs/BACKENDS.md). WASM playground remains a stub.
+**Official:** ESM preview / React / Svelte / Vue. **Experimental:** Solid, email, PDF, Next/Kit SPA wraps, legacy HTML. Tiers: [docs/BACKENDS.md](./docs/BACKENDS.md). Next close: WASM playground ([docs/PLAYGROUND.md](./docs/PLAYGROUND.md)) — no new backends until then.

@@ -150,14 +150,14 @@ Details: [`IR.md`](./IR.md), [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 The following are **not** part of the Cordlang **1.0** language surface (may arrive as backends / experimental):
 
-- Vue / Solid / Flutter / SwiftUI backends.
+- Solid / Flutter / SwiftUI / Compose backends (experimental). Vue is an **Official** SPA backend ([BACKENDS.md](./BACKENDS.md)) but adds **no** Vue-only language keywords.
 - SvelteKit file routing / SSR, Next.js RSC as language features.
 - Arbitrary JavaScript / TypeScript embedded in `.cord`.
 - JSX/`className`/`onClick` keywords inside `.cord` (rejected by `check`).
 - LLM calls on the `compile` path.
 - Dynamic native plugins (`dlopen` / WASM) — IR passes are compiler features, not language syntax.
 
-Experimental or backend-specific attrs (e.g. Svelte `transition=`, `use=`) may appear in codegen maps before they are frozen here; prefer [`REACT.md`](./REACT.md) / [`SVELTE.md`](./SVELTE.md) until listed above.
+Experimental or backend-specific attrs (e.g. Svelte `transition=`, `use=`) may appear in codegen maps before they are frozen here; prefer [`REACT.md`](./REACT.md) / [`SVELTE.md`](./SVELTE.md) / [`VUE.md`](./VUE.md) until listed above.
 
 ---
 
@@ -183,7 +183,7 @@ Experimental or backend-specific attrs (e.g. Svelte `transition=`, `use=`) may a
 
 **In freeze (stable):** indentation UI, `def`/`props`/`state`/`computed`, `if`/`for`, `#{…}`, modules/`route`/`layout`/`slot`, events `@`, `bind`, theme tokens, typed props (`string|number|boolean|any`), shared hooks lowered to IR (`ref`, context/provide, lazy, portal, effects, fetch/await, snippets/stores where mapped).
 
-**Explicitly out of 1.0 language freeze (backend / experimental):** Vue/Solid/email/PDF/Next/Kit/native backends; `$bindable` / `{#key}` / `class:`/`style:` Svelte-only polish; arbitrary embedded JS/TS; LLM-on-compile.
+**Explicitly out of 1.0 language freeze (backend / experimental):** Solid/email/PDF/Next/Kit/native backends; `$bindable` / `{#key}` / `class:`/`style:` Svelte-only polish; arbitrary embedded JS/TS; LLM-on-compile. (Vue is Official SPA emit — no Vue-only language keywords.)
 
 ---
 

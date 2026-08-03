@@ -31,8 +31,10 @@ jobs:
             ~\AppData\Local\npm-cache
             templates\counter\dist\react\node_modules
             templates\counter\dist\svelte\node_modules
-          key: ${{ runner.os }}-tpl-v1-${{ hashFiles('templates/counter/**/*.cord', 'templates/counter/cordlang.json') }}
+            templates\counter\dist\vue\node_modules
+          key: ${{ runner.os }}-tpl-v2-${{ hashFiles('templates/counter/**/*.cord', 'templates/counter/cordlang.json') }}
           restore-keys: |
+            ${{ runner.os }}-tpl-v2-
             ${{ runner.os }}-tpl-v1-
 
       - name: Build
@@ -45,10 +47,16 @@ jobs:
           powershell -ExecutionPolicy Bypass -File tests\run_tests.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Template react + svelte --check
+      - name: Template react + svelte + vue --check
         shell: pwsh
         run: |
           powershell -ExecutionPolicy Bypass -File tests\run_template_check.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Backend parity (Official compile smoke)
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File tests\run_backend_parity.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   test-ubuntu:
@@ -73,8 +81,10 @@ jobs:
             ~/.npm
             templates/counter/dist/react/node_modules
             templates/counter/dist/svelte/node_modules
-          key: ${{ runner.os }}-tpl-v1-${{ hashFiles('templates/counter/**/*.cord', 'templates/counter/cordlang.json') }}
+            templates/counter/dist/vue/node_modules
+          key: ${{ runner.os }}-tpl-v2-${{ hashFiles('templates/counter/**/*.cord', 'templates/counter/cordlang.json') }}
           restore-keys: |
+            ${{ runner.os }}-tpl-v2-
             ${{ runner.os }}-tpl-v1-
 
       - name: Build (-Werror)
@@ -82,14 +92,17 @@ jobs:
 
       - name: Golden tests
         run: |
-          chmod +x tests/run_tests.sh tests/run_template_check.sh tests/run_smoke_examples.sh
+          chmod +x tests/run_tests.sh tests/run_template_check.sh tests/run_smoke_examples.sh tests/run_backend_parity.sh
           ./tests/run_tests.sh
 
       - name: Smoke templates + examples
         run: ./tests/run_smoke_examples.sh
 
-      - name: Template react + svelte --check
+      - name: Template react + svelte + vue --check
         run: ./tests/run_template_check.sh
+
+      - name: Backend parity (Official compile smoke)
+        run: ./tests/run_backend_parity.sh
 
   test-ubuntu-asan:
     name: ASAN/UBSAN goldens (Ubuntu)

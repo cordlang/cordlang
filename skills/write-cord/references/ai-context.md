@@ -51,7 +51,7 @@ def Counter
 ## Visual quality
 
 - Prefer `theme` tokens; `type=display|title|body|caption`, `elevate=0..4`, `section` / `stack density=`, `md:p=` responsive.
-- Motion budget: 1–2 motions per viewport (`motion fade`). ESM preview stubs `icon`/`motion`/`chart` — full UI needs `run react|svelte`.
+- Motion budget: 1–2 motions per viewport (`motion fade`). ESM preview stubs `icon`/`motion`/`chart` — full UI needs `run react|svelte|vue`.
 
 ## CLI
 

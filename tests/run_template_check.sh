@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Scaffold a stock template + vite build for react and svelte.
+# Scaffold a stock template + vite build for Official SPA backends.
 # Usage (from repo root, after `make`):
 #   ./tests/run_template_check.sh [counter|landing|dashboard|…]
 
@@ -30,7 +30,7 @@ echo "  exe:  $CORDLANG"
 echo "  app:  $APP"
 
 failed=0
-for backend in react svelte; do
+for backend in react svelte vue; do
   echo ""
   echo "=== cordlang run $backend --check ==="
   if (cd "$APP" && "$CORDLANG" run "$backend" --check); then
@@ -48,5 +48,5 @@ if [[ "$failed" -gt 0 ]]; then
 fi
 
 echo ""
-echo "Results: react + svelte --check OK ($TEMPLATE)"
+echo "Results: react + svelte + vue --check OK ($TEMPLATE)"
 exit 0

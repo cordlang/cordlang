@@ -1,7 +1,7 @@
 # Backend parity report (tiers + compile smoke)
 #
-# Prints Official / Candidate / Experimental tiers and runs a fast compile
-# smoke for Official + Candidate. Meta backends are smoke-only with -IncludeMeta.
+# Prints Official / Experimental tiers and runs a fast compile
+# smoke for Official backends. Meta backends are smoke-only with -IncludeMeta.
 #
 # Usage (repo root, after build.bat):
 #   powershell -ExecutionPolicy Bypass -File tests\run_backend_parity.ps1
@@ -10,7 +10,7 @@
 #
 # Default: compile fixtures for react, svelte, vue + build esm - must pass
 # IncludeMeta: also compile solid, email, pdf, next, sveltekit (soft unless -StrictMeta)
-# Full: also run templates/counter --check for react+svelte (+ vue) and preview --smoke
+# Full: also run templates/counter --check for react+svelte+vue and preview --smoke
 #
 # See docs/BACKENDS.md
 
@@ -49,8 +49,7 @@ Write-Host "  root: $Root"
 Write-Host "  exe:  $Cordlang"
 Write-Host ""
 Write-Host "Tiers (docs/BACKENDS.md):" -ForegroundColor Cyan
-Write-Host "  Official:    esm/preview, react, svelte"
-Write-Host "  Candidate:   vue"
+Write-Host "  Official:     esm/preview, react, svelte, vue"
 Write-Host "  Experimental: solid, html, email, pdf, next, sveltekit"
 Write-Host ""
 
@@ -71,7 +70,7 @@ function Test-Compile([string]$backend, [string]$tier) {
 foreach ($pair in @(
   @{ be = "react"; tier = "Official" },
   @{ be = "svelte"; tier = "Official" },
-  @{ be = "vue"; tier = "Candidate" }
+  @{ be = "vue"; tier = "Official" }
 )) {
   if (-not (Test-Compile $pair.be $pair.tier)) { $failed++ }
 }
@@ -116,19 +115,6 @@ if ($Full) {
     & powershell -ExecutionPolicy Bypass -File $tpl
     if ($LASTEXITCODE -ne 0) { $failed++ }
   }
-  Push-Location $App
-  try {
-    Write-Host "=== cordlang run vue --check (Candidate) ===" -ForegroundColor Cyan
-    & $Cordlang run vue --check
-    if ($LASTEXITCODE -ne 0) {
-      Write-Host "FAIL: run vue --check" -ForegroundColor Red
-      $failed++
-    } else {
-      Write-Host "PASS: run vue --check" -ForegroundColor Green
-    }
-  } finally {
-    Pop-Location
-  }
   $smoke = Join-Path $Root "tests\run_preview_smoke.ps1"
   if (Test-Path $smoke) {
     & powershell -ExecutionPolicy Bypass -File $smoke
@@ -139,9 +125,8 @@ if ($Full) {
 Write-Host ""
 Write-Host "Matrix:" -ForegroundColor Cyan
 Write-Host "  feature           esm  react  svelte  vue"
-Write-Host "  compile smoke     yes  yes    yes     yes candidate"
-Write-Host "  template --check  n/a  yes*   yes*    yes* with -Full"
-Write-Host "  * Official CI via run_template_check; vue via -Full / VUE_PROMOTION"
+Write-Host "  compile smoke     yes  yes    yes     yes"
+Write-Host "  template --check  n/a  yes*   yes*    yes* (* CI via run_template_check)"
 Write-Host ""
 
 if ($metaFailed -gt 0) {
@@ -149,9 +134,9 @@ if ($metaFailed -gt 0) {
 }
 
 if ($failed -gt 0) {
-  Write-Host "Results: $failed Official/Candidate failure(s)" -ForegroundColor Red
+  Write-Host "Results: $failed Official failure(s)" -ForegroundColor Red
   exit 1
 }
 
-Write-Host "Results: Official + Candidate OK" -ForegroundColor Green
+Write-Host "Results: Official OK" -ForegroundColor Green
 exit 0

@@ -5,6 +5,7 @@ All paths relative to the repo root. Compile with:
 ```bash
 cordlang compile <file> --backend react
 cordlang compile <file> --backend svelte
+cordlang compile <file> --backend vue
 cordlang compile <file> --ir
 ```
 
@@ -40,9 +41,12 @@ cordlang init demo --template counter
 cd demo
 cordlang run
 cordlang run react --check
+cordlang run vue --check    # Official SPA (Vue 3; not Nuxt)
 cordlang check
 cordlang symbols
 ```
+
+Same `templates/counter` sources emit to React, Svelte, or Vue — see [VUE.md](./VUE.md).
 
 ## Golden fixtures (`tests/fixtures/`)
 

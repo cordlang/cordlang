@@ -6,11 +6,12 @@ Single source of truth for Cordlang target status. If README / ROADMAP / CLI hel
 
 | Tier | Backends | Meaning |
 |------|----------|---------|
-| **Official** | `esm` / `preview`, `react`, `svelte` | AI / product contract. Goldens + template `--check` + preview smoke. |
-| **Candidate** | `vue` | Near-official SPA: goldens in CI; promotion gated by [VUE_PROMOTION.md](./VUE_PROMOTION.md). |
+| **Official** | `esm` / `preview`, `react`, `svelte`, `vue` | AI / product contract. Goldens + template `--check` + preview smoke. |
 | **Experimental / meta** | `solid`, `html` (legacy), `email`, `pdf`, `next`, `sveltekit` | Useful, not the default AI loop. Soft / smoke only. |
 
 Native (Flutter / SwiftUI / Compose) and WASM playground are **experimental** and not registered CLI backends yet — see [NATIVE.md](./NATIVE.md), [PLAYGROUND.md](./PLAYGROUND.md).
+
+**Freeze:** do not add new backends until the WASM playground epic lands (or an explicit ROADMAP exception). Close half-done work first: Official SPA parity → Vue Official (done) → WASM playground.
 
 ## Feature matrix (honesty, not marketing)
 
@@ -22,7 +23,7 @@ Native (Flutter / SwiftUI / Compose) and WASM playground are **experimental** an
 | forms / actions | partial | yes | yes | partial |
 | assets / fonts / theme | yes | yes | yes | yes |
 | `check` / `analyze` | yes | yes | yes | n/a (source-level) |
-| scaffold Vite `--check` | n/a (native) | yes (CI) | yes (CI) | candidate (see promotion) |
+| scaffold Vite `--check` | n/a (native) | yes (CI) | yes (CI) | yes (CI) |
 | presets icons/motion/charts | stub in preview | yes | yes | yes |
 
 ## Meta wrappers (frozen claims)
@@ -37,14 +38,13 @@ Native (Flutter / SwiftUI / Compose) and WASM playground are **experimental** an
 | Script | Role |
 |--------|------|
 | `tests/run_tests.ps1` / `.sh` | Goldens: react, svelte, **vue**, solid |
-| `tests/run_template_check.ps1` | Official SPA: react + svelte `--check` |
+| `tests/run_template_check.ps1` | Official SPA: react + svelte + **vue** `--check` |
 | `tests/run_preview_smoke.ps1` | Official ESM: `run --smoke` |
-| `tests/run_backend_parity.ps1` / `.sh` | Prints tiers + compile smoke; Official/Candidate must pass |
+| `tests/run_backend_parity.ps1` / `.sh` | Prints tiers + compile smoke; Official must pass |
 
 ## CLI one-liners
 
 ```text
-Official:   preview|esm, react, svelte
-Candidate:  vue
+Official:   preview|esm, react, svelte, vue
 Meta:       solid, html, email, pdf, next, sveltekit
 ```

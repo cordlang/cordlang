@@ -1,17 +1,17 @@
 # Vue → Official promotion checklist
 
-Vue is **Candidate** today ([BACKENDS.md](./BACKENDS.md)). Promote to **Official** only when every box below is green. Do not market Vue as co-equal with React/Svelte until then.
+Vue is **Official** ([BACKENDS.md](./BACKENDS.md)). This checklist records the promotion gate; keep boxes green.
 
 ## Required
 
-- [ ] [VUE.md](./VUE.md) depth roughly matches [REACT.md](./REACT.md) / [SVELTE.md](./SVELTE.md) (limits, presets, routing caveats, AI traps)
-- [ ] README + [AI_CONTEXT.md](./AI_CONTEXT.md) list Vue as a supported SPA target (not “meta only”)
-- [ ] [BACKENDS.md](./BACKENDS.md) tier table moves `vue` from Candidate → Official; CLI `help` updated
-- [ ] `tests/run_template_check.ps1` (or parity `-Full`) includes `cordlang run vue --check` on `templates/counter`
-- [ ] At least one Vue-oriented callout in [EXAMPLES.md](./EXAMPLES.md) (or a dedicated multi-file example)
-- [ ] Preset merge smoke: `cordlang preset add icons` + vue scaffold lists expected deps (parity with react/svelte Linux checks)
-- [ ] `tests/run_backend_parity.ps1` Official+Candidate green on CI (or documented job)
-- [ ] Explicit “not Nuxt” note (same honesty as Next/Kit SPA wrappers)
+- [x] [VUE.md](./VUE.md) depth roughly matches [REACT.md](./REACT.md) / [SVELTE.md](./SVELTE.md) (limits, presets, routing caveats, AI traps)
+- [x] README + [AI_CONTEXT.md](./AI_CONTEXT.md) list Vue as a supported SPA target (not “meta only”)
+- [x] [BACKENDS.md](./BACKENDS.md) tier table moves `vue` from Candidate → Official; CLI `help` updated
+- [x] `tests/run_template_check.ps1` includes `cordlang run vue --check` on `templates/counter`
+- [x] At least one Vue-oriented callout in [EXAMPLES.md](./EXAMPLES.md)
+- [x] Preset merge smoke: `cordlang preset add icons` + vue scaffold lists `lucide-vue-next` (parity with react/svelte in `run_tests.sh`)
+- [x] `tests/run_backend_parity.ps1` Official green on CI (compile smoke + template check)
+- [x] Explicit “not Nuxt” note (same honesty as Next/Kit SPA wrappers)
 
 ## Already true (do not regress)
 
@@ -22,6 +22,6 @@ Vue is **Candidate** today ([BACKENDS.md](./BACKENDS.md)). Promote to **Official
 
 ## After promotion
 
-1. Update [ROADMAP.md](./ROADMAP.md) § meta: Vue leaves “meta / experimental”.
-2. Mention Vue next to react/svelte in [AGENTS.md](../AGENTS.md) preview table if agents should default to it.
+1. [x] Update [ROADMAP.md](./ROADMAP.md) § meta: Vue leaves Candidate / experimental.
+2. [x] Mention Vue next to react/svelte in [AGENTS.md](../AGENTS.md) preview table.
 3. Optionally add Vue to default AI wording in skills (`write-cord` run commands).

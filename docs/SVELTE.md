@@ -474,7 +474,7 @@ Objetivo: la misma app (`my-app` / `doc`) compila a ambos backends con UI equiva
 
 **DoD A3:** checklist arriba revisada; goldens verdes; `cordlang run react --check` y `svelte --check` en `my-app`.
 
-Gaps abiertos (no bloquean A3 MVP): `$bindable`, `{#key}`, Kit SSR, attachments `@attach`.
+Gaps abiertos (no bloquean A3; **no** bloquean Vue Official): `$bindable`, `{#key}`, Kit SSR, attachments `@attach`. Treat as idiomatic polish, not SPA parity debt.
 
 ---
 

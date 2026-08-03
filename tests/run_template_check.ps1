@@ -1,4 +1,4 @@
-# Scaffold a stock template + vite build for react and svelte.
+# Scaffold a stock template + vite build for Official SPA backends.
 # Usage (from repo root, after building cordlang.exe):
 #   powershell -ExecutionPolicy Bypass -File tests\run_template_check.ps1
 # Optional: -Template counter|landing|dashboard|form-fetch|docs-shell
@@ -37,7 +37,7 @@ Write-Host "  exe:  $Cordlang"
 Write-Host "  app:  $App"
 
 $failed = 0
-foreach ($backend in @("react", "svelte")) {
+foreach ($backend in @("react", "svelte", "vue")) {
   Write-Host ""
   Write-Host "=== cordlang run $backend --check ===" -ForegroundColor Cyan
   Push-Location $App
@@ -61,5 +61,5 @@ if ($failed -gt 0) {
 }
 
 Write-Host ""
-Write-Host "Results: react + svelte --check OK ($Template)" -ForegroundColor Green
+Write-Host "Results: react + svelte + vue --check OK ($Template)" -ForegroundColor Green
 exit 0

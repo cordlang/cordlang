@@ -2,7 +2,7 @@
 
 Start here for humans and for AI tools.
 
-**Product north star:** vibecode + AI agents with **minimal token spend**. Dense `.cord` → deterministic `check` → **Official** ESM/React/Svelte. **Candidate** Vue; other backends are experimental/meta. Tiers: [`BACKENDS.md`](./BACKENDS.md). If docs conflict, [`AI_CONTEXT.md`](./AI_CONTEXT.md) / [`AI.md`](./AI.md) win for intent.
+**Product north star:** vibecode + AI agents with **minimal token spend**. Dense `.cord` → deterministic `check` → **Official** ESM/React/Svelte/Vue. Other backends are experimental/meta. Tiers: [`BACKENDS.md`](./BACKENDS.md). If docs conflict, [`AI_CONTEXT.md`](./AI_CONTEXT.md) / [`AI.md`](./AI.md) win for intent.
 
 | Doc | Audience | Content |
 |-----|----------|---------|
@@ -13,11 +13,11 @@ Start here for humans and for AI tools.
 | [AI.md](./AI.md) | **AI models** | Full do / don't contract for LLMs |
 | [LANGUAGE.md](./LANGUAGE.md) | Design | Language design notes (ex-`idea.md`) |
 | [SPEC.md](./SPEC.md) | Language | Normative syntax & semantics (v0.x) |
-| [BACKENDS.md](./BACKENDS.md) | Everyone | **Official / Candidate / Experimental** tiers |
+| [BACKENDS.md](./BACKENDS.md) | Everyone | **Official / Experimental** tiers |
 | [REACT.md](./REACT.md) | Backend map | Cordlang ↔ React |
 | [SVELTE.md](./SVELTE.md) | Backend map | Cordlang ↔ Svelte 5 |
-| [VUE.md](./VUE.md) | Backend map | Cordlang ↔ Vue 3 (Candidate) |
-| [VUE_PROMOTION.md](./VUE_PROMOTION.md) | Planning | Checklist to promote Vue → Official |
+| [VUE.md](./VUE.md) | Backend map | Cordlang ↔ Vue 3 (Official) |
+| [VUE_PROMOTION.md](./VUE_PROMOTION.md) | History | Vue Candidate → Official checklist (done) |
 | [SOLID.md](./SOLID.md) | Backend map | Cordlang ↔ Solid (Experimental) |
 | [EMAIL.md](./EMAIL.md) | Backend map | Static email HTML |
 | [PDF.md](./PDF.md) | Backend map | HTML → external PDF |

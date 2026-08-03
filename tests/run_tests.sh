@@ -391,7 +391,7 @@ else
   echo "FAIL: check with presets expected zero"
   failed=$((failed + 1))
 fi
-for be in react svelte; do
+for be in react svelte vue; do
   if (cd "$preset_tmp" && "$CORDLANG" run "$be" --check >/dev/null 2>&1); then
     echo "PASS: run $be --check (presets)"
     passed=$((passed + 1))
@@ -406,6 +406,9 @@ for be in react svelte; do
       passed=$((passed + 1))
     elif [[ "$be" == "svelte" ]] && grep -q '@lucide/svelte\|lucide-svelte' "$pkg"; then
       echo "PASS: svelte package.json merged preset deps"
+      passed=$((passed + 1))
+    elif [[ "$be" == "vue" ]] && grep -q 'lucide-vue-next' "$pkg"; then
+      echo "PASS: vue package.json merged preset deps"
       passed=$((passed + 1))
     else
       echo "FAIL: $be package.json missing preset deps"
