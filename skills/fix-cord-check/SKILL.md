@@ -9,7 +9,7 @@ description: >
 
 # Fix Cordlang check failures
 
-> **Portable skill** — path: `skills/fix-cord-check/`
+> **Portable skill** — install: `npx skills add cordlang/cordlang -s fix-cord-check`
 
 You repair **`.cord`** sources so `cordlang check` exits 0. Do not invent keywords.
 
@@ -27,21 +27,24 @@ cordlang check --json [path]
 
 ## Common codes
 
+See `references/common-codes.md` for the full table. Quick hits:
+
 | code | Typical fix |
 |------|-------------|
 | `jsx-attr` | `className` → `class` or style attrs; `onClick` → `@click=…` |
 | `bad-interp` | `{count}` in text → `#{count}` |
 | `semantic-vocab` | use documented `purpose` / `importance` vocabulary |
-| (unknown attr warn) | drop attr or use name from `docs/schema/attrs.json` |
+| (unknown attr warn) | drop attr or use a name from `write-cord` → `references/attrs-summary.md` |
 
 ## Rules
 
 - Patch `.cord` only — never `dist/**` as source of truth.
 - Prefer minimal edits; do not rewrite working sections.
 - After green check, mention `cordlang run` / `run react` / `run svelte` if relevant.
-- Authoring new UI from scratch → switch to `skills/write-cord/SKILL.md`.
+- Authoring new UI from scratch → switch to companion skill `write-cord`.
 
 ## References
 
-- `docs/AI_CONTEXT.md` · `docs/AI_WORKFLOW.md` · `docs/schema/attrs.json`
-- Fixtures: `tests/fixtures/ia_fail_*.cord`
+- Bundled: `references/common-codes.md`
+- Companion: `write-cord` (`references/ai-context.md`, `attrs-summary.md`)
+- Upstream (Cordlang checkout / raw): `docs/AI_CONTEXT.md` · `docs/AI_WORKFLOW.md` · `docs/schema/attrs.json`

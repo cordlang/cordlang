@@ -84,7 +84,7 @@ def Child
 
 ## Semantic metadata
 
-Optional attrs (vocabulary in `docs/schema/attrs.json`):
+Optional attrs (vocabulary in `attrs-summary.md`):
 
 - `purpose`: navigation | content | action | form | status | decoration | landmark
 - `importance`: primary | secondary | tertiary | optional | critical

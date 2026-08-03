@@ -1,7 +1,9 @@
 # Cordlang ↔ Next.js (meta-backend)
 
-Wrapper alrededor del emit **React** (`react_emit_modules_from_ir`). No es un
-claim de RSC completo ni App Router parity.
+**Tier: Experimental / meta.** SPA wrapper around React emit — **not** a claim of
+RSC, SSR, or App Router file-routing parity. Tiers: [BACKENDS.md](./BACKENDS.md).
+
+Wrapper alrededor del emit **React** (`react_emit_modules_from_ir`).
 
 ## Uso
 

@@ -1,0 +1,50 @@
+# Backend tiers
+
+Single source of truth for Cordlang target status. If README / ROADMAP / CLI help disagree, **this file wins**.
+
+## Tiers
+
+| Tier | Backends | Meaning |
+|------|----------|---------|
+| **Official** | `esm` / `preview`, `react`, `svelte` | AI / product contract. Goldens + template `--check` + preview smoke. |
+| **Candidate** | `vue` | Near-official SPA: goldens in CI; promotion gated by [VUE_PROMOTION.md](./VUE_PROMOTION.md). |
+| **Experimental / meta** | `solid`, `html` (legacy), `email`, `pdf`, `next`, `sveltekit` | Useful, not the default AI loop. Soft / smoke only. |
+
+Native (Flutter / SwiftUI / Compose) and WASM playground are **experimental** and not registered CLI backends yet — see [NATIVE.md](./NATIVE.md), [PLAYGROUND.md](./PLAYGROUND.md).
+
+## Feature matrix (honesty, not marketing)
+
+| Feature | esm | react | svelte | vue |
+|---------|-----|-------|--------|-----|
+| state / props / if / for / events | yes | yes | yes | yes |
+| routes / layouts | yes | yes | yes | yes |
+| context provide/ctx | yes | yes | yes | yes |
+| forms / actions | partial | yes | yes | partial |
+| assets / fonts / theme | yes | yes | yes | yes |
+| `check` / `analyze` | yes | yes | yes | n/a (source-level) |
+| scaffold Vite `--check` | n/a (native) | yes (CI) | yes (CI) | candidate (see promotion) |
+| presets icons/motion/charts | stub in preview | yes | yes | yes |
+
+## Meta wrappers (frozen claims)
+
+| Backend | Reality |
+|---------|---------|
+| `next` | SPA React emit inside a Next App Router shell. **Not** RSC / SSR / file-routing parity. [NEXT.md](./NEXT.md) |
+| `sveltekit` | SPA Svelte emit inside a Kit page. **Not** SSR/SSG/file-routing parity. [SVELTEKIT.md](./SVELTEKIT.md) |
+
+## Tests
+
+| Script | Role |
+|--------|------|
+| `tests/run_tests.ps1` / `.sh` | Goldens: react, svelte, **vue**, solid |
+| `tests/run_template_check.ps1` | Official SPA: react + svelte `--check` |
+| `tests/run_preview_smoke.ps1` | Official ESM: `run --smoke` |
+| `tests/run_backend_parity.ps1` / `.sh` | Prints tiers + compile smoke; Official/Candidate must pass |
+
+## CLI one-liners
+
+```text
+Official:   preview|esm, react, svelte
+Candidate:  vue
+Meta:       solid, html, email, pdf, next, sveltekit
+```

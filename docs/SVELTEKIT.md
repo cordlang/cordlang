@@ -1,5 +1,8 @@
 # Cordlang ↔ SvelteKit (meta-backend)
 
+**Tier: Experimental / meta.** SPA wrapper around Svelte emit — **not** full
+SSR/SSG/file-routing parity. Tiers: [BACKENDS.md](./BACKENDS.md).
+
 Wrapper alrededor del emit **Svelte** (`svelte_emit_modules_from_ir`). MVP de
 esqueleto Kit; no pretende paridad SSR/SSG completa.
 

@@ -55,6 +55,8 @@ ESM native preview: [docs/PREVIEW.md](./docs/PREVIEW.md)
 - Treat SvelteKit/Next as full frameworks — they are **meta-backend MVPs**
   (`cordlang run next|sveltekit`): SPA emit wrapped for scaffolds, not full
   RSC/SSR/file-routing parity. See `docs/NEXT.md` / `docs/SVELTEKIT.md`.
+- Treat all backends as equal — tiers live in [`docs/BACKENDS.md`](./docs/BACKENDS.md)
+  (Official / Candidate / Experimental).
 - Commit `node_modules/`, `dist/`, or `*.exe`.
 
 ---
@@ -72,6 +74,7 @@ cordlang compile f.cord --ir
 cordlang check
 tests/run_tests.ps1
 tests/run_template_check.ps1
+tests/run_backend_parity.ps1
 ```
 
 ---
@@ -95,9 +98,11 @@ tests/run_template_check.ps1
 
 | Command | Meaning |
 |---------|---------|
-| `cordlang run` / `run preview` | **Default:** ESM native dev server (JIT `.cord` → JS modules) |
-| `cordlang run html` | Legacy HTML preview (one static document) |
-| `cordlang run react` \| `svelte` \| … | Vite scaffold under `dist/<backend>` (needs Node) |
+| `cordlang run` / `run preview` | **Official:** ESM native dev server (JIT `.cord` → JS modules) |
+| `cordlang run html` | **Experimental:** legacy HTML preview (one static document) |
+| `cordlang run react` \| `svelte` | **Official:** Vite scaffold under `dist/<backend>` (needs Node) |
+| `cordlang run vue` | **Candidate:** Vue 3 scaffold — see `docs/VUE_PROMOTION.md` |
+| `cordlang run solid` \| `next` \| `sveltekit` \| … | **Experimental / meta** — `docs/BACKENDS.md` |
 
 ---
 

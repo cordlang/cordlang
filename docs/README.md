@@ -2,7 +2,7 @@
 
 Start here for humans and for AI tools.
 
-**Product north star:** vibecode + AI agents with **minimal token spend**. Dense `.cord` → deterministic `check` → React/Svelte/HTML. Meta backends (Vue/Solid/email/PDF/Next/Kit) are secondary. If docs conflict, [`AI_CONTEXT.md`](./AI_CONTEXT.md) / [`AI.md`](./AI.md) win for intent.
+**Product north star:** vibecode + AI agents with **minimal token spend**. Dense `.cord` → deterministic `check` → **Official** ESM/React/Svelte. **Candidate** Vue; other backends are experimental/meta. Tiers: [`BACKENDS.md`](./BACKENDS.md). If docs conflict, [`AI_CONTEXT.md`](./AI_CONTEXT.md) / [`AI.md`](./AI.md) win for intent.
 
 | Doc | Audience | Content |
 |-----|----------|---------|
@@ -13,14 +13,16 @@ Start here for humans and for AI tools.
 | [AI.md](./AI.md) | **AI models** | Full do / don't contract for LLMs |
 | [LANGUAGE.md](./LANGUAGE.md) | Design | Language design notes (ex-`idea.md`) |
 | [SPEC.md](./SPEC.md) | Language | Normative syntax & semantics (v0.x) |
+| [BACKENDS.md](./BACKENDS.md) | Everyone | **Official / Candidate / Experimental** tiers |
 | [REACT.md](./REACT.md) | Backend map | Cordlang ↔ React |
 | [SVELTE.md](./SVELTE.md) | Backend map | Cordlang ↔ Svelte 5 |
-| [VUE.md](./VUE.md) | Backend map | Cordlang ↔ Vue 3 |
-| [SOLID.md](./SOLID.md) | Backend map | Cordlang ↔ Solid |
+| [VUE.md](./VUE.md) | Backend map | Cordlang ↔ Vue 3 (Candidate) |
+| [VUE_PROMOTION.md](./VUE_PROMOTION.md) | Planning | Checklist to promote Vue → Official |
+| [SOLID.md](./SOLID.md) | Backend map | Cordlang ↔ Solid (Experimental) |
 | [EMAIL.md](./EMAIL.md) | Backend map | Static email HTML |
 | [PDF.md](./PDF.md) | Backend map | HTML → external PDF |
-| [NEXT.md](./NEXT.md) | Meta backend | Next.js wrap |
-| [SVELTEKIT.md](./SVELTEKIT.md) | Meta backend | SvelteKit wrap |
+| [NEXT.md](./NEXT.md) | Meta backend | Next.js SPA wrap (not RSC) |
+| [SVELTEKIT.md](./SVELTEKIT.md) | Meta backend | SvelteKit SPA wrap (not full SSR) |
 | [TEMPLATES.md](./TEMPLATES.md) | Seeds | `init --template` + templates/ |
 | [PACKAGES.md](./PACKAGES.md) | Ecosystem | `cordlang add` local packages |
 | [VERSIONING.md](./VERSIONING.md) | Policy | Language 1.0 vs CLI semver |

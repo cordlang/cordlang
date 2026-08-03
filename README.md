@@ -73,13 +73,23 @@ Same multi-file `src/**/*.cord` for every backend.
 
 ### AI / agents
 
-Cordlang is designed for **LLM-authored UI**. Point tools at:
+[![skills.sh](https://skills.sh/b/cordlang/cordlang)](https://skills.sh/cordlang/cordlang)
+
+Cordlang is designed for **LLM-authored UI**.
+
+**AI setup in 10 seconds** (any agent that supports [skills](https://skills.sh)):
+
+```bash
+npx skills add cordlang/cordlang -s write-cord -s fix-cord-check -y
+```
+
+Global / specific agents: `npx skills add cordlang/cordlang -s write-cord -a cursor -a claude-code -g -y`
 
 | Path | Role |
 |------|------|
 | [`docs/AI.md`](./docs/AI.md) | Hard rules (do / don't) for any model |
 | [`AGENTS.md`](./AGENTS.md) | Repo-wide coding-agent brief |
-| [`skills/write-cord/`](./skills/write-cord/) | **Portable skill** (any tool / LLM) |
+| [`skills/write-cord/`](./skills/write-cord/) | **Canonical** portable skill (source for `npx skills`) |
 | [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot |
 
 Rule of thumb for models: **write `.cord`, not JSX**, then `cordlang run` (preview) or `cordlang run react|svelte` (scaffold).
@@ -176,7 +186,7 @@ cordlang goto Counter [entry]   # definition path
 | `fmt [path]` / `fmt --check` | Formatter |
 | `symbols` / `goto <Name>` | Project symbols |
 
-Backends: `preview`/`esm` (native run), `html` (legacy), `react`, `svelte`, `vue`, `solid`, `next`, `sveltekit`, `email`, `pdf`.  
+Backends (tiers): see [`docs/BACKENDS.md`](./docs/BACKENDS.md) — **Official** `preview`/`esm`, `react`, `svelte`; **Candidate** `vue`; **Experimental** `solid`, `html`, `email`, `pdf`, `next`, `sveltekit`.  
 Preview details: [`docs/PREVIEW.md`](./docs/PREVIEW.md).
 
 ---
@@ -228,6 +238,8 @@ build.bat
 powershell -ExecutionPolicy Bypass -File tests\run_tests.ps1
 # Template: scaffold + vite build (react + svelte)
 powershell -ExecutionPolicy Bypass -File tests\run_template_check.ps1
+# Backend tiers + compile smoke (Official + Candidate)
+powershell -ExecutionPolicy Bypass -File tests\run_backend_parity.ps1
 
 # Update goldens after intentional codegen changes:
 powershell -ExecutionPolicy Bypass -File tests\run_tests.ps1 -UpdateGoldens
@@ -249,8 +261,10 @@ CI (`.github/workflows/ci.yml`) runs goldens **and** `templates/counter` `--chec
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Compiler internals (parser → IR → codegen) |
 | [docs/SPEC.md](./docs/SPEC.md) | Normative language specification (v0.x) |
 | [docs/LANGUAGE.md](./docs/LANGUAGE.md) | Language design & syntax |
+| [docs/BACKENDS.md](./docs/BACKENDS.md) | Official / Candidate / Experimental tiers |
 | [docs/REACT.md](./docs/REACT.md) | Mapping to React APIs |
 | [docs/SVELTE.md](./docs/SVELTE.md) | Mapping to Svelte 5 |
+| [docs/VUE.md](./docs/VUE.md) | Mapping to Vue 3 (Candidate) |
 | [docs/IR.md](./docs/IR.md) | Intermediate representation |
 
 ---
@@ -294,4 +308,4 @@ Free to use, modify, and redistribute (including commercial use), with attributi
 ## Next
 
 **Loop IA (Horizonte A residual):** traps `check` + LSP buffer/hints + preview honest — see [docs/ROADMAP.md](./docs/ROADMAP.md).  
-Default targets: **ESM native preview** (`cordlang run`) / **React** / **Svelte**; legacy `run html` for single-document HTML. Vue, Solid, email, PDF, Next, Kit = meta/experimental. WASM playground remains a stub.
+**Official:** ESM preview / React / Svelte. **Candidate:** Vue ([docs/VUE_PROMOTION.md](./docs/VUE_PROMOTION.md)). **Experimental:** Solid, email, PDF, Next/Kit SPA wraps, legacy HTML. Tiers: [docs/BACKENDS.md](./docs/BACKENDS.md). WASM playground remains a stub.

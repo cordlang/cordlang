@@ -46,7 +46,7 @@ cordlang run react        # app React (Vite scaffold)
 cordlang run svelte       # app Svelte (Vite scaffold)
 ```
 
-Vue / Solid / email / PDF / Next / Kit son **meta / experimental** — no el contrato IA default.
+Vue / Solid / email / PDF / Next / Kit: ver tiers en [`BACKENDS.md`](./BACKENDS.md) — **Official** = ESM/React/Svelte; **Candidate** = Vue; el resto es **experimental/meta** (no el contrato IA default).
 
 ---
 
@@ -364,8 +364,8 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 | Capabilities / presets multi-backend | ✅ `presets` + adapters React/Svelte/Vue/Solid · [`LIBRARIES.md`](./LIBRARIES.md) |
 | Design system (tokens / type / elevate / composition) | ✅ MVP · [`DESIGN.md`](./DESIGN.md) |
 | Email HTML / PDF | ✅ **meta** — no contrato IA default |
-| Vue / Solid | ✅ **meta** — secundarios vs React/Svelte |
-| SvelteKit / Next | ✅ **meta** client wrap; no RSC/SSR real |
+| Vue / Solid | Vue = **Candidate** ([VUE_PROMOTION.md](./VUE_PROMOTION.md)); Solid = **experimental** |
+| SvelteKit / Next | ✅ **meta** client wrap; no RSC/SSR real — claims congelados |
 | Flutter / SwiftUI / Compose | 🟡 spike [`NATIVE.md`](./NATIVE.md) |
 | Playground WASM | 🟡 **stub aplazado** (F5 fuera del loop IA) |
 | MCP Cordlang | ⏳ post-plan |

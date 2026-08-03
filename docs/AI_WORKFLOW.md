@@ -2,10 +2,12 @@
 
 Cordlang keeps **AI in the edit loop**, never in the AST/`compile` path.
 
+Install agent skills (once per project or globally): `npx skills add cordlang/cordlang -s write-cord -s fix-cord-check -y`
+
 ## Happy path (vibecode)
 
 ```bash
-# 1. Propose / edit .cord (human or agent + skills/write-cord)
+# 1. Propose / edit .cord (human or agent + write-cord skill)
 # 2. Validate
 cordlang check
 cordlang check --json     # machine-readable diags (+ code/hint)

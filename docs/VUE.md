@@ -1,8 +1,11 @@
 # Cordlang ↔ Vue 3
 
+**Tier: Candidate** — not Official yet. Promotion checklist: [VUE_PROMOTION.md](./VUE_PROMOTION.md). Tiers: [BACKENDS.md](./BACKENDS.md).
+
 Mapeo del modelo mental de [Vue 3](https://vuejs.org/) al lenguaje `.cord`.
 Cordlang compila a **Vue 3 SFCs** (`<script setup>` + `<template>`) + Vite +
-Tailwind + [vue-router](https://router.vuejs.org/) (hash history).
+Tailwind + [vue-router](https://router.vuejs.org/) (hash history). **No es Nuxt**
+(sin claim de SSR/file-based Nuxt parity).
 
 ## Uso
 
@@ -45,3 +48,4 @@ cordlang compile src/app.cord --backend vue
 - Codegen camina **solo** `IrNode` (`vue_generate_from_ir` / `vue_ir.c`).
 - En plantilla, los `ref` se auto-desenvuelven (`{{ count }}`); en script se usa `.value`.
 - Paridad SPA con React/Svelte documentada en esta tabla; detalles de Kit/Nuxt quedan fuera de alcance.
+- Goldens CI incluyen `vue`; template `--check` Vue aún no es gate Official (ver [VUE_PROMOTION.md](./VUE_PROMOTION.md)).
