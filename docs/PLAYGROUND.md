@@ -3,6 +3,9 @@
 Compile `.cord` **in the browser** — no CLI install. Same IR path as
 `cordlang compile` (single-buffer; no multi-file `use` resolution).
 
+This is a **language** playground (Cordlang compiler in WASM), not the **Runix**
+framework product — see [`RUNIX.md`](./RUNIX.md).
+
 ## Status
 
 | Pieza | Estado |
@@ -11,6 +14,7 @@ Compile `.cord` **in the browser** — no CLI install. Same IR path as
 | API JS | ✅ `cordlang_compile(source, backend)` → JSON |
 | UI | ✅ editor + panel codegen en [`../playground/index.html`](../playground/index.html) |
 | Multi-file `use` / routes | ❌ single buffer only (CLI / `cordlang run` for apps) |
+| CI published artifact | ❌ build locally / Docker; not yet a release asset |
 
 ## Build WASM
 

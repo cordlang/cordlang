@@ -4,6 +4,15 @@ Read this first. Full contract: [`AI.md`](./AI.md) · attrs: [`schema/attrs.json
 
 **Product north star:** vibecode + AI agents with **minimal token spend**. Dense `.cord` beats JSX ceremony. Deterministic `check` — **no LLM in `compile`**. If other docs prioritize framework breadth over this loop, prefer this file.
 
+## Cordlang vs Runix
+
+| Cordlang (this repo) | Runix |
+|----------------------|--------|
+| **Language** + compiler (`.cord` → IR → backends) | **Framework** product on Cordlang (web / SEO / runtime) |
+| Agents write dense `.cord`; `check` / `analyze` | Opinionated app stack — not a CLI `--backend` here |
+
+Do **not** treat Cordlang as “the framework.” Official emit (`run` / React / Svelte / Vue) is interop + preview. Vision: [`RUNIX.md`](./RUNIX.md).
+
 ## Mission
 
 1. Write **`.cord`**, not raw JSX/Svelte (unless the user forbids Cordlang).

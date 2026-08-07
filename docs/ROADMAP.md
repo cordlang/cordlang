@@ -1,10 +1,10 @@
 # Cordlang Super Roadmap — IR para IA (no otro React)
 
-> **Posicionamiento (no negociable):** Cordlang es un **lenguaje intermedio** optimizado para **vibecode/IA y ahorro de tokens** que describe UI y compila a destinos reales. **No** es otro framework (router/estado/bundler/Vite/Next propios): reutiliza ecosistemas (Vite, React Router, Svelte runes). Si otras docs priorizan amplitud de backends, **gana este contrato**.
+> **Posicionamiento (no negociable):** Cordlang es un **lenguaje intermedio** optimizado para **vibecode/IA y ahorro de tokens** que describe UI y compila a destinos reales. **No** es el framework de producto web — eso es **[Runix](./RUNIX.md)** (SEO/runtime/deploy sobre Cordlang). Los backends Official (ESM/React/Svelte/Vue) son **interop y preview**, no “Cordlang-the-framework”. Si otras docs priorizan amplitud de backends o suenan a clonar Next, **gana este contrato** + [`AI_CONTEXT.md`](./AI_CONTEXT.md) + [`RUNIX.md`](./RUNIX.md).
 
 Mensaje público:
 
-> La forma más rápida de construir UI con IA — un `.cord` denso (pocos tokens) → IR → React / Svelte / HTML (y más después).
+> La forma más rápida de construir UI con IA — un `.cord` denso (pocos tokens) → IR → React / Svelte / Vue / ESM preview. El framework web de producto es **Runix**.
 
 Documentos relacionados:
 
@@ -299,8 +299,8 @@ Mapa completo: [`docs/SVELTE.md`](./SVELTE.md) (basado en [svelte.dev/docs/svelt
 
 ```
 Hecho ──► Fases A–E MVP + IR + G/H + traps/LSP + ESM preview + Vue Official
-AHORA ──► Playground WASM MVP (build + serve) → polish multi-file / CI artifact
-DESPUÉS ► Registry remoto / MCP / native (no diluir Official)
+AHORA ──► Playground WASM polish (multi-file + CI artifact) — language surface
+DESPUÉS ► Registry remoto / MCP / native spikes; **Runix** = framework product (fuera de “otro backend CLI”)
 ```
 
 ### 4.0a Cerrar a medias (orden fijo)
@@ -311,6 +311,7 @@ DESPUÉS ► Registry remoto / MCP / native (no diluir Official)
 | 2 | Vue → Official | ✅ | [VUE_PROMOTION.md](./VUE_PROMOTION.md) + template `--check` CI |
 | 3 | Freeze meta backends | ✅ | Claims congelados en BACKENDS / NEXT / SVELTEKIT — no ampliar superficie |
 | 4 | Playground WASM real | 🟡 MVP | API + UI + Docker build — [PLAYGROUND.md](./PLAYGROUND.md); multi-file TBD |
+| 5 | **Runix** (framework) | ⏳ vision | Language stays Cordlang; product web framework = [RUNIX.md](./RUNIX.md) — not a new `--backend` |
 
 ### 4.0 Fase R — ESM native preview perfection
 
@@ -378,6 +379,7 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 | Flutter / SwiftUI / Compose | 🟡 spike [`NATIVE.md`](./NATIVE.md) |
 | Playground WASM | 🟡 **MVP** — `playground/build_wasm.*` + UI; single-buffer only |
 | MCP Cordlang | ⏳ post-plan |
+| **Runix** framework | ⏳ vision — [`RUNIX.md`](./RUNIX.md); not a CLI backend |
 | `@ai` en fuente | Evitar en build |
 
 ### 4.4 No haremos
@@ -467,6 +469,7 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 | **M9 — Horizonte B / meta** | Platform → Vue Official → Solid/email/PDF/Next/Kit (frozen) → native spike | 🟡 meta frozen |
 | **M10 — ESM preview** | Fase R (R1 DX → R2 soft HMR → R3 build esm → R4 runtime → R5 error overlay) | ✅ |
 | **M11 — WASM playground** | Emscripten core + browser UI (`cordlang_compile`) | 🟡 MVP (single-file) |
+| **M12 — Runix** | Framework product on Cordlang (web/SEO) | ⏳ vision [`RUNIX.md`](./RUNIX.md) |
 
 Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `backend:vue`, `backend:esm`, `ir`, `dx`, `ci`, `docs`.
 
@@ -477,8 +480,9 @@ Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `backend:vue`, `
 1. **Antes de codear un feature:** ¿vive en el AST/IR compartido o es solo emit de un backend?  
 2. **Si es compartido** → parser + AST + backends Official en el mismo PR si es P0.  
 3. **Si es idiomático de un solo framework** → solo ese backend + nota en la matriz.  
-4. **Actualizar** `REACT.md` / `SVELTE.md` / `VUE.md` / esta tabla en el mismo cambio.
+4. **Si es “framework web / SEO / SSR de producto”** → pertenece a **Runix**, no a un nuevo backend Cordlang.  
+5. **Actualizar** `REACT.md` / `SVELTE.md` / `VUE.md` / esta tabla en el mismo cambio.
 
 ---
 
-*Última actualización: Vue Official ✅; playground WASM MVP (M11) — build Docker + UI; multi-file / CI artifact pendientes.*
+*Última actualización: visión Cordlang = lenguaje / Runix = framework; playground WASM MVP (M11) — multi-file / CI artifact pendientes.*

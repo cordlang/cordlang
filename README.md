@@ -1,8 +1,8 @@
 # Cordlang
 
-**La forma más rápida de construir UI con IA / vibecode** — escribe `.cord` denso (**menos tokens** que JSX), el compilador baja a un **IR canónico** y emite **React**, **Svelte 5**, o un **preview ESM nativo** (`cordlang run`, sin Node).
+**La forma más rápida de construir UI con IA / vibecode** — escribe `.cord` denso (**menos tokens** que JSX), el compilador baja a un **IR canónico** y emite **React**, **Svelte 5**, **Vue 3**, o un **preview ESM nativo** (`cordlang run`, sin Node).
 
-Cordlang **no** es otro framework JS (sin Vite/Next/router propios). Es un **lenguaje intermedio optimizado para agentes y ahorro de tokens**: vibecode → `check` → backends reales. Sin LLM en `compile`. Si docs antiguas suenan a “otro React”, ignóralas: el contrato IA manda.
+Cordlang es **solo el lenguaje** (compilador + IR + backends de interop/preview). **No** es el framework de producto web: eso es **[Runix](./docs/RUNIX.md)** — stack opinado sobre Cordlang (web, SEO, runtime). Sin LLM en `compile`. Si docs antiguas suenan a “otro React/Next”, ignóralas: el contrato IA manda.
 
 ```cord
 def Counter
@@ -42,7 +42,7 @@ Same multi-file `src/**/*.cord` for every backend.
 | One source, many targets | IR → ESM preview / React / Svelte / Vue (meta backends after the AI loop) |
 | Real apps | Routes, layouts, state, forms, lazy, context, fetch… |
 
-**No somos “JSX más corto”.** Somos el IR + DX alrededor para que la IA escriba UI válida.
+**No somos “JSX más corto” ni otro framework.** Somos el lenguaje + IR + DX para que la IA escriba UI válida; **Runix** es el framework web de producto ([`docs/RUNIX.md`](./docs/RUNIX.md)).
 
 ---
 
@@ -69,6 +69,7 @@ Same multi-file `src/**/*.cord` for every backend.
 | [AGENTS.md](./AGENTS.md) | Coding-agent brief |
 | [docs/ROADMAP.md](./docs/ROADMAP.md) | Horizonte A/B + histórico |
 | [docs/PREVIEW.md](./docs/PREVIEW.md) | **ESM native preview** (`cordlang run`) |
+| [docs/RUNIX.md](./docs/RUNIX.md) | **Runix** — framework product vision (not this CLI) |
 | [docs/REACT.md](./docs/REACT.md) · [SVELTE.md](./docs/SVELTE.md) · [IR.md](./docs/IR.md) | Maps & IR |
 
 ### AI / agents

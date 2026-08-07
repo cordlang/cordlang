@@ -1,6 +1,6 @@
 # Cordlang user guide
 
-Practical guide with **copy-paste samples**. For design notes see [LANGUAGE.md](./LANGUAGE.md); for framework maps see [REACT.md](./REACT.md) and [SVELTE.md](./SVELTE.md).
+Practical guide with **copy-paste samples**. Cordlang is the **language**; the web **framework** product is [Runix](./RUNIX.md). Design notes: [LANGUAGE.md](./LANGUAGE.md); maps: [REACT.md](./REACT.md) · [SVELTE.md](./SVELTE.md) · [VUE.md](./VUE.md).
 
 ---
 
@@ -17,11 +17,11 @@ cd demo
 # Instant preview (no Node)
 cordlang run
 
-# Real frameworks (default product targets)
+# Official compile targets (interop / preview — not “the Cordlang framework”)
 cordlang run react     # → dist/react (Vite + React + Tailwind)
 cordlang run svelte    # → dist/svelte (Vite + Svelte 5 runes)
+cordlang run vue       # → dist/vue (Vite + Vue 3)
 ```
-
 ### ESM preview contract
 
 `cordlang run` is the **native ESM preview** (no Node): each `.cord` is a real ES

@@ -2,7 +2,7 @@
 
 Start here for humans and for AI tools.
 
-**Product north star:** vibecode + AI agents with **minimal token spend**. Dense `.cord` → deterministic `check` → **Official** ESM/React/Svelte/Vue. Other backends are experimental/meta. Tiers: [`BACKENDS.md`](./BACKENDS.md). If docs conflict, [`AI_CONTEXT.md`](./AI_CONTEXT.md) / [`AI.md`](./AI.md) win for intent.
+**Product north star:** vibecode + AI agents with **minimal token spend**. Dense `.cord` → deterministic `check` → **Official** ESM/React/Svelte/Vue. Cordlang is the **language**; **[Runix](./RUNIX.md)** is the planned **web framework** on Cordlang. Other CLI backends are experimental/meta. Tiers: [`BACKENDS.md`](./BACKENDS.md). If docs conflict, [`AI_CONTEXT.md`](./AI_CONTEXT.md) / [`AI.md`](./AI.md) win for intent.
 
 | Doc | Audience | Content |
 |-----|----------|---------|
@@ -11,6 +11,7 @@ Start here for humans and for AI tools.
 | [EXAMPLES.md](./EXAMPLES.md) | Everyone | Catalog of `examples/` + `templates/` |
 | [AI_CONTEXT.md](./AI_CONTEXT.md) | **AI models** | Compact contract (start here; token-cheap) |
 | [AI.md](./AI.md) | **AI models** | Full do / don't contract for LLMs |
+| [RUNIX.md](./RUNIX.md) | Product | **Runix** framework vision (Cordlang = language only) |
 | [LANGUAGE.md](./LANGUAGE.md) | Design | Language design notes (ex-`idea.md`) |
 | [SPEC.md](./SPEC.md) | Language | Normative syntax & semantics (v0.x) |
 | [BACKENDS.md](./BACKENDS.md) | Everyone | **Official / Experimental** tiers |

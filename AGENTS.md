@@ -2,12 +2,14 @@
 
 You are working in the **Cordlang** repository: a C compiler that turns dense `.cord` UI sources into React, Svelte 5, Vue 3, or a native **ESM preview** (default `cordlang run`).
 
-**North star:** vibecode + AI with **minimal token spend** — dense sources, deterministic `check`/`analyze`, no LLM in `compile`. Prefer the AI loop over expanding meta backends. Close half-done work (Official SPA + WASM playground) before new targets. If docs disagree, [`docs/AI_CONTEXT.md`](./docs/AI_CONTEXT.md) wins for product intent.
+**North star:** vibecode + AI with **minimal token spend** — dense sources, deterministic `check`/`analyze`, no LLM in `compile`. Prefer the AI loop over expanding meta backends. Close half-done work (WASM playground polish) before new targets. If docs disagree, [`docs/AI_CONTEXT.md`](./docs/AI_CONTEXT.md) wins for product intent.
+
+**Cordlang = language only.** The web framework product is **Runix** (SEO/runtime/deploy on Cordlang) — see [`docs/RUNIX.md`](./docs/RUNIX.md). Do not invent a full framework inside this CLI; Official backends are compile/preview targets, not Runix.
 
 Human overview: [README.md](./README.md)  
 AI-focused contract: [docs/AI_CONTEXT.md](./docs/AI_CONTEXT.md) · [docs/AI.md](./docs/AI.md)  
 Syntax guide: [docs/GUIDE.md](./docs/GUIDE.md) · cheatsheet: [docs/CHEATSHEET.md](./docs/CHEATSHEET.md)  
-ESM native preview: [docs/PREVIEW.md](./docs/PREVIEW.md)
+ESM native preview: [docs/PREVIEW.md](./docs/PREVIEW.md) · Runix vision: [docs/RUNIX.md](./docs/RUNIX.md)
 
 ---
 
@@ -16,6 +18,7 @@ ESM native preview: [docs/PREVIEW.md](./docs/PREVIEW.md)
 - **Source of truth:** `src/**/*.cord` (language) and `src/` C compiler.
 - **Not source of truth:** generated `dist/**`, JSX/Svelte scaffolds (gitignored).
 - **Pipeline:** `.cord` → AST → **IR** → backends (`generate_from_ir`).
+- **Not this repo’s job:** Runix framework product (web/SEO stack) — language + emit only here.
 
 ---
 
@@ -55,6 +58,8 @@ ESM native preview: [docs/PREVIEW.md](./docs/PREVIEW.md)
 - Treat SvelteKit/Next as full frameworks — they are **meta-backend MVPs**
   (`cordlang run next|sveltekit`): SPA emit wrapped for scaffolds, not full
   RSC/SSR/file-routing parity. See `docs/NEXT.md` / `docs/SVELTEKIT.md`.
+- Treat Cordlang as the SEO/SSR product framework — that is **Runix**
+  ([`docs/RUNIX.md`](./docs/RUNIX.md)); this repo stays language + emit.
 - Treat all backends as equal — tiers live in [`docs/BACKENDS.md`](./docs/BACKENDS.md)
   (Official / Experimental).
 - Commit `node_modules/`, `dist/`, or `*.exe`.

@@ -4,13 +4,15 @@ Self-contained compact contract for agents. Upstream (Cordlang checkout): `docs/
 
 **North star:** vibecode + AI with **minimal token spend**. Dense `.cord` beats JSX. Deterministic `check` — **no LLM in `compile`**.
 
+**Cordlang = language.** The web framework product is **Runix** (see `docs/RUNIX.md`) — do not treat this CLI as Next/Vite replacement.
+
 ## Mission
 
 1. Write **`.cord`**, not raw JSX/Svelte (unless the user forbids Cordlang).
 2. Keep sources dense and valid — every ceremonial line costs tokens.
 3. Multi-page: `app.cord` + `pages/` + `components/` + `layouts/`.
 4. After edits: `cordlang check` (prefer `--json` for agents).
-5. Preview: **`cordlang run`** — ESM native (no Node). Full UI with presets: `run react` / `run svelte`.
+5. Preview: **`cordlang run`** — ESM native (no Node). Full UI with presets: `run react` / `run svelte` / `run vue`.
 
 ## Syntax (non-negotiable)
 

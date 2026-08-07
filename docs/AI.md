@@ -1,12 +1,13 @@
 # Cordlang for AI models
 
-Cordlang is an **intermediate UI language optimized for vibecode and AI agents**: models write dense `.cord` (**fewer tokens** than JSX), a **deterministic compiler** expands it to React or Svelte. There is **no LLM in `compile`**. Product north star = **token-efficient agent loops**, not “another React.” If other docs contradict this, prefer this contract.
+Cordlang is an **intermediate UI language** optimized for vibecode and AI agents: models write dense `.cord` (**fewer tokens** than JSX), a **deterministic compiler** expands it to React, Svelte, Vue, or ESM preview. There is **no LLM in `compile`**. Product north star = **token-efficient agent loops**. Cordlang is **not** the web framework — that product is **[Runix](./RUNIX.md)**. If other docs contradict this, prefer this contract + [`AI_CONTEXT.md`](./AI_CONTEXT.md).
 
 This page is the contract for **any** model (Grok, Claude, GPT, Copilot, Cursor, …).
 
 Also see:
 
 - **Start here (compact):** [`AI_CONTEXT.md`](./AI_CONTEXT.md)
+- **Runix (framework vision):** [`RUNIX.md`](./RUNIX.md)
 - Root agent brief: [`AGENTS.md`](../AGENTS.md)
 - **Skill:** [`skills/write-cord/SKILL.md`](../skills/write-cord/SKILL.md)
 - **Attrs schema (machine-readable):** [`schema/attrs.json`](./schema/attrs.json)

@@ -1,17 +1,19 @@
 # Backend tiers
 
-Single source of truth for Cordlang target status. If README / ROADMAP / CLI help disagree, **this file wins**.
+Single source of truth for Cordlang **compile target** status. If README / ROADMAP / CLI help disagree, **this file wins** for tiers.
+
+**Product split:** Cordlang = language + these backends. The web **framework** product is **[Runix](./RUNIX.md)** — not a new row in this table.
 
 ## Tiers
 
 | Tier | Backends | Meaning |
 |------|----------|---------|
-| **Official** | `esm` / `preview`, `react`, `svelte`, `vue` | AI / product contract. Goldens + template `--check` + preview smoke. |
+| **Official** | `esm` / `preview`, `react`, `svelte`, `vue` | AI / language contract. Goldens + template `--check` + preview smoke. |
 | **Experimental / meta** | `solid`, `html` (legacy), `email`, `pdf`, `next`, `sveltekit` | Useful, not the default AI loop. Soft / smoke only. |
 
 Native (Flutter / SwiftUI / Compose) is **experimental** and not a registered CLI backend — see [NATIVE.md](./NATIVE.md). WASM playground MVP ships under `playground/` — see [PLAYGROUND.md](./PLAYGROUND.md).
 
-**Freeze:** do not add new CLI backends until multi-file WASM / registry epics need them. Close half-done work first.
+**Freeze:** do not add new CLI backends until multi-file WASM / registry epics need them. Do not add “Runix” as a backend name here — Runix is a separate product surface. Close half-done work first.
 
 ## Feature matrix (honesty, not marketing)
 

@@ -1,6 +1,6 @@
 # Cordlang AI workflow (no LLM in compile)
 
-Cordlang keeps **AI in the edit loop**, never in the AST/`compile` path.
+Cordlang keeps **AI in the edit loop**, never in the AST/`compile` path. Cordlang is the **language**; the web **framework** product is [Runix](./RUNIX.md).
 
 Install agent skills (once per project or globally): `npx skills add cordlang/cordlang -s write-cord -s fix-cord-check -y`
 

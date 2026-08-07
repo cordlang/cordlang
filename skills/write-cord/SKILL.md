@@ -11,7 +11,7 @@ description: >
 
 > **Portable skill** — install: `npx skills add cordlang/cordlang -s write-cord`
 
-You are authoring **Cordlang** — a dense UI DSL optimized for **vibecode / AI token savings**, compiled to React, Svelte 5, or HTML. Prefer `.cord` over JSX: fewer tokens in prompts and diffs. No LLM in `compile`; use `cordlang check` after edits.
+You are authoring **Cordlang** — a dense UI **language** optimized for **vibecode / AI token savings**, compiled to React, Svelte 5, Vue 3, or ESM preview. Prefer `.cord` over JSX: fewer tokens in prompts and diffs. No LLM in `compile`; use `cordlang check` after edits. The web **framework** product is **Runix** (`docs/RUNIX.md` in the Cordlang repo) — do not treat Cordlang itself as Next/Vite.
 
 ## Read first
 

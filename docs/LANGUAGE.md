@@ -27,9 +27,9 @@ Commands:
 
 ## Filosofía
 
-Cordlang es un lenguaje intermedio ultra-compacto para describir interfaces. No es un framework — es una capa universal que se compila a React, Vue, Svelte, HTML, etc.
+Cordlang es un **lenguaje** intermedio ultra-compacto para describir interfaces. **No es el framework de producto** — es una capa universal que se compila a React, Vue, Svelte, HTML/ESM preview, etc. El framework web opinado (SEO, runtime, deploy) es **[Runix](./RUNIX.md)**.
 
-El beneficio principal: ~3-5x menos tokens al generar UI con IA.
+El beneficio principal del lenguaje: ~3-5x menos tokens al generar UI con IA.
 
 ## Sintaxis
 
