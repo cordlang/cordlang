@@ -416,7 +416,9 @@ int preset_write_bridges(const char *out_dir, const char *project_dir,
           "  return Lucide[key] || Lucide.Circle;\n"
           "});\n"
           "</script>\n"
-          "<component :is=\"Comp\" :size=\"props.size\" />\n";
+          "<template>\n"
+          "  <component :is=\"Comp\" :size=\"props.size\" />\n"
+          "</template>\n";
       char *path = fs_join(out_dir, "src/CordIcon.vue");
       if (path) {
         fs_write_file(path, icon);
@@ -429,7 +431,9 @@ int preset_write_bridges(const char *out_dir, const char *project_dir,
           "<script setup>\n"
           "defineProps({ fade: { type: Boolean, default: true } });\n"
           "</script>\n"
-          "<div :class=\"{ 'cord-fade': fade }\"><slot /></div>\n"
+          "<template>\n"
+          "  <div :class=\"{ 'cord-fade': fade }\"><slot /></div>\n"
+          "</template>\n"
           "<style scoped>\n"
           ".cord-fade { animation: cordFade 0.4s ease; }\n"
           "@keyframes cordFade { from { opacity: 0; } to { opacity: 1; } }\n"
@@ -452,14 +456,16 @@ int preset_write_bridges(const char *out_dir, const char *project_dir,
           "const max = computed(() => Math.max(1, ...rows.value.map(r => "
           "Number(r?.value) || 0)));\n"
           "</script>\n"
-          "<div class=\"cord-chart\" :data-type=\"type\" "
+          "<template>\n"
+          "  <div class=\"cord-chart\" :data-type=\"type\" "
           "style=\"display:flex;align-items:flex-end;gap:6px;height:160px\">\n"
-          "  <div v-for=\"(row, i) in rows\" :key=\"i\" "
+          "    <div v-for=\"(row, i) in rows\" :key=\"i\" "
           ":title=\"String(row?.name ?? '')\" "
           ":style=\"{ flex: 1, background: 'var(--color-primary,#2563eb)', "
           "height: ((Number(row?.value)||0)/max*100)+'%', minHeight: '4px', "
           "borderRadius: '4px 4px 0 0' }\" />\n"
-          "</div>\n";
+          "  </div>\n"
+          "</template>\n";
       char *path = fs_join(out_dir, "src/CordChart.vue");
       if (path) {
         fs_write_file(path, chart);

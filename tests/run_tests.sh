@@ -397,6 +397,8 @@ for be in react svelte vue; do
     passed=$((passed + 1))
   else
     echo "FAIL: run $be --check (presets)"
+    # Surface vite/npm errors (stdout was silenced for clean CI)
+    (cd "$preset_tmp" && "$CORDLANG" run "$be" --check) || true
     failed=$((failed + 1))
   fi
   pkg="$preset_tmp/dist/$be/package.json"
