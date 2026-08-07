@@ -293,31 +293,35 @@ jobs:
           NOTES=$(cat <<EOF
           ## Cordlang ${VER}
 
-          Installable CLI builds — **${CHANNEL}**.
+          CLI instalable — **${CHANNEL}**.
 
-          | Download | OS | CPU |
-          |----------|----|-----|
-          | \`cordlang-windows-x64.zip\` | Windows | x64 |
-          | \`cordlang-windows-arm64.zip\` | Windows | ARM64 |
-          | \`cordlang-linux-x64.zip\` | Linux | x64 |
-          | \`cordlang-linux-arm64.zip\` | Linux | ARM64 |
-          | \`cordlang-macos-x64.zip\` | macOS | Intel (x64) |
-          | \`cordlang-macos-arm64.zip\` | macOS | Apple Silicon |
-          | \`SHA256SUMS.txt\` | — | checksums |
+          Builds nativos por plataforma (no es “solo Ubuntu”):
+
+          | Download | Plataforma | CPU |
+          |----------|------------|-----|
+          | \`cordlang-windows-x64.zip\` | **Windows** | x64 |
+          | \`cordlang-windows-arm64.zip\` | **Windows** | ARM64 |
+          | \`cordlang-linux-x64.zip\` | **Linux** (glibc: Ubuntu, Fedora, Debian, …) | x64 |
+          | \`cordlang-linux-arm64.zip\` | **Linux** (glibc) | ARM64 |
+          | \`cordlang-macos-x64.zip\` | **macOS** Intel | x64 |
+          | \`cordlang-macos-arm64.zip\` | **macOS** Apple Silicon | ARM64 |
+          | \`SHA256SUMS.txt\` | checksums | — |
+
+          Elige el zip de **tu** OS + CPU. El binario embebido responde \`cordlang --version\` → \`${VER}\`.
 
           ### Install
 
-          **Windows:** unzip and run \`cordlang.exe\` (or add the folder to PATH).
+          **Windows:** descomprime y ejecuta \`cordlang.exe\` (o añádelo al PATH).
 
           **Linux / macOS:**
           \`\`\`bash
-          unzip cordlang-*.zip
+          unzip cordlang-*-*.zip
           chmod +x cordlang-*/cordlang
           sudo mv cordlang-*/cordlang /usr/local/bin/cordlang
           cordlang --version
           \`\`\`
 
-          See \`docs/VERSIONING.md\` for alpha/beta tagging.
+          Docs: \`docs/VERSIONING.md\` · \`docs/PREVIEW.md\`
           EOF
           )
 
