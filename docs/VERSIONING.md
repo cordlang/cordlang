@@ -31,7 +31,17 @@ git push origin v0.0.013-alpha.1
 #   prerelease: true
 ```
 
-Artefactos por release: Windows x64, Linux x64 (Ubuntu), Fedora x64, Linux arm64, macOS arm64, macOS x64 + `SHA256SUMS.txt`.
+Artefactos por release (OS × CPU):
+
+| Artifact | OS | Arch |
+|----------|----|------|
+| `cordlang-windows-x64.zip` | Windows | x64 |
+| `cordlang-windows-arm64.zip` | Windows | ARM64 |
+| `cordlang-linux-x64.zip` | Linux | x64 |
+| `cordlang-linux-arm64.zip` | Linux | ARM64 |
+| `cordlang-macos-x64.zip` | macOS | Intel |
+| `cordlang-macos-arm64.zip` | macOS | Apple Silicon |
+| `SHA256SUMS.txt` | — | checksums |
 
 El binario embebe la versión del tag (`make VERSION=…` / script Windows).
 

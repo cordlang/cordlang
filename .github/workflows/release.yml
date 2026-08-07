@@ -1,21 +1,16 @@
-# Build multi-platform Cordlang CLI binaries and publish a GitHub Release.
+# Build installable Cordlang CLI binaries for every common desktop target
+# and publish them as a GitHub Release.
+#
+# Matrix (OS × CPU):
+#   windows-x64, windows-arm64
+#   linux-x64,   linux-arm64
+#   macos-x64,   macos-arm64
 #
 # Triggers:
-#   - Push tag v*          (e.g. v0.0.013-alpha.1, v0.0.014-beta.1, v0.1.0)
-#   - workflow_dispatch    (manual; creates the tag if missing)
+#   - Push tag v*   (e.g. v0.0.013-alpha.1)
+#   - Actions → Release → Run workflow
 #
-# Pre-release: tags containing alpha / beta / rc (or dispatch prerelease=true)
-# stay marked as GitHub prerelease. Stable tags without those suffixes publish
-# a full release.
-#
-# Artifacts:
-#   cordlang-windows-x64.zip
-#   cordlang-linux-x64.zip      (Ubuntu runner — glibc; typically OK on Fedora)
-#   cordlang-fedora-x64.zip     (built in Fedora container)
-#   cordlang-linux-arm64.zip
-#   cordlang-macos-arm64.zip
-#   cordlang-macos-x64.zip
-#   SHA256SUMS.txt
+# Tags with alpha/beta/rc → GitHub prerelease.
 
 name: Release
 
@@ -39,11 +34,10 @@ permissions:
   contents: write
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 env:
-  # Strip leading v from tag or use dispatch input
   RAW_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
 
 jobs:
@@ -63,100 +57,129 @@ jobs:
           RAW="${RAW#v}"
           TAG="v${RAW}"
           PRE=false
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            if [[ "${{ inputs.prerelease }}" == "true" ]]; then
-              PRE=true
-            fi
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.prerelease }}" == "true" ]]; then
+            PRE=true
           fi
           if echo "$RAW" | grep -Eiq '(alpha|beta|rc|pre|dev)'; then
             PRE=true
           fi
-          echo "version=$RAW" >> "$GITHUB_OUTPUT"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "prerelease=$PRE" >> "$GITHUB_OUTPUT"
+          {
+            echo "version=$RAW"
+            echo "tag=$TAG"
+            echo "prerelease=$PRE"
+          } >> "$GITHUB_OUTPUT"
           echo "Resolved tag=$TAG version=$RAW prerelease=$PRE"
 
   build:
-    name: Build (${{ matrix.artifact }})
+    name: ${{ matrix.artifact }}
     needs: meta
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         include:
+          # ── Windows ──────────────────────────────────────
           - os: windows-latest
             artifact: cordlang-windows-x64
             binary: cordlang.exe
-            kind: windows
+            kind: windows-mingw
+            arch: x64
+          - os: windows-11-arm
+            artifact: cordlang-windows-arm64
+            binary: cordlang.exe
+            kind: windows-arm
+            arch: arm64
+          # ── Linux ────────────────────────────────────────
           - os: ubuntu-latest
             artifact: cordlang-linux-x64
             binary: cordlang
             kind: unix
+            arch: x64
           - os: ubuntu-24.04-arm
             artifact: cordlang-linux-arm64
             binary: cordlang
             kind: unix
-          - os: ubuntu-latest
-            container: fedora:41
-            artifact: cordlang-fedora-x64
-            binary: cordlang
-            kind: fedora
-          - os: macos-latest
-            artifact: cordlang-macos-arm64
-            binary: cordlang
-            kind: unix
+            arch: arm64
+          # ── macOS ────────────────────────────────────────
           - os: macos-13
             artifact: cordlang-macos-x64
             binary: cordlang
             kind: unix
-
-    container: ${{ matrix.container }}
+            arch: x64
+          - os: macos-latest
+            artifact: cordlang-macos-arm64
+            binary: cordlang
+            kind: unix
+            arch: arm64
 
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
-      - name: Install toolchain (Windows MinGW)
-        if: matrix.kind == 'windows'
+      # ── Toolchains ───────────────────────────────────────
+      - name: Install MinGW (Windows x64)
+        if: matrix.kind == 'windows-mingw'
         shell: pwsh
         run: |
           choco install mingw -y --no-progress
           "C:\ProgramData\mingw64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          gcc --version
 
-      - name: Install toolchain (Ubuntu / ARM)
+      - name: Setup MSYS2 Clang (Windows ARM64)
+        if: matrix.kind == 'windows-arm'
+        uses: msys2/setup-msys2@de40abf46eff6b0a0916f3aff016a713daf8a5eb  # v2.29.0
+        with:
+          msystem: CLANGARM64
+          update: true
+          install: >-
+            mingw-w64-clang-aarch64-clang
+            mingw-w64-clang-aarch64-headers-git
+            mingw-w64-clang-aarch64-crt-git
+            make
+          path-type: minimal
+
+      - name: Install build-essential (Linux)
         if: matrix.kind == 'unix' && runner.os == 'Linux'
-        run: |
-          if [ -n "${{ matrix.container }}" ]; then
-            echo "Skipping apt (running in container)"
-            exit 0
-          fi
-          sudo apt-get update && sudo apt-get install -y build-essential zip
+        run: sudo apt-get update && sudo apt-get install -y build-essential zip
 
-      - name: Install toolchain (Fedora)
-        if: matrix.kind == 'fedora'
-        run: dnf install -y gcc make diffutils zip findutils
-
-      - name: Install toolchain (macOS)
-        if: runner.os == 'macOS'
+      - name: Prepare macOS compiler
+        if: matrix.kind == 'unix' && runner.os == 'macOS'
         run: |
-          # Xcode CLT is preinstalled on GHA macOS images
           clang --version
-          # Prefer gcc from brew if present; otherwise use clang as CC
           if ! command -v gcc >/dev/null 2>&1; then
             echo "CC=clang" >> "$GITHUB_ENV"
           fi
 
-      - name: Build (Windows)
-        if: matrix.kind == 'windows'
+      # ── Build ────────────────────────────────────────────
+      - name: Build Windows x64
+        if: matrix.kind == 'windows-mingw'
         shell: pwsh
         env:
           VERSION: ${{ needs.meta.outputs.version }}
         run: |
           powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build_release_win.ps1 -Version $env:VERSION
 
-      - name: Build (Unix / Fedora / macOS)
-        if: matrix.kind != 'windows'
+      - name: Build Windows ARM64
+        if: matrix.kind == 'windows-arm'
+        shell: msys2 {0}
+        env:
+          VERSION: ${{ needs.meta.outputs.version }}
+        run: |
+          set -euo pipefail
+          export CC=clang
+          export CXX=clang++
+          make clean || true
+          make -j"$(nproc)" RELEASE=1 VERSION="$VERSION"
+          # MinGW/Clang writes cordlang.exe when targeting Windows
+          if [[ -f cordlang && ! -f cordlang.exe ]]; then
+            mv cordlang cordlang.exe
+          fi
+          ./cordlang.exe --version
+          file ./cordlang.exe || true
+
+      - name: Build Unix (Linux / macOS)
+        if: matrix.kind == 'unix'
         env:
           VERSION: ${{ needs.meta.outputs.version }}
         run: |
@@ -165,14 +188,17 @@ jobs:
           make -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu || echo 2)" RELEASE=1 VERSION="$VERSION"
           ./cordlang --version
           file ./cordlang || true
+          uname -m
 
-      - name: Package (Windows)
-        if: matrix.kind == 'windows'
+      # ── Package ──────────────────────────────────────────
+      - name: Package Windows
+        if: startsWith(matrix.kind, 'windows')
         shell: pwsh
         env:
           ART: ${{ matrix.artifact }}
           BIN: ${{ matrix.binary }}
           VER: ${{ needs.meta.outputs.version }}
+          ARCH: ${{ matrix.arch }}
         run: |
           New-Item -ItemType Directory -Force -Path "dist/$env:ART" | Out-Null
           Copy-Item $env:BIN "dist/$env:ART/"
@@ -181,34 +207,40 @@ jobs:
           @"
           Cordlang CLI $($env:VER)
           Artifact: $($env:ART)
+          Arch: $($env:ARCH)
           Binary: $($env:BIN)
 
-          Alpha/beta toolchain unless the tag is a stable semver.
+          Unzip and run $($env:BIN), or add the folder to PATH.
           Docs: https://github.com/${{ github.repository }}
-          "@ | Set-Content -Encoding utf8 "dist/$env:ART/RELEASE.txt"
+          "@ | Set-Content -Encoding utf8 "dist/$env:ART/INSTALL.txt"
           if (Test-Path "dist/$env:ART.zip") { Remove-Item "dist/$env:ART.zip" -Force }
           Compress-Archive -Path "dist/$env:ART" -DestinationPath "dist/$env:ART.zip" -Force
           Get-Item "dist/$env:ART.zip" | Format-List Name, Length
 
-      - name: Package (Unix / Fedora / macOS)
-        if: matrix.kind != 'windows'
+      - name: Package Unix
+        if: matrix.kind == 'unix'
         shell: bash
         env:
           ART: ${{ matrix.artifact }}
           BIN: ${{ matrix.binary }}
           VER: ${{ needs.meta.outputs.version }}
+          ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
           mkdir -p "dist/$ART"
           cp "$BIN" "dist/$ART/"
           cp LICENSE "dist/$ART/" 2>/dev/null || true
           cp README.md "dist/$ART/" 2>/dev/null || true
-          cat > "dist/$ART/RELEASE.txt" <<EOF
+          cat > "dist/$ART/INSTALL.txt" <<EOF
           Cordlang CLI ${VER}
           Artifact: ${ART}
+          Arch: ${ARCH}
           Binary: ${BIN}
 
-          Alpha/beta toolchain unless the tag is a stable semver.
+          chmod +x ${BIN}
+          ./${BIN} --version
+
+          Optional: sudo mv ${BIN} /usr/local/bin/cordlang
           Docs: https://github.com/${{ github.repository }}
           EOF
           (cd dist && zip -r "${ART}.zip" "$ART")
@@ -227,7 +259,7 @@ jobs:
     needs: [meta, build]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout (for notes)
+      - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
       - name: Download all artifacts
@@ -240,11 +272,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p assets
-          find release-assets -type f -name '*.zip' -exec cp {} assets/ \;
+          find release-assets -type f -name '*.zip' -exec cp -f {} assets/ \;
           cd assets
-          sha256sum *.zip > SHA256SUMS.txt
+          sha256sum *.zip | tee SHA256SUMS.txt
           ls -la
-          cat SHA256SUMS.txt
 
       - name: Create / update release
         env:
@@ -262,29 +293,31 @@ jobs:
           NOTES=$(cat <<EOF
           ## Cordlang ${VER}
 
-          Multi-platform CLI builds. Channel: **${CHANNEL}**.
+          Installable CLI builds — **${CHANNEL}**.
 
-          | Artifact | Target |
-          |----------|--------|
-          | \`cordlang-windows-x64.zip\` | Windows x64 (\`.exe\`) |
-          | \`cordlang-linux-x64.zip\` | Linux x64 (Ubuntu glibc; usually fine on Fedora/Debian) |
-          | \`cordlang-fedora-x64.zip\` | Linux x64 built on Fedora 41 |
-          | \`cordlang-linux-arm64.zip\` | Linux ARM64 |
-          | \`cordlang-macos-arm64.zip\` | macOS Apple Silicon |
-          | \`cordlang-macos-x64.zip\` | macOS Intel |
-          | \`SHA256SUMS.txt\` | Checksums |
+          | Download | OS | CPU |
+          |----------|----|-----|
+          | \`cordlang-windows-x64.zip\` | Windows | x64 |
+          | \`cordlang-windows-arm64.zip\` | Windows | ARM64 |
+          | \`cordlang-linux-x64.zip\` | Linux | x64 |
+          | \`cordlang-linux-arm64.zip\` | Linux | ARM64 |
+          | \`cordlang-macos-x64.zip\` | macOS | Intel (x64) |
+          | \`cordlang-macos-arm64.zip\` | macOS | Apple Silicon |
+          | \`SHA256SUMS.txt\` | — | checksums |
 
-          ### Install (example)
+          ### Install
 
+          **Windows:** unzip and run \`cordlang.exe\` (or add the folder to PATH).
+
+          **Linux / macOS:**
           \`\`\`bash
-          # Linux / macOS
           unzip cordlang-*.zip
           chmod +x cordlang-*/cordlang
-          ./cordlang-*/cordlang --version
+          sudo mv cordlang-*/cordlang /usr/local/bin/cordlang
+          cordlang --version
           \`\`\`
 
-          Language surface: see \`docs/SPEC.md\` / \`docs/VERSIONING.md\`.
-          Playground WASM is separate (\`playground/\`).
+          See \`docs/VERSIONING.md\` for alpha/beta tagging.
           EOF
           )
 
