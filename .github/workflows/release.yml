@@ -1,10 +1,10 @@
-# Build installable Cordlang CLI binaries for every common desktop target
+# Build installable Cordlang CLI packages for desktop targets
 # and publish them as a GitHub Release.
 #
 # Matrix (OS × CPU):
-#   windows-x64, windows-arm64
-#   linux-x64,   linux-arm64
-#   macos-x64,   macos-arm64
+#   windows-x64, windows-arm64  → .exe + .zip
+#   linux-x64,   linux-arm64    → .deb + .rpm + .tar.gz + .zip
+#   macos-x64,   macos-arm64    → .dmg + .tar.gz + .zip
 #
 # Triggers:
 #   - Push tag v*   (e.g. v0.0.013-alpha.1)
@@ -85,33 +85,39 @@ jobs:
             binary: cordlang.exe
             kind: windows-mingw
             arch: x64
+            family: windows
           - os: windows-11-arm
             artifact: cordlang-windows-arm64
             binary: cordlang.exe
             kind: windows-arm
             arch: arm64
+            family: windows
           # ── Linux ────────────────────────────────────────
           - os: ubuntu-latest
             artifact: cordlang-linux-x64
             binary: cordlang
             kind: unix
             arch: x64
+            family: linux
           - os: ubuntu-24.04-arm
             artifact: cordlang-linux-arm64
             binary: cordlang
             kind: unix
             arch: arm64
+            family: linux
           # ── macOS ────────────────────────────────────────
           - os: macos-13
             artifact: cordlang-macos-x64
             binary: cordlang
             kind: unix
             arch: x64
+            family: macos
           - os: macos-latest
             artifact: cordlang-macos-arm64
             binary: cordlang
             kind: unix
             arch: arm64
+            family: macos
 
     steps:
       - name: Checkout
@@ -139,12 +145,16 @@ jobs:
             make
           path-type: minimal
 
-      - name: Install build-essential (Linux)
-        if: matrix.kind == 'unix' && runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y build-essential zip
+      - name: Install Linux packaging tools
+        if: matrix.family == 'linux'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential zip dpkg-dev fakeroot ruby ruby-dev rpm
+          sudo gem install --no-document fpm
 
       - name: Prepare macOS compiler
-        if: matrix.kind == 'unix' && runner.os == 'macOS'
+        if: matrix.family == 'macos'
         run: |
           clang --version
           if ! command -v gcc >/dev/null 2>&1; then
@@ -191,66 +201,68 @@ jobs:
           uname -m
 
       # ── Package ──────────────────────────────────────────
-      - name: Package Windows
-        if: startsWith(matrix.kind, 'windows')
+      - name: Package Windows (.exe + .zip)
+        if: matrix.family == 'windows'
         shell: pwsh
         env:
-          ART: ${{ matrix.artifact }}
-          BIN: ${{ matrix.binary }}
           VER: ${{ needs.meta.outputs.version }}
           ARCH: ${{ matrix.arch }}
+          BIN: ${{ matrix.binary }}
         run: |
-          New-Item -ItemType Directory -Force -Path "dist/$env:ART" | Out-Null
-          Copy-Item $env:BIN "dist/$env:ART/"
-          if (Test-Path LICENSE) { Copy-Item LICENSE "dist/$env:ART/" }
-          if (Test-Path README.md) { Copy-Item README.md "dist/$env:ART/" }
-          @"
-          Cordlang CLI $($env:VER)
-          Artifact: $($env:ART)
-          Arch: $($env:ARCH)
-          Binary: $($env:BIN)
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts\package_windows.ps1 `
+            -Binary $env:BIN -Version $env:VER -Arch $env:ARCH -OutDir dist
 
-          Unzip and run $($env:BIN), or add the folder to PATH.
-          Docs: https://github.com/${{ github.repository }}
-          "@ | Set-Content -Encoding utf8 "dist/$env:ART/INSTALL.txt"
-          if (Test-Path "dist/$env:ART.zip") { Remove-Item "dist/$env:ART.zip" -Force }
-          Compress-Archive -Path "dist/$env:ART" -DestinationPath "dist/$env:ART.zip" -Force
-          Get-Item "dist/$env:ART.zip" | Format-List Name, Length
-
-      - name: Package Unix
+      - name: Package Unix (.deb / .rpm / .dmg / .tar.gz / .zip)
         if: matrix.kind == 'unix'
         shell: bash
         env:
-          ART: ${{ matrix.artifact }}
-          BIN: ${{ matrix.binary }}
           VER: ${{ needs.meta.outputs.version }}
           ARCH: ${{ matrix.arch }}
+          FAMILY: ${{ matrix.family }}
+          BIN: ${{ matrix.binary }}
         run: |
           set -euo pipefail
-          mkdir -p "dist/$ART"
-          cp "$BIN" "dist/$ART/"
-          cp LICENSE "dist/$ART/" 2>/dev/null || true
-          cp README.md "dist/$ART/" 2>/dev/null || true
-          cat > "dist/$ART/INSTALL.txt" <<EOF
-          Cordlang CLI ${VER}
-          Artifact: ${ART}
-          Arch: ${ARCH}
-          Binary: ${BIN}
+          chmod +x scripts/package_native.sh
+          scripts/package_native.sh \
+            --binary "./$BIN" \
+            --version "$VER" \
+            --os "$FAMILY" \
+            --arch "$ARCH" \
+            --out dist
+          ls -la dist/
 
-          chmod +x ${BIN}
-          ./${BIN} --version
+      - name: Collect package files (Windows)
+        if: matrix.family == 'windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist/upload | Out-Null
+          Get-ChildItem -Path dist -File -Filter "$env:ART.*" | ForEach-Object {
+            Copy-Item $_.FullName dist/upload/ -Force
+          }
+          Get-ChildItem dist/upload | Format-Table Name, Length
+          if (-not (Get-ChildItem dist/upload -File)) { throw "no packages to upload" }
+        env:
+          ART: ${{ matrix.artifact }}
 
-          Optional: sudo mv ${BIN} /usr/local/bin/cordlang
-          Docs: https://github.com/${{ github.repository }}
-          EOF
-          (cd dist && zip -r "${ART}.zip" "$ART")
-          ls -la "dist/${ART}.zip"
+      - name: Collect package files (Unix)
+        if: matrix.kind == 'unix'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/upload
+          shopt -s nullglob
+          for f in dist/${{ matrix.artifact }}.* dist/cordlang_*.deb dist/cordlang-*.rpm; do
+            [[ -f "$f" ]] || continue
+            cp -f "$f" dist/upload/
+          done
+          ls -la dist/upload/
+          test "$(find dist/upload -type f | wc -l)" -ge 1
 
-      - name: Upload artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: dist/${{ matrix.artifact }}.zip
+          path: dist/upload/
           if-no-files-found: error
           retention-days: 14
 
@@ -272,9 +284,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p assets
-          find release-assets -type f -name '*.zip' -exec cp -f {} assets/ \;
+          find release-assets -type f \( \
+              -name '*.zip' -o -name '*.tar.gz' -o \
+              -name '*.exe' -o -name '*.deb' -o -name '*.rpm' -o -name '*.dmg' \
+            \) -exec cp -f {} assets/ \;
+          # Drop accidental stage leftovers if any
+          rm -f assets/_stage_* 2>/dev/null || true
           cd assets
-          sha256sum *.zip | tee SHA256SUMS.txt
+          ls -la
+          count="$(find . -maxdepth 1 -type f ! -name SHA256SUMS.txt | wc -l)"
+          test "$count" -ge 6
+          sha256sum * | grep -v SHA256SUMS.txt | tee SHA256SUMS.txt
           ls -la
 
       - name: Create / update release
@@ -295,31 +315,41 @@ jobs:
 
           CLI instalable — **${CHANNEL}**.
 
-          Builds nativos por plataforma (no es “solo Ubuntu”):
+          Elige el paquete de **tu** OS + CPU. El binario responde \`cordlang --version\` → \`${VER}\`.
 
-          | Download | Plataforma | CPU |
-          |----------|------------|-----|
-          | \`cordlang-windows-x64.zip\` | **Windows** | x64 |
-          | \`cordlang-windows-arm64.zip\` | **Windows** | ARM64 |
-          | \`cordlang-linux-x64.zip\` | **Linux** (glibc: Ubuntu, Fedora, Debian, …) | x64 |
-          | \`cordlang-linux-arm64.zip\` | **Linux** (glibc) | ARM64 |
-          | \`cordlang-macos-x64.zip\` | **macOS** Intel | x64 |
-          | \`cordlang-macos-arm64.zip\` | **macOS** Apple Silicon | ARM64 |
-          | \`SHA256SUMS.txt\` | checksums | — |
+          ### Windows
+          | Archivo | Arch | Notas |
+          |---------|------|-------|
+          | \`cordlang-windows-x64.exe\` | x64 | portable (recomendado) |
+          | \`cordlang-windows-arm64.exe\` | ARM64 | portable |
+          | \`cordlang-windows-*.zip\` | — | exe + LICENSE + INSTALL.txt |
 
-          Elige el zip de **tu** OS + CPU. El binario embebido responde \`cordlang --version\` → \`${VER}\`.
+          ### Linux
+          | Archivo | Distro | Arch |
+          |---------|--------|------|
+          | \`cordlang_*_amd64.deb\` | Debian / Ubuntu | x64 |
+          | \`cordlang_*_arm64.deb\` | Debian / Ubuntu | ARM64 |
+          | \`cordlang-*.x86_64.rpm\` | Fedora / RHEL / openSUSE | x64 |
+          | \`cordlang-*.aarch64.rpm\` | Fedora / RHEL / openSUSE | ARM64 |
+          | \`cordlang-linux-*.tar.gz\` / \`.zip\` | cualquier glibc | portable |
 
-          ### Install
-
-          **Windows:** descomprime y ejecuta \`cordlang.exe\` (o añádelo al PATH).
-
-          **Linux / macOS:**
           \`\`\`bash
-          unzip cordlang-*-*.zip
-          chmod +x cordlang-*/cordlang
-          sudo mv cordlang-*/cordlang /usr/local/bin/cordlang
-          cordlang --version
+          # Debian / Ubuntu
+          sudo apt install ./cordlang_*.deb
+          # Fedora / RHEL
+          sudo dnf install ./cordlang-*.rpm
           \`\`\`
+
+          ### macOS
+          | Archivo | CPU |
+          |---------|-----|
+          | \`cordlang-macos-arm64.dmg\` | Apple Silicon |
+          | \`cordlang-macos-x64.dmg\` | Intel |
+          | \`cordlang-macos-*.tar.gz\` / \`.zip\` | portable |
+
+          Abre el \`.dmg\`, copia \`cordlang\` a un directorio en tu PATH (p. ej. \`/usr/local/bin\`).
+
+          | \`SHA256SUMS.txt\` | checksums de todos los assets |
 
           Docs: \`docs/VERSIONING.md\` · \`docs/PREVIEW.md\`
           EOF

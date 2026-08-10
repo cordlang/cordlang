@@ -31,17 +31,24 @@ git push origin v0.0.013-alpha.1
 #   prerelease: true
 ```
 
-Artefactos por release (OS × CPU):
+Artefactos por release (OS × CPU × formato instalable):
 
-| Artifact | OS | Arch |
-|----------|----|------|
-| `cordlang-windows-x64.zip` | Windows | x64 |
-| `cordlang-windows-arm64.zip` | Windows | ARM64 |
-| `cordlang-linux-x64.zip` | Linux | x64 |
-| `cordlang-linux-arm64.zip` | Linux | ARM64 |
-| `cordlang-macos-x64.zip` | macOS | Intel |
-| `cordlang-macos-arm64.zip` | macOS | Apple Silicon |
-| `SHA256SUMS.txt` | — | checksums |
+| Artifact | OS | Arch | Formato |
+|----------|----|------|---------|
+| `cordlang-windows-x64.exe` | Windows | x64 | portable `.exe` |
+| `cordlang-windows-arm64.exe` | Windows | ARM64 | portable `.exe` |
+| `cordlang-windows-*.zip` | Windows | — | exe + docs |
+| `cordlang_*_amd64.deb` | Debian / Ubuntu | x64 | `.deb` |
+| `cordlang_*_arm64.deb` | Debian / Ubuntu | ARM64 | `.deb` |
+| `cordlang-*.x86_64.rpm` | Fedora / RHEL / openSUSE | x64 | `.rpm` |
+| `cordlang-*.aarch64.rpm` | Fedora / RHEL / openSUSE | ARM64 | `.rpm` |
+| `cordlang-linux-*.tar.gz` / `.zip` | Linux (glibc) | — | portable |
+| `cordlang-macos-arm64.dmg` | macOS | Apple Silicon | `.dmg` |
+| `cordlang-macos-x64.dmg` | macOS | Intel | `.dmg` |
+| `cordlang-macos-*.tar.gz` / `.zip` | macOS | — | portable |
+| `SHA256SUMS.txt` | — | — | checksums |
+
+Empaquetado: `scripts/package_windows.ps1` + `scripts/package_native.sh` (invocados por el workflow).
 
 El binario embebe la versión del tag (`make VERSION=…` / script Windows).
 

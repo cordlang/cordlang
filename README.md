@@ -252,7 +252,7 @@ make && ./tests/run_tests.sh
 
 CI (`.github/workflows/ci.yml`) runs goldens **and** `templates/counter` `--check` on Windows and Ubuntu. Extension CI: `.github/workflows/vscode-extension.yml`.
 
-**Releases (alpha/beta):** [`.github/workflows/release.yml`](./.github/workflows/release.yml) builds **Windows / Linux / macOS × x64 + ARM64** (6 zips + `SHA256SUMS.txt`) and publishes a GitHub Release. Tag `v0.0.013-alpha.1` or Actions → Release → Run workflow. See [`docs/VERSIONING.md`](./docs/VERSIONING.md).
+**Releases (alpha/beta):** [`.github/workflows/release.yml`](./.github/workflows/release.yml) builds **Windows / Linux / macOS × x64 + ARM64** as native packages (`.exe`, `.deb`, `.rpm`, `.dmg`, plus `.tar.gz` / `.zip`) and `SHA256SUMS.txt`. Tag `v0.0.013-alpha.1` or Actions → Release → Run workflow. See [`docs/VERSIONING.md`](./docs/VERSIONING.md).
 
 ---
 
