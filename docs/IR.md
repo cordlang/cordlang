@@ -15,8 +15,8 @@ Capas del compilador (hexagonal, ownership, cómo extender): [`ARCHITECTURE.md`]
     │
     ├── (optional IR passes — Phase H3, opt-in `--pass` / cordlang.json `passes`)
     ├── ir_dump()                 →  cordlang compile --ir
-    ├── generate_from_ir()        →  React / Svelte / Vue / Solid / HTML /
-    │                                email / pdf / next / sveltekit
+    ├── generate_from_ir()        →  ESM / React / Svelte / Vue / Solid /
+    │                                HTML / email / pdf / next / sveltekit
     └── scaffold_from_ir()        →  dist/<backend>
 ```
 
@@ -31,7 +31,7 @@ cordlang compile --list-passes
 
 Default path applies **no** passes. Dynamic `dlopen`/WASM plugins are post-H3.
 
-**Regla (Horizonte A/B):** Vue / Solid / email / PDF / Next / SvelteKit se añaden **solo** sobre este contrato IR. No special-case el AST en un backend nuevo. Meta-backends (`next`, `sveltekit`) reutilizan emit React/Svelte y envuelven scaffolds aparte (no ensuciar SPA).
+**Regla (Horizonte A/B):** Todo backend, incluido Vue / Solid / email / PDF / Next / SvelteKit, se añade **solo** sobre este contrato IR. No special-case el AST en un backend nuevo. Meta-backends (`next`, `sveltekit`) reutilizan emit React/Svelte y envuelven scaffolds aparte (no ensuciar SPA).
 
 ## Pipeline en el CLI
 
@@ -84,7 +84,7 @@ Cada `IrNode` guarda `origin` → puntero **débil** al AST (debug / theme resid
 | Fase | Qué hace |
 |------|----------|
 | **IR-1** ✅ | Puerto y services solo hablan IR |
-| **IR-2** ✅ | React (`react_ir.c`) y Svelte: body/modules caminan **solo `IrNode`** |
+| **IR-2** ✅ | React (`react_ir.c`), Svelte y Vue: body/modules caminan **solo `IrNode`** |
 | Residual | (cerrado G1/G2) theme + HTML preview en path IR-puro |
 
 ### Node kinds
@@ -133,12 +133,12 @@ Attrs oficiales de superficie: [`schema/attrs.json`](./schema/attrs.json).
 
 ### IR-1 ✅
 - [x] Services: AST → IR → backend  
-- [x] React / Svelte / HTML: `generate_from_ir` + `scaffold_from_ir`  
+- [x] React / Svelte / Vue / ESM / HTML: `generate_from_ir` + `scaffold_from_ir`
 - [x] Origin weak pointers en cada `IrNode`  
 
 ### IR-2 ✅
 - [x] React: `react_ir.c` — `project_partition_from_ir`, `gen_ir_node`, `gen_component_fn_ir`, App/contexts  
-- [x] Svelte: partition + script/markup walkers sobre `IrNode` (sin origin en body)  
+- [x] Svelte y Vue: partition + script/markup walkers sobre `IrNode` (sin origin en body)
 - [x] Goldens verdes en CI  
 - [x] Theme CSS / HTML preview en path IR (G1–G2)
 

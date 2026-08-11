@@ -14,7 +14,9 @@ framework product — see [`RUNIX.md`](./RUNIX.md).
 | API JS | ✅ `cordlang_compile(source, backend)` → JSON |
 | UI | ✅ editor + panel codegen en [`../playground/index.html`](../playground/index.html) |
 | Multi-file `use` / routes | ❌ single buffer only (CLI / `cordlang run` for apps) |
-| CI published artifact | ❌ build locally / Docker; not yet a release asset |
+| Bundles versionados en el repositorio | ✅ `playground/cordlang.js` + `playground/cordlang.wasm` están trackeados |
+| Rebuild / verificación WASM en CI | ❌ no hay workflow que regenere ni pruebe el bundle Emscripten |
+| Artefacto o release publicado | ❌ el bundle no se adjunta a CI ni a releases |
 
 ## Build WASM
 

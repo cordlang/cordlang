@@ -31,6 +31,10 @@ typedef int socklen_t;
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+/* Darwin: -D_POSIX_C_SOURCE hides BSD INADDR_LOOPBACK from <netinet/in.h>. */
+#ifndef INADDR_LOOPBACK
+#define INADDR_LOOPBACK ((in_addr_t)0x7f000001)
+#endif
 typedef int SOCKET;
 #define INVALID_SOCKET (-1)
 #define CLOSESOCK close

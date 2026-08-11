@@ -1,4 +1,4 @@
-CC = gcc
+CC ?= gcc
 # c17 + POSIX (strdup, etc. on glibc). On Windows MinGW, extra define is harmless.
 CFLAGS = -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-function \
 	-Wno-format-truncation -g -std=c17 \

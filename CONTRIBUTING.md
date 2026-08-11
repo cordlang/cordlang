@@ -75,7 +75,7 @@ cd templates/counter
 
 ## License
 
-By contributing, you agree that your contributions are licensed under the same terms as the project — see [LICENSE](./LICENSE) (MIT).
+By contributing, you agree that your contributions are licensed under the same terms as the project — see [LICENSE](./LICENSE) (Cordlang Attribution License 1.0).
 
 ## Questions
 

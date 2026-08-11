@@ -18,4 +18,4 @@ This repository is **Cordlang**: dense `.cord` **language** for **vibecode / AI*
 
 ## After UI changes
 
-Suggest: `cordlang check`, `cordlang run`, `cordlang run react|svelte`.
+Suggest: `cordlang check`, `cordlang run`, `cordlang run react|svelte|vue`.
