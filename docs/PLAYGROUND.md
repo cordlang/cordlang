@@ -18,7 +18,9 @@ framework product — see [`RUNIX.md`](./RUNIX.md).
 | UI | 🟡 editor + panel codegen en [`../playground/index.html`](../playground/index.html); aún sin árbol ni tabs |
 | Multi-file `use` / routes | 🟡 disponible tras rebuild en la API de proyecto; la UI sigue single-buffer hasta M11.2 |
 | Native project smoke | ✅ Windows + Ubuntu CI compilan el mismo source set con `CORDLANG_WASM` |
-| CI published artifact | ❌ build locally / Docker; not yet a release asset |
+| Bundles versionados en el repositorio | ✅ `playground/cordlang.js` + `playground/cordlang.wasm` están trackeados |
+| Rebuild / verificación WASM en CI | ✅ `playground/smoke_native.*` en CI + workflow `.github/workflows/playground.yml` (rebuild Docker + drift check) |
+| Artefacto o release publicado | ✅ `cordlang-playground.zip` en CI artifacts y GitHub Releases |
 
 ## Build WASM
 

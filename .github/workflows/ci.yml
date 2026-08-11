@@ -12,7 +12,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Install MinGW
         run: |
@@ -65,12 +65,18 @@ jobs:
           powershell -ExecutionPolicy Bypass -File tests\run_backend_parity.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Playground wasm_api smoke
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File playground\smoke_native.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
   test-ubuntu:
     name: Build + goldens + template (Ubuntu)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Install toolchain
         run: sudo apt-get update && sudo apt-get install -y build-essential
@@ -113,12 +119,17 @@ jobs:
       - name: Backend parity (Official compile smoke)
         run: ./tests/run_backend_parity.sh
 
+      - name: Playground wasm_api smoke
+        run: |
+          chmod +x playground/smoke_native.sh
+          ./playground/smoke_native.sh
+
   test-ubuntu-asan:
     name: ASAN/UBSAN goldens (Ubuntu)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Install toolchain
         run: sudo apt-get update && sudo apt-get install -y build-essential

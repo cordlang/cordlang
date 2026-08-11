@@ -16,7 +16,7 @@ theme brand
   font: "IBM Plex Sans"
 ```
 
-`cordlang run` / `run react|svelte|…` writes `theme.css` with:
+`cordlang run` / `run react|svelte|vue` writes `theme.css` with:
 
 - `--color-*` from color keys (plus semantic fallbacks: `surface`, `surface-2`, `border`, `on-primary`)
 - **Native fonts:** `font` / `font-sans` / `font-mono` / `font-display` → `--font-*` **and** `@font-face` (WOFF2 cached under `~/.cordlang/cache/fonts`, copied to `public/fonts` or served as `/@cord/fonts/…`). No Google Fonts `<link>` in the shell.

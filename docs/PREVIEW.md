@@ -4,7 +4,7 @@ Dev server embebido en el CLI (`cordlang run`). Cada `.cord` se compila **por
 petición** a un módulo ES real; el navegador camina el grafo con `import`. Sin
 Node, sin npm, sin bundler.
 
-No es un claim de paridad con React/Svelte. El loop de preview por defecto es
+No es un claim de paridad con React/Svelte/Vue. El loop de preview por defecto es
 `cordlang run`; el export estático es `cordlang build esm` → `dist/esm`
 (mismo subset del runtime, sin HMR).
 

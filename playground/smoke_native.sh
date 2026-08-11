@@ -4,8 +4,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT="$ROOT/playground/.smoke_native"
-trap 'rm -f "$OUT"' EXIT
+cd "$ROOT"
 
 SRCS=(
   playground/smoke_native.c
@@ -42,8 +41,17 @@ SRCS=(
   src/adapters/outbound/backends/esm/esm_ir.c
 )
 
-cd "$ROOT"
+OUT="$ROOT/playground/.smoke_native"
+trap 'rm -f "$OUT"' EXIT
+
+if ! command -v gcc >/dev/null 2>&1; then
+  echo "FAIL: gcc not found" >&2
+  exit 1
+fi
+
+echo "Building playground native smoke..."
 gcc -O2 -std=c17 -Wall -Wno-unused-parameter -Wno-unused-function \
   -D_DEFAULT_SOURCE -DCORDLANG_WASM=1 -Isrc \
   "${SRCS[@]}" -o "$OUT"
+
 "$OUT"

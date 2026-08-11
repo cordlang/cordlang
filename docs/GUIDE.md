@@ -27,11 +27,11 @@ cordlang run vue       # → dist/vue (Vite + Vue 3)
 `cordlang run` is the **native ESM preview** (no Node): each `.cord` is a real ES
 module. See [`PREVIEW.md`](./PREVIEW.md). Legacy HTML: `cordlang run html`.
 
-| Supported in ESM preview | Use SPA backends (`run react\|svelte`) for |
+| Supported in ESM preview | Use SPA backends (`run react\|svelte\|vue`) for |
 |--------------------------|-------------------------------------------|
 | Multi-file `use` / `route` / layouts | Full preset libs (lucide, framer, recharts) |
 | `state` + `setX` / `#{…}` / `if` / `for` | npm `foreign` packages |
-| Soft update (leaf `.cord`) or full reload | Production React/Svelte deploy |
+| Soft update (leaf `.cord`) or full reload | Production React/Svelte/Vue deploy |
 
 ```bash
 cordlang init demo --template counter
@@ -268,7 +268,7 @@ cordlang compile examples/counter.cord --ir
 |---------|---------|
 | `cordlang run` | ESM native preview (no Node) — [PREVIEW.md](./PREVIEW.md) |
 | `cordlang run html` | Legacy single-document HTML preview |
-| `cordlang run react\|svelte` | Scaffold Vite app |
+| `cordlang run react\|svelte\|vue` | Scaffold Vite app |
 | `cordlang build esm` | Static export → `dist/esm` |
 | `cordlang run react --check` | + vite production build |
 | `cordlang run react --watch` | Rebuild on `.cord` change |
@@ -283,10 +283,10 @@ cordlang compile examples/counter.cord --ir
 ## 7. Pipeline (mental model)
 
 ```
-.cord → Lexer → Parser → AST → IR → React | Svelte | HTML
+.cord → Lexer → Parser → AST → IR → ESM | React | Svelte | Vue | HTML
 ```
 
-Write **Cordlang**, not JSX/Svelte, unless you are editing the generated `dist/` escape hatch.
+Write **Cordlang**, not JSX/Svelte. Generated `dist/` is for inspection or integration and is overwritten on the next run.
 
 ---
 
@@ -297,7 +297,7 @@ Write **Cordlang**, not JSX/Svelte, unless you are editing the generated `dist/`
 | Put all UI in one giant `app.cord` | Split pages/components |
 | Write JSX inside `.cord` | Use tags + `#{expr}` + hooks DSL |
 | Use `form action=` for Svelte element actions | Element actions: `use=tooltip`; forms: `action=formAction` |
-| Expect full SvelteKit/Next | Use SPA backends; Kit/Next are roadmap |
+| Expect full SvelteKit/Next | Use Official SPA backends; Kit/Next are meta SPA wrappers, not SSR/SSG frameworks |
 | Hand-edit `dist/` and expect persistence | Change `src/**/*.cord` and re-run |
 
 More for AI authors: [AI.md](./AI.md) and root [AGENTS.md](../AGENTS.md).
