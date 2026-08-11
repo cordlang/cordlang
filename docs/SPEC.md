@@ -1,6 +1,6 @@
 # Cordlang Language Specification (v1.0)
 
-**Status:** **1.0 syntax freeze** for the SPA subset (React / Svelte / HTML preview).  
+**Status:** **1.0 syntax freeze** for the documented web subset. Official targets are React / Svelte / Vue and native ESM preview; HTML remains the legacy preview target.
 **Implementation truth:** `src/adapters/outbound/parser/parser.c` + `src/domain/{ast,ir,expr}.*`.  
 **Design / history:** [`LANGUAGE.md`](./LANGUAGE.md) (non-normative).  
 **Attrs catalog:** [`schema/attrs.json`](./schema/attrs.json).

@@ -1,8 +1,16 @@
 # Cordlang
 
-**La forma más rápida de construir UI con IA / vibecode** — escribe `.cord` denso (**menos tokens** que JSX), el compilador baja a un **IR canónico** y emite **React**, **Svelte 5**, **Vue 3**, o un **preview ESM nativo** (`cordlang run`, sin Node).
+> **Un lenguaje compacto de UI para agentes de IA.** Escribe `.cord` con menos ceremonia y tokens que JSX; Cordlang lo baja a un **IR canónico** y emite React, Svelte 5, Vue 3 o un preview ESM nativo.
 
-Cordlang es **solo el lenguaje** (compilador + IR + backends de interop/preview). **No** es el framework de producto web: eso es **[Runix](./docs/RUNIX.md)** — stack opinado sobre Cordlang (web, SEO, runtime). Sin LLM en `compile`. Si docs antiguas suenan a “otro React/Next”, ignóralas: el contrato IA manda.
+| Escribe | Valida | Ejecuta o integra |
+|----------|---------|-------------------|
+| `src/**/*.cord` | `cordlang check` / `analyze` | `cordlang run` / `run react\|svelte\|vue` |
+
+**Official:** ESM preview, React, Svelte y Vue. **Experimental:** Solid, HTML legacy, email, PDF, Next y SvelteKit. Sin LLM en `compile`.
+
+Cordlang es el **lenguaje** (compilador + IR + interop/preview), no el framework web de producto. Ese papel pertenece a **[Runix](./docs/RUNIX.md)**: una capa separada para web, SEO, runtime y deploy.
+
+## Un componente pequeño
 
 ```cord
 def Counter
@@ -18,17 +26,20 @@ def Counter
       btn "+" @click=setCount(count + 1) variant=primary
 ```
 
+## Empieza en segundos
+
 ```bash
 cordlang run              # ESM native preview (no Node) — default
 cordlang run --no-open    # same server, don't open browser
 cordlang run html         # legacy single-document HTML preview
 cordlang run react        # Vite + React + Tailwind → dist/react
 cordlang run svelte       # Vite + Svelte 5 runes → dist/svelte
+cordlang run vue          # Vite + Vue 3 → dist/vue
 cordlang check            # diagnostics anti-alucinación
 cordlang analyze          # score heurístico (sin LLM)
 ```
 
-Same multi-file `src/**/*.cord` for every backend.
+The same multi-file `src/**/*.cord` feeds every CLI backend; the browser playground intentionally remains single-buffer.
 
 ---
 
@@ -48,11 +59,16 @@ Same multi-file `src/**/*.cord` for every backend.
 
 ## Status
 
-**Working compiler** (not a sketch):
+| Surface | Current state |
+|---------|---------------|
+| Language | **1.0** syntax freeze; see [`docs/SPEC.md`](./docs/SPEC.md) |
+| CLI / LSP | **0.0.013 alpha**; see [`docs/VERSIONING.md`](./docs/VERSIONING.md) |
+| Official targets | ESM preview, React, Svelte and Vue |
+| Tooling | `check`, `fmt`, `analyze`, `symbols`, `goto`, `--watch`, `--check` |
+| Playground | WASM MVP for a single source buffer; multi-file and CI artifact remain pending |
 
 - Multi-file modules (`use` / routes by path)
-- Canonical **IR** (React + Svelte emit from `IrNode`)
-- DX: `check`, `fmt`, `symbols`, `goto`, `--watch`, `--check` (vite build)
+- Canonical **IR** consumed by React, Svelte and Vue emitters
 - Starters: [`templates/`](./templates/) (`cordlang init --template …`)
 
 ### Docs
@@ -70,7 +86,7 @@ Same multi-file `src/**/*.cord` for every backend.
 | [docs/ROADMAP.md](./docs/ROADMAP.md) | Horizonte A/B + histórico |
 | [docs/PREVIEW.md](./docs/PREVIEW.md) | **ESM native preview** (`cordlang run`) |
 | [docs/RUNIX.md](./docs/RUNIX.md) | **Runix** — framework product vision (not this CLI) |
-| [docs/REACT.md](./docs/REACT.md) · [SVELTE.md](./docs/SVELTE.md) · [IR.md](./docs/IR.md) | Maps & IR |
+| [docs/REACT.md](./docs/REACT.md) · [SVELTE.md](./docs/SVELTE.md) · [VUE.md](./docs/VUE.md) · [IR.md](./docs/IR.md) | Maps & IR |
 
 ### AI / agents
 
@@ -93,7 +109,7 @@ Global / specific agents: `npx skills add cordlang/cordlang -s write-cord -a cur
 | [`skills/write-cord/`](./skills/write-cord/) | **Canonical** portable skill (source for `npx skills`) |
 | [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot |
 
-Rule of thumb for models: **write `.cord`, not JSX**, then `cordlang run` (preview) or `cordlang run react|svelte` (scaffold).
+Rule of thumb for models: **write `.cord`, not JSX**, then `cordlang run` (preview) or `cordlang run react|svelte|vue` (scaffold).
 
 ---
 
@@ -102,7 +118,7 @@ Rule of thumb for models: **write `.cord`, not JSX**, then `cordlang run` (previ
 ### Requirements
 
 - **Windows** (primary): `gcc` (MinGW) for `build.bat`
-- Optional: Node.js + npm for `cordlang run react|svelte` (Vite scaffold)
+- Optional: Node.js + npm for `cordlang run react|svelte|vue` (Vite scaffold)
 - Linux/macOS: `make` or CMake (same sources)
 
 ### Build the CLI
@@ -134,6 +150,7 @@ cordlang run --no-open       # same, without opening a browser
 cordlang run html            # legacy single-document HTML preview
 cordlang run react           # generate dist/react (Vite + React)
 cordlang run svelte          # generate dist/svelte (Vite + Svelte 5)
+cordlang run vue             # generate dist/vue (Vite + Vue 3)
 cordlang run react --check   # npm install if needed + vite build
 cordlang run react --watch   # rebuild on .cord changes
 ```
@@ -154,6 +171,8 @@ cordlang symbols
 ```bash
 cordlang compile examples/counter.cord --backend react
 cordlang compile examples/counter.cord --backend svelte
+cordlang compile examples/counter.cord --backend vue
+cordlang compile examples/counter.cord --backend esm
 cordlang compile examples/counter.cord --ir          # dump IR tree
 cordlang compile examples/counter.cord --check
 ```
@@ -226,7 +245,7 @@ cordlang/
 **Pipeline:**
 
 ```
-.cord → Lexer → Parser → AST → IR → ESM preview | React | Svelte | HTML | …
+.cord → Lexer → Parser → AST → IR → ESM preview | React | Svelte | Vue | HTML | …
 ```
 
 ---
@@ -237,7 +256,7 @@ cordlang/
 # Windows
 build.bat
 powershell -ExecutionPolicy Bypass -File tests\run_tests.ps1
-# Template: scaffold + vite build (react + svelte)
+# Template: scaffold + vite build (react + svelte + vue)
 powershell -ExecutionPolicy Bypass -File tests\run_template_check.ps1
 # Backend tiers + compile smoke (Official)
 powershell -ExecutionPolicy Bypass -File tests\run_backend_parity.ps1
@@ -262,7 +281,7 @@ CI (`.github/workflows/ci.yml`) runs goldens **and** `templates/counter` `--chec
 |------|---------|
 | [docs/ROADMAP.md](./docs/ROADMAP.md) | Phases A–F, IR, next sprint |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Compiler internals (parser → IR → codegen) |
-| [docs/SPEC.md](./docs/SPEC.md) | Normative language specification (v0.x) |
+| [docs/SPEC.md](./docs/SPEC.md) | Normative language specification (1.0) |
 | [docs/LANGUAGE.md](./docs/LANGUAGE.md) | Language design & syntax |
 | [docs/BACKENDS.md](./docs/BACKENDS.md) | Official / Experimental tiers |
 | [docs/REACT.md](./docs/REACT.md) | Mapping to React APIs |
@@ -278,7 +297,7 @@ CI (`.github/workflows/ci.yml`) runs goldens **and** `templates/counter` `--chec
 CLI (inbound)
     → application services (init, compile, run, check, fmt, …)
         → ports (backend, compiler, fs)
-            → adapters: lexer, parser, IR, backends (react / svelte / html)
+            → adapters: lexer, parser, IR, backends (esm / react / svelte / vue / html)
 ```
 
 Domain stays free of I/O. Backends consume the **canonical IR** (IR-2). Details: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
@@ -302,9 +321,9 @@ Prefer additive language features + IR mapping before backend-specific hacks. Ke
 
 ## License
 
-[MIT](./LICENSE) — Copyright (c) 2026 [owellandry](https://github.com/owellandry) (shimonikg) and Cordlang contributors.
+[Cordlang Attribution License 1.0](./LICENSE) — Copyright (c) 2026 [owellandry](https://github.com/owellandry) (shimonikg) and Cordlang contributors.
 
-Free to use, modify, and redistribute (including commercial use), with attribution.
+Free to use, modify, distribute, sublicense, and sell, including in closed-source and commercial work. Keep the license with redistributed code and credit public uses with **"Built with Cordlang"** (linking to this repository when links are supported). No endorsement or logo rights are granted.
 
 ---
 

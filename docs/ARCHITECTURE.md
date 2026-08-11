@@ -59,8 +59,8 @@ ir_from_ast    src/domain/ir.{c,h}   (+ expr_normalize)
 (IR passes)    Phase H3 — opt-in transforms on IrProgram
     │
     ├── ir_dump()                 →  compile --ir
-    ├── generate_from_ir()        →  React / Svelte / HTML / ESM body
-    └── scaffold_from_ir()        →  dist/react | dist/svelte | preview
+    ├── generate_from_ir()        →  React / Svelte / Vue / HTML / ESM body
+    └── scaffold_from_ir()        →  dist/react | dist/svelte | dist/vue | preview
 ```
 
 Orchestration lives in `src/application/compile_service.c` and `run_service.c`:

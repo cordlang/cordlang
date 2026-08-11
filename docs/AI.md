@@ -82,7 +82,7 @@ HTML/email backends may passthrough as `data-purpose` / `data-importance`. SPA b
 | Stick to attrs in `schema/attrs.json` | unknown attrs → `check` warning |
 | Optional `purpose` / `importance` | semantic metadata (see below) |
 | Run `cordlang check` after edits | when CLI available |
-| Point users to `cordlang run react\|svelte` | for real apps |
+| Point users to `cordlang run react\|svelte\|vue` | for real apps |
 
 ---
 
