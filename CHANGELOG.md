@@ -5,6 +5,13 @@ Language surface versions follow [`docs/SPEC.md`](./docs/SPEC.md) and [`docs/VER
 
 ## [Unreleased]
 
+### Added — M11.1 WASM project API
+- **Multi-file compilation source API** — `cordlang_compile_project(entry_path, files_json, backend)` resolves `use`, routes, layouts, and config from an in-memory JSON file map; the generated bundle must be rebuilt before browser use
+- **Virtual filesystem** — project reads are isolated from host disk; module resolution remains jailed to the virtual project root
+- **Project diagnostics** — WASM result diagnostics now include optional `file` and `hint` fields for multi-file callers
+- **WASM runtime** — bundle stack is set to 256 KiB so project semantic checks do not overflow the Emscripten default
+- **Smoke coverage** — native WASM-API smoke covers nested modules, routes, project config, IR output, missing modules, project jail, map reset, and invalid manifests
+
 ### Added — Playground WASM CI (M11)
 - **`playground/smoke_native.sh`** — native wasm_api smoke on Linux (pairs with existing `.ps1`)
 - **CI** — wasm_api smoke on Windows + Ubuntu (`ci.yml`); dedicated `playground.yml` rebuilds WASM via Docker and fails on bundle drift
@@ -20,7 +27,7 @@ Language surface versions follow [`docs/SPEC.md`](./docs/SPEC.md) and [`docs/VER
 - **macOS / networking** — Intel packaging uses the supported `macos-15-intel` runner; preview servers provide an `INADDR_LOOPBACK` fallback for Darwin builds
 
 ### Changed — Documentation
-- **README + roadmap** — clarify the Official targets (ESM, React, Svelte, Vue), the language 1.0 versus CLI alpha split, and the single-buffer scope of the WASM playground
+- **README + roadmap** — clarify the Official targets (ESM, React, Svelte, Vue), the language 1.0 versus CLI alpha split, and the WASM playground scope (single-buffer UI + project API)
 - **Backend and AI guides** — align target commands, IR ownership, preview limits, and frozen Next/SvelteKit meta-wrapper claims
 
 ### Fixed — Overlay CSS + preview logs

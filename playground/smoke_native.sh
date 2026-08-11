@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Native smoke for wasm_api (no Docker / emcc required).
-# Usage: bash playground/smoke_native.sh
+# Native smoke for wasm_api without Emscripten.
+# Builds the same CORDLANG_WASM source set used by the browser bridge.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -41,7 +41,8 @@ SRCS=(
   src/adapters/outbound/backends/esm/esm_ir.c
 )
 
-OUT="$ROOT/playground/smoke_native"
+OUT="$ROOT/playground/.smoke_native"
+trap 'rm -f "$OUT"' EXIT
 
 if ! command -v gcc >/dev/null 2>&1; then
   echo "FAIL: gcc not found" >&2

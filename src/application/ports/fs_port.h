@@ -3,6 +3,18 @@
 
 #include <stddef.h>
 
+/* Scoped in-memory filesystem for the WASM project bridge. File paths must be
+ * absolute virtual paths. While mounted, reads never fall back to host disk. */
+typedef struct {
+  const char *path;
+  const char *data;
+  size_t len;
+} FsMemoryFile;
+
+int fs_memory_mount(const FsMemoryFile *files, size_t count,
+                    const char *virtual_cwd);
+void fs_memory_unmount(void);
+
 /* Outbound port: filesystem operations */
 char *fs_read_file(const char *path, size_t *out_len);
 int fs_write_file(const char *path, const char *content);
