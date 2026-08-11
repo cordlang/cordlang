@@ -267,10 +267,9 @@ jobs:
           VERSION: ${{ needs.meta.outputs.version }}
         run: |
           set -euo pipefail
-          export CC=clang
-          export CXX=clang++
+          # Makefile uses CC ?= gcc; CLANGARM64 only ships clang — pass on cmdline.
           make clean || true
-          make -j"$(nproc)" RELEASE=1 VERSION="$VERSION"
+          make -j"$(nproc)" CC=clang CXX=clang++ RELEASE=1 VERSION="$VERSION"
           # MinGW/Clang writes cordlang.exe when targeting Windows
           if [[ -f cordlang && ! -f cordlang.exe ]]; then
             mv cordlang cordlang.exe
