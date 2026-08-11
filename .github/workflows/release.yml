@@ -79,18 +79,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # ── Windows ──────────────────────────────────────
+          # ── Windows x64 (ARM64 is a separate job — isolates msys2/setup-msys2) ──
           - os: windows-latest
             artifact: cordlang-windows-x64
             binary: cordlang.exe
             kind: windows-mingw
             arch: x64
-            family: windows
-          - os: windows-11-arm
-            artifact: cordlang-windows-arm64
-            binary: cordlang.exe
-            kind: windows-arm
-            arch: arm64
             family: windows
           # ── Linux ────────────────────────────────────────
           - os: ubuntu-latest
@@ -132,19 +126,6 @@ jobs:
           "C:\ProgramData\mingw64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           gcc --version
 
-      - name: Setup MSYS2 Clang (Windows ARM64)
-        if: matrix.kind == 'windows-arm'
-        uses: msys2/setup-msys2@de40abf46eff6b0a0916f3aff016a713daf8a5eb  # v2.29.0
-        with:
-          msystem: CLANGARM64
-          update: true
-          install: >-
-            mingw-w64-clang-aarch64-clang
-            mingw-w64-clang-aarch64-headers-git
-            mingw-w64-clang-aarch64-crt-git
-            make
-          path-type: minimal
-
       - name: Install Linux packaging tools
         if: matrix.family == 'linux'
         run: |
@@ -169,24 +150,6 @@ jobs:
           VERSION: ${{ needs.meta.outputs.version }}
         run: |
           powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build_release_win.ps1 -Version $env:VERSION
-
-      - name: Build Windows ARM64
-        if: matrix.kind == 'windows-arm'
-        shell: msys2 {0}
-        env:
-          VERSION: ${{ needs.meta.outputs.version }}
-        run: |
-          set -euo pipefail
-          export CC=clang
-          export CXX=clang++
-          make clean || true
-          make -j"$(nproc)" RELEASE=1 VERSION="$VERSION"
-          # MinGW/Clang writes cordlang.exe when targeting Windows
-          if [[ -f cordlang && ! -f cordlang.exe ]]; then
-            mv cordlang cordlang.exe
-          fi
-          ./cordlang.exe --version
-          file ./cordlang.exe || true
 
       - name: Build Unix (Linux / macOS)
         if: matrix.kind == 'unix'
@@ -266,9 +229,75 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  # Isolated so a bad msys2/setup-msys2 pin cannot poison linux/macos/windows-x64
+  # action resolution (GHA resolves every uses: in a job at setup time).
+  build-windows-arm:
+    name: cordlang-windows-arm64
+    needs: meta
+    runs-on: windows-11-arm
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Setup MSYS2 Clang (Windows ARM64)
+        uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884  # v2.32.0
+        with:
+          msystem: CLANGARM64
+          update: true
+          install: >-
+            mingw-w64-clang-aarch64-clang
+            mingw-w64-clang-aarch64-headers-git
+            mingw-w64-clang-aarch64-crt-git
+            make
+          path-type: minimal
+
+      - name: Build Windows ARM64
+        shell: msys2 {0}
+        env:
+          VERSION: ${{ needs.meta.outputs.version }}
+        run: |
+          set -euo pipefail
+          export CC=clang
+          export CXX=clang++
+          make clean || true
+          make -j"$(nproc)" RELEASE=1 VERSION="$VERSION"
+          # MinGW/Clang writes cordlang.exe when targeting Windows
+          if [[ -f cordlang && ! -f cordlang.exe ]]; then
+            mv cordlang cordlang.exe
+          fi
+          ./cordlang.exe --version
+          file ./cordlang.exe || true
+
+      - name: Package Windows (.exe + .zip)
+        shell: pwsh
+        env:
+          VER: ${{ needs.meta.outputs.version }}
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts\package_windows.ps1 `
+            -Binary cordlang.exe -Version $env:VER -Arch arm64 -OutDir dist
+
+      - name: Collect package files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist/upload | Out-Null
+          Get-ChildItem -Path dist -File -Filter "cordlang-windows-arm64.*" | ForEach-Object {
+            Copy-Item $_.FullName dist/upload/ -Force
+          }
+          Get-ChildItem dist/upload | Format-Table Name, Length
+          if (-not (Get-ChildItem dist/upload -File)) { throw "no packages to upload" }
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cordlang-windows-arm64
+          path: dist/upload/
+          if-no-files-found: error
+          retention-days: 14
+
   release:
     name: Publish GitHub Release
-    needs: [meta, build]
+    needs: [meta, build, build-windows-arm]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
