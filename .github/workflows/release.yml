@@ -303,11 +303,37 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  playground-wasm:
+    name: cordlang-playground
+    needs: meta
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Build WASM (Docker emscripten/emsdk)
+        run: bash playground/build_wasm.sh
+
+      - name: Package playground zip
+        run: |
+          set -euo pipefail
+          chmod +x scripts/package_playground.sh
+          scripts/package_playground.sh
+
+      - name: Upload playground artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: cordlang-playground
+          path: dist/cordlang-playground.zip
+          if-no-files-found: error
+          retention-days: 14
+
   release:
     name: Publish GitHub Release
     # PRs validate packaging only — never publish from a pull_request.
     if: github.event_name != 'pull_request'
-    needs: [meta, build, build-windows-arm]
+    needs: [meta, build, build-windows-arm, playground-wasm]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -327,12 +353,15 @@ jobs:
               -name '*.zip' -o -name '*.tar.gz' -o \
               -name '*.exe' -o -name '*.deb' -o -name '*.rpm' -o -name '*.dmg' \
             \) -exec cp -f {} assets/ \;
+          # Browser playground (WASM + index.html)
+          test -f release-assets/cordlang-playground/cordlang-playground.zip
+          cp -f release-assets/cordlang-playground/cordlang-playground.zip assets/
           # Drop accidental stage leftovers if any
           rm -f assets/_stage_* 2>/dev/null || true
           cd assets
           ls -la
           count="$(find . -maxdepth 1 -type f ! -name SHA256SUMS.txt | wc -l)"
-          test "$count" -ge 6
+          test "$count" -ge 7
           sha256sum * | grep -v SHA256SUMS.txt | tee SHA256SUMS.txt
           ls -la
 
@@ -391,7 +420,12 @@ jobs:
 
           | \`SHA256SUMS.txt\` | checksums de todos los assets |
 
-          Docs: \`docs/VERSIONING.md\` · \`docs/PREVIEW.md\`
+          ### Playground (WASM)
+          | Archivo | Notas |
+          |---------|-------|
+          | \`cordlang-playground.zip\` | \`index.html\` + \`cordlang.js\` + \`cordlang.wasm\` — descomprime y sirve la carpeta por HTTP (\`npx serve .\`) |
+
+          Docs: \`docs/VERSIONING.md\` · \`docs/PREVIEW.md\` · \`docs/PLAYGROUND.md\`
           EOF
           )
 

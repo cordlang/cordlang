@@ -5,6 +5,11 @@ Language surface versions follow [`docs/SPEC.md`](./docs/SPEC.md) and [`docs/VER
 
 ## [Unreleased]
 
+### Added — Playground WASM CI (M11)
+- **`playground/smoke_native.sh`** — native wasm_api smoke on Linux (pairs with existing `.ps1`)
+- **CI** — wasm_api smoke on Windows + Ubuntu (`ci.yml`); dedicated `playground.yml` rebuilds WASM via Docker and fails on bundle drift
+- **Release artifact** — `cordlang-playground.zip` (`index.html` + `cordlang.js` + `cordlang.wasm`) attached to GitHub Releases
+
 ### Changed — License
 - **Cordlang Attribution License 1.0** replaces MIT: use, modification, distribution, sublicensing, sale, and closed-source use remain permitted; redistributed code must retain the license and public uses must credit **"Built with Cordlang"**
 

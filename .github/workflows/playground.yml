@@ -1,0 +1,75 @@
+name: Playground WASM
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "playground/**"
+      - "src/adapters/inbound/wasm_api.c"
+      - "src/**"
+      - ".github/workflows/playground.yml"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "playground/**"
+      - "src/adapters/inbound/wasm_api.c"
+      - "src/**"
+      - ".github/workflows/playground.yml"
+  workflow_dispatch:
+
+jobs:
+  wasm-api-smoke:
+    name: wasm_api native smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            run: bash playground/smoke_native.sh
+          - os: windows-latest
+            run: powershell -ExecutionPolicy Bypass -File playground\smoke_native.ps1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Install toolchain (Ubuntu)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential
+
+      - name: Install MinGW (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install mingw -y --no-progress
+          echo "C:\ProgramData\mingw64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Run wasm_api smoke
+        run: ${{ matrix.run }}
+
+  wasm-rebuild:
+    name: Rebuild WASM + bundle drift check
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Build WASM (Docker emscripten/emsdk)
+        run: bash playground/build_wasm.sh
+
+      - name: Verify tracked bundles match rebuild
+        run: |
+          set -euo pipefail
+          git diff --exit-code playground/cordlang.js playground/cordlang.wasm
+
+      - name: Package playground zip
+        run: |
+          chmod +x scripts/package_playground.sh
+          scripts/package_playground.sh
+
+      - name: Upload playground artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: cordlang-playground
+          path: dist/cordlang-playground.zip
+          if-no-files-found: error
+          retention-days: 14

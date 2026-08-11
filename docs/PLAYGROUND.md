@@ -15,8 +15,8 @@ framework product — see [`RUNIX.md`](./RUNIX.md).
 | UI | ✅ editor + panel codegen en [`../playground/index.html`](../playground/index.html) |
 | Multi-file `use` / routes | ❌ single buffer only (CLI / `cordlang run` for apps) |
 | Bundles versionados en el repositorio | ✅ `playground/cordlang.js` + `playground/cordlang.wasm` están trackeados |
-| Rebuild / verificación WASM en CI | ❌ no hay workflow que regenere ni pruebe el bundle Emscripten |
-| Artefacto o release publicado | ❌ el bundle no se adjunta a CI ni a releases |
+| Rebuild / verificación WASM en CI | ✅ `playground/smoke_native.*` en CI + workflow `.github/workflows/playground.yml` (rebuild Docker + drift check) |
+| Artefacto o release publicado | ✅ `cordlang-playground.zip` en CI artifacts y GitHub Releases |
 
 ## Build WASM
 
