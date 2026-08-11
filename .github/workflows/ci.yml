@@ -59,6 +59,12 @@ jobs:
           powershell -ExecutionPolicy Bypass -File tests\run_backend_parity.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Playground wasm_api smoke
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File playground\smoke_native.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
   test-ubuntu:
     name: Build + goldens + template (Ubuntu)
     runs-on: ubuntu-latest
@@ -103,6 +109,11 @@ jobs:
 
       - name: Backend parity (Official compile smoke)
         run: ./tests/run_backend_parity.sh
+
+      - name: Playground wasm_api smoke
+        run: |
+          chmod +x playground/smoke_native.sh
+          ./playground/smoke_native.sh
 
   test-ubuntu-asan:
     name: ASAN/UBSAN goldens (Ubuntu)
