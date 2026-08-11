@@ -361,6 +361,7 @@ jobs:
           |---------|------|-------|
           | \`cordlang-windows-x64.exe\` | x64 | portable (recomendado) |
           | \`cordlang-windows-arm64.exe\` | ARM64 | portable |
+          | \`cordlang-windows-*.license.txt\` | — | licencia para el `.exe` standalone |
           | \`cordlang-windows-*.zip\` | — | exe + LICENSE + INSTALL.txt |
 
           ### Linux

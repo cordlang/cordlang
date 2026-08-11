@@ -8,7 +8,7 @@ Single source of truth for Cordlang **compile target** status. If README / ROADM
 
 | Tier | Backends | Meaning |
 |------|----------|---------|
-| **Official** | `esm` / `preview`, `react`, `svelte`, `vue` | AI / language contract. Goldens + template `--check` + preview smoke. |
+| **Official** | `esm` / `preview`, `react`, `svelte`, `vue` | AI / language contract. React/Svelte/Vue tienen goldens y `templates/counter` `--check` en CI; ESM tiene regresiones y un smoke dedicado. |
 | **Experimental / meta** | `solid`, `html` (legacy), `email`, `pdf`, `next`, `sveltekit` | Useful, not the default AI loop. Soft / smoke only. |
 
 Native (Flutter / SwiftUI / Compose) is **experimental** and not a registered CLI backend — see [NATIVE.md](./NATIVE.md). WASM playground MVP ships under `playground/` — see [PLAYGROUND.md](./PLAYGROUND.md).
@@ -39,10 +39,10 @@ Native (Flutter / SwiftUI / Compose) is **experimental** and not a registered CL
 
 | Script | Role |
 |--------|------|
-| `tests/run_tests.ps1` / `.sh` | Goldens: react, svelte, **vue**, solid |
+| `tests/run_tests.ps1` / `.sh` | Goldens: react, svelte, **vue**, solid; regresiones de backends, incl. ESM |
 | `tests/run_template_check.ps1` | Official SPA: react + svelte + **vue** `--check` |
-| `tests/run_preview_smoke.ps1` | Official ESM: `run --smoke` |
-| `tests/run_backend_parity.ps1` / `.sh` | Prints tiers + compile smoke; Official must pass |
+| `tests/run_preview_smoke.ps1` | Official ESM: `run --smoke`; todavía no se invoca en el CI por defecto |
+| `tests/run_backend_parity.ps1` / `.sh` | Tiers + compile smoke; `-Full` añade template `--check` y preview smoke |
 
 ## CLI one-liners
 

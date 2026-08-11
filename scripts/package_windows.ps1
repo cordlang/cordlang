@@ -38,6 +38,7 @@ New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 Copy-Item $Binary (Join-Path $ArtDir "cordlang.exe")
 if (Test-Path "LICENSE") { Copy-Item "LICENSE" $ArtDir }
 if (Test-Path "README.md") { Copy-Item "README.md" $ArtDir }
+if (Test-Path "LICENSE") { Copy-Item "LICENSE" (Join-Path $OutDir "$Art.license.txt") }
 
 @"
 Cordlang CLI $Version
@@ -47,6 +48,9 @@ Binary: cordlang.exe
 
 Run cordlang.exe, or add this folder to PATH.
 Docs: https://github.com/cordlangorg/cordlang
+
+License: Cordlang Attribution License 1.0
+Public uses must credit: Built with Cordlang
 "@ | Set-Content -Encoding utf8 (Join-Path $ArtDir "INSTALL.txt")
 
 $ZipPath = Join-Path $OutDir "$Art.zip"

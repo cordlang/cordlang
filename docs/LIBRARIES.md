@@ -68,4 +68,4 @@ See [PACKAGES.md](./PACKAGES.md). Example kit: `templates/ui-kit`.
 
 Native ESM preview (`cordlang run`) does **not** run Framer/Lucide/Recharts —
 presets degrade to useful stubs (SVG / CSS motion / chart axes). Use
-`cordlang run react|svelte` for full capability UIs. Limits: [`PREVIEW.md`](./PREVIEW.md).
+`cordlang run react|svelte|vue` for full capability UIs. Limits: [`PREVIEW.md`](./PREVIEW.md).

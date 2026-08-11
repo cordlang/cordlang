@@ -37,6 +37,7 @@ Artefactos por release (OS × CPU × formato instalable):
 |----------|----|------|---------|
 | `cordlang-windows-x64.exe` | Windows | x64 | portable `.exe` |
 | `cordlang-windows-arm64.exe` | Windows | ARM64 | portable `.exe` |
+| `cordlang-windows-*.license.txt` | Windows | — | license sidecar for standalone `.exe` |
 | `cordlang-windows-*.zip` | Windows | — | exe + docs |
 | `cordlang_*_amd64.deb` | Debian / Ubuntu | x64 | `.deb` |
 | `cordlang_*_arm64.deb` | Debian / Ubuntu | ARM64 | `.deb` |

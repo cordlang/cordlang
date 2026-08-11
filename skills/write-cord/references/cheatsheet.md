@@ -68,7 +68,7 @@ route /p/:id => pages/ProductPage
 ## CLI
 
 ```
-run | run react|svelte|vue [--check] [--watch]
+run | run react|svelte|vue [--check] [--watch] | run html
 check [--json] | analyze [--json] | ai [check|context|doctor] | fmt | symbols | goto Name
-compile file.cord --backend react|svelte|html|--ir
+compile file.cord --backend esm|react|svelte|vue|html|--ir
 ```

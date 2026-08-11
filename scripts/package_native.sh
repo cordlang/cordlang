@@ -85,6 +85,9 @@ chmod +x cordlang
 
 Optional: sudo mv cordlang /usr/local/bin/cordlang
 Docs: https://github.com/cordlangorg/cordlang
+
+License: Cordlang Attribution License 1.0
+Public uses must credit: Built with Cordlang
 EOF
 
 # ── zip (portable) ─────────────────────────────────────────
@@ -145,21 +148,23 @@ EOF
   if command -v fpm >/dev/null 2>&1; then
     RPM_DIR="$STAGE/rpm"
     rm -rf "$RPM_DIR"
-    mkdir -p "$RPM_DIR/usr/local/bin"
+    mkdir -p "$RPM_DIR/usr/local/bin" "$RPM_DIR/usr/share/doc/cordlang"
     cp "$BINARY" "$RPM_DIR/usr/local/bin/cordlang"
     chmod 755 "$RPM_DIR/usr/local/bin/cordlang"
+    [[ -f "$ROOT/LICENSE" ]] && cp "$ROOT/LICENSE" "$RPM_DIR/usr/share/doc/cordlang/"
     # RPM Version: only [A-Za-z0-9._+] — map prerelease separators to dots
     RPM_VER="$(printf '%s' "$VERSION" | sed 's/[^A-Za-z0-9._+]/\./g; s/\.\+/./g; s/^\.//; s/\.$//')"
     fpm -s dir -t rpm \
       -n cordlang \
       -v "$RPM_VER" \
       -a "$RPM_ARCH" \
-      --license MIT \
+      --license LicenseRef-Cordlang-Attribution-1.0 \
       --url "https://github.com/cordlangorg/cordlang" \
       --description "Cordlang UI compiler CLI" \
       -C "$RPM_DIR" \
       -p "$OUT_DIR" \
-      usr/local/bin/cordlang
+      usr/local/bin/cordlang \
+      usr/share/doc/cordlang/LICENSE
     echo "OK: rpm in $OUT_DIR"
   else
     echo "warn: fpm not found — skipping .rpm" >&2
@@ -183,6 +188,9 @@ Cordlang CLI ${VERSION}
    sudo mkdir -p /usr/local/bin
    sudo cp cordlang /usr/local/bin/cordlang
 2. cordlang --version
+
+License: Cordlang Attribution License 1.0
+Public uses must credit: Built with Cordlang
 EOF
     DMG_NAME="${ART}.dmg"
     rm -f "$OUT_DIR/$DMG_NAME"

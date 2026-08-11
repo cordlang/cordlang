@@ -1,4 +1,6 @@
-# Cordlang Super Roadmap — IR para IA (no otro React)
+# Cordlang Roadmap
+
+> **IR para IA, no otro framework.** El trabajo se mide por un loop de agentes más corto, determinista y verificable.
 
 > **Posicionamiento (no negociable):** Cordlang es un **lenguaje intermedio** optimizado para **vibecode/IA y ahorro de tokens** que describe UI y compila a destinos reales. **No** es el framework de producto web — eso es **[Runix](./RUNIX.md)** (SEO/runtime/deploy sobre Cordlang). Los backends Official (ESM/React/Svelte/Vue) son **interop y preview**, no “Cordlang-the-framework”. Si otras docs priorizan amplitud de backends o suenan a clonar Next, **gana este contrato** + [`AI_CONTEXT.md`](./AI_CONTEXT.md) + [`RUNIX.md`](./RUNIX.md).
 
@@ -18,6 +20,21 @@ Documentos relacionados:
 
 ---
 
+## En una mirada
+
+| Track | Estado | Qué significa |
+|-------|--------|---------------|
+| Lenguaje | ✅ 1.0 congelado | Sintaxis y semántica en [`SPEC.md`](./SPEC.md) |
+| Loop IA | ✅ base lista | `.cord` → `check` / `analyze` → preview o scaffold |
+| Targets Official | ✅ | ESM preview, React, Svelte y Vue |
+| Calidad | ✅ base CI | Goldens, regresiones, ASAN y `templates/counter` `--check` |
+| M11 Playground WASM | 🟡 activo | MVP single-buffer; falta multi-file, rebuild CI y artefacto publicado |
+| Runix | ⏳ fuera de este CLI | Framework web separado sobre Cordlang |
+
+> **Ahora:** cerrar M11. No abrir nuevos backends ni convertir Runix en un flag de `cordlang`.
+
+---
+
 ## 0. Norte (visión)
 
 ```
@@ -25,17 +42,17 @@ src/**/*.cord
    │
    ├─► AST / IR canónico
    │
-   ├──► Backend ESM      → cordlang run (JIT .cord → ES modules, sin Node)
+   ├──► Backend ESM     → cordlang run (JIT .cord → ES modules, sin Node)
    ├──► Backend React   → dist/react  (Vite + RR)
    ├──► Backend Svelte  → dist/svelte (Vite + runes)
-   ├──► Backend HTML    → cordlang run html (legacy single-document)
-   └──► (Horizonte B) Vue / Solid / email / …
+   ├──► Backend Vue     → dist/vue    (Vite + Vue Router)
+   └──► Experimental    → HTML legacy / Solid / email / …
 
 IA / skills / cordlang ai  ──escribe──►  .cord
 check / fmt / LSP / analyze ──valida──►  .cord
 ```
 
-**Éxito 12 meses (Horizonte A):** IA escribe `.cord` → `check`/`analyze` atrapan traps (incl. `jsx-hook`/`jsx-map`/`jsx-tag`) → LSP buffer diags + hints → `run` (ESM) + `run react|svelte --check` verdes; paridad SPA documentada; 3+ templates Cord.
+**Éxito 12 meses (Horizonte A):** IA escribe `.cord` → `check`/`analyze` atrapan traps (incl. `jsx-hook`/`jsx-map`/`jsx-tag`) → LSP buffer diags + hints → `run` (ESM) + `run react|svelte|vue --check` verdes; paridad SPA documentada; 3+ templates Cord.
 
 **Éxito producto:** el mismo `src/**/*.cord` sin reescribir UI:
 
@@ -44,6 +61,7 @@ cordlang run              # ESM native preview (default, sin Node) — PREVIEW.m
 cordlang run html         # legacy HTML single-document escape hatch
 cordlang run react        # app React (Vite scaffold)
 cordlang run svelte       # app Svelte (Vite scaffold)
+cordlang run vue          # app Vue 3 (Vite scaffold)
 ```
 
 Vue / Solid / email / PDF / Next / Kit: ver tiers en [`BACKENDS.md`](./BACKENDS.md) — **Official** = ESM/React/Svelte/Vue; el resto es **experimental/meta** (no el contrato IA default).
@@ -65,7 +83,7 @@ Vue / Solid / email / PDF / Next / Kit: ver tiers en [`BACKENDS.md`](./BACKENDS.
 | `layout` + `slot` | ✅ |
 | `route` | ✅ |
 | `theme` → CSS vars | ✅ parse + `theme_css` IR (G1) |
-| Preview HTML nativo en el `.exe` | ✅ state + setX + `#{x}` + bind + live if (contrato limitado) |
+| Preview HTML legacy nativo en el `.exe` | ✅ state + setX + `#{x}` + bind + live if (contrato limitado) |
 | IR canónico + dump `--ir` | ✅ |
 | Expr mini-parser | ✅ |
 | `cordlang check` + diagnostics | ✅ |
@@ -217,7 +235,7 @@ Ejemplos: `examples/phase_b_lazy_head.cord`, `examples/fetch_form.cord`, `tests/
 - IR + dump + expr module livables  
 - DX: check, fmt, symbols/goto, preview state, source attribution  
 - Suite: **16/16** (`tests\run_tests.ps1`)  
-- **Post-C IR-1 + IR-2 ✅:** services → IR; React (`react_ir.c`) y Svelte emiten body **solo desde `IrNode`**.  
+- **Post-C IR-1 + IR-2 ✅:** services → IR; React (`react_ir.c`), Svelte y Vue emiten body **solo desde `IrNode`**.
 Residual: theme.css scaffold puede usar origin. HTML preview body es IR-first (G2); contrato limitado documentado (state/bind/if).
 
 ```bash
@@ -248,7 +266,7 @@ Docs: [`docs/IR.md`](./IR.md).
 
 ---
 
-### Fase E — Svelte avanzado / meta 🟡 (docs-first + codegen, 2026-07-23)
+### Fase E — Svelte avanzado / meta ✅ core (wrapper Kit MVP; sin SSR/SSG, 2026-07-23)
 
 Mapa completo: [`docs/SVELTE.md`](./SVELTE.md) (basado en [svelte.dev/docs/svelte](https://svelte.dev/docs/svelte/overview)).
 
@@ -264,7 +282,7 @@ Mapa completo: [`docs/SVELTE.md`](./SVELTE.md) (basado en [svelte.dev/docs/svelt
 | E8 | Attach/portal DOM | ✅ | `portal to=document.body` → `use:portal` helper |
 
 **Demo:** `examples/phase_e_svelte.cord`  
-**DoD E (MVP):** ✅ surface principal de [Svelte docs](https://svelte.dev/docs/svelte/overview) mapeada como React; Kit queda para post-E.
+**DoD E (MVP):** ✅ surface principal de [Svelte docs](https://svelte.dev/docs/svelte/overview) mapeada como React; el wrapper `sveltekit` SPA está hecho, pero SSR/SSG/file routing reales quedan post-E.
 
 ---
 
@@ -276,7 +294,7 @@ Mapa completo: [`docs/SVELTE.md`](./SVELTE.md) (basado en [svelte.dev/docs/svelt
 | F2 | Backend **Solid** | ✅ `backends/solid/` + goldens + `docs/SOLID.md` |
 | F3 | Package registry de componentes `.cord` | ✅ MVP local: `cordlang add` → `src/vendor|lib/` + [`PACKAGES.md`](./PACKAGES.md) (sin registry remoto) |
 | F4 | AI prompts / skill “write cord not jsx” | ✅ `docs/AI.md` + `AGENTS.md` + `skills/write-cord` |
-| F5 | Playground web (WASM compile) | 🟡 MVP: `wasm_api` + `playground/` UI + Docker/`emcc` build ([PLAYGROUND.md](./PLAYGROUND.md)) |
+| F5 | Playground web (WASM compile) | 🟡 MVP single-buffer: `wasm_api` + `playground/` UI + Docker/`emcc` build; multi-file, rebuild CI y artefacto publicado pendientes ([PLAYGROUND.md](./PLAYGROUND.md)) |
 | F6 | CI multi-backend | ✅ goldens Win/Linux; demo `--check` = G4 |
 | F7 | Versionado del lenguaje (0.x → 1.0 freeze) | ✅ [`VERSIONING.md`](./VERSIONING.md) + `CORDLANG_VERSION` / `cordlang --version` |
 | F8 | Backend **email** HTML estático | ✅ `backends/email/` + `static_html` + `docs/EMAIL.md` |
@@ -310,7 +328,7 @@ DESPUÉS ► Registry remoto / MCP / native spikes; **Runix** = framework produc
 | 1 | Paridad SPA React ↔ Svelte (A3) | ✅ | Residual idiomático ≠ bloqueo: `$bindable`, `{#key}`, `@attach`, Kit SSR |
 | 2 | Vue → Official | ✅ | [VUE_PROMOTION.md](./VUE_PROMOTION.md) + template `--check` CI |
 | 3 | Freeze meta backends | ✅ | Claims congelados en BACKENDS / NEXT / SVELTEKIT — no ampliar superficie |
-| 4 | Playground WASM real | 🟡 MVP | API + UI + Docker build — [PLAYGROUND.md](./PLAYGROUND.md); multi-file TBD |
+| 4 | Playground WASM real | 🟡 MVP | API single-buffer + UI + Docker build; faltan multi-file, rebuild/verificación CI y artefacto publicado — [PLAYGROUND.md](./PLAYGROUND.md) |
 | 5 | **Runix** (framework) | ⏳ vision | Language stays Cordlang; product web framework = [RUNIX.md](./RUNIX.md) — not a new `--backend` |
 
 ### 4.0 Fase R — ESM native preview perfection
@@ -345,7 +363,7 @@ Orden fijo: **R1 → R2 → R3 → R4 → R5**. No mezclar fases en el mismo PR.
 
 | # | Item | Estado |
 |---|------|--------|
-| G0–G6 | Repo público, theme/HTML IR, CI, my-app `--check`, docs/AI skill, MIT | ✅ |
+| G0–G6 | Repo público, theme/HTML IR, CI, my-app `--check`, docs/AI skill, LICENSE | ✅ |
 | G7 | Source maps reales | ✅ VLQ from source= markers |
 | G8 | LSP full | ✅ usable: buffer diags + hint/code, completion contextual, hover, formatting, codeAction (`jsx-attr`/`bad-interp`); rename/references abiertos |
 
@@ -438,7 +456,7 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 - [x] `docs/REACT.md` + `docs/SVELTE.md` al día con codegen (gaps residuales explícitos)  
 - [x] Syntax freeze del subset 1.0 ([`docs/SPEC.md`](./SPEC.md) **1.0**)  
 - [x] Theme + HTML sin residual AST en path IR (G1–G2)  
-- [x] LICENSE publicada (MIT)  
+- [x] LICENSE publicada (Cordlang Attribution License 1.0)
 
 ---
 
@@ -461,14 +479,14 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 | **M1 — Real apps** | B1–B8 | ✅ |
 | **M2 — Platform DX** | C1–C8 | ✅ |
 | **M3 — Deep React** | D* selecto | 🟡 MVP |
-| **M4 — Deep Svelte** | E* selecto | 🟡 MVP (sin Kit) |
+| **M4 — Deep Svelte** | E* selecto | ✅ core; `sveltekit` queda como wrapper SPA, sin SSR/SSG/file routing |
 | **M5 — IR platform** | IR-1 + IR-2 | ✅ |
 | **M6 — Public + polish** | Fase G (G0–G6 ✅) | ✅ |
 | **M7 — Horizonte A** | A1–A6 (DX, contratos, paridad, IA workflow, templates, analyze) | ✅ gate 1.0 |
 | **M8 — Madurez** | Fase H (regresión, ARCHITECTURE, SPEC, bench, IR passes) | ✅ |
 | **M9 — Horizonte B / meta** | Platform → Vue Official → Solid/email/PDF/Next/Kit (frozen) → native spike | 🟡 meta frozen |
 | **M10 — ESM preview** | Fase R (R1 DX → R2 soft HMR → R3 build esm → R4 runtime → R5 error overlay) | ✅ |
-| **M11 — WASM playground** | Emscripten core + browser UI (`cordlang_compile`) | 🟡 MVP (single-file) |
+| **M11 — WASM playground** | Emscripten core + browser UI (`cordlang_compile`) | 🟡 MVP single-buffer; multi-file + rebuild/verificación CI + artefacto publicado pendientes |
 | **M12 — Runix** | Framework product on Cordlang (web/SEO) | ⏳ vision [`RUNIX.md`](./RUNIX.md) |
 
 Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `backend:vue`, `backend:esm`, `ir`, `dx`, `ci`, `docs`.
@@ -485,4 +503,4 @@ Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `backend:vue`, `
 
 ---
 
-*Última actualización: visión Cordlang = lenguaje / Runix = framework; playground WASM MVP (M11) — multi-file / CI artifact pendientes.*
+*Estado verificado: lenguaje 1.0, CLI 0.0.013 alpha; Vue es Official; Cordlang = lenguaje / Runix = framework; M11 sigue single-buffer, sin rebuild/verificación CI ni artefacto publicado.*

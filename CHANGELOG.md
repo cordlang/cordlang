@@ -5,6 +5,19 @@ Language surface versions follow [`docs/SPEC.md`](./docs/SPEC.md) and [`docs/VER
 
 ## [Unreleased]
 
+### Changed — License
+- **Cordlang Attribution License 1.0** replaces MIT: use, modification, distribution, sublicensing, sale, and closed-source use remain permitted; redistributed code must retain the license and public uses must credit **"Built with Cordlang"**
+
+### Changed — Release and CI hardening
+- **GitHub Actions runtime** — checkout and artifact actions now use supported Node 24-era releases, avoiding the deprecated Node 20 action runtime
+- **Release matrix** — package jobs run on pull requests without publishing, so the full native package matrix is validated before a tag
+- **Windows ARM64** — isolated `CLANGARM64` build uses `CC=clang`; a bad MSYS2 action pin no longer blocks Linux, macOS, or Windows x64 jobs
+- **macOS / networking** — Intel packaging uses the supported `macos-15-intel` runner; preview servers provide an `INADDR_LOOPBACK` fallback for Darwin builds
+
+### Changed — Documentation
+- **README + roadmap** — clarify the Official targets (ESM, React, Svelte, Vue), the language 1.0 versus CLI alpha split, and the single-buffer scope of the WASM playground
+- **Backend and AI guides** — align target commands, IR ownership, preview limits, and frozen Next/SvelteKit meta-wrapper claims
+
 ### Fixed — Overlay CSS + preview logs
 - **Overlay CSS** — `/@cord/styles.css` still serves base+overlay when the project does not compile; runtime also injects critical overlay styles
 - **Preview terminal** — colored `info`/`err`/`ok` tags, banner, deduped compile errors (no spam per request)
@@ -44,10 +57,12 @@ Language surface versions follow [`docs/SPEC.md`](./docs/SPEC.md) and [`docs/VER
 - **Test harness** — `tests/run_tests.ps1` fixed (full suite green again)
 - **Portability** — `clock()` → `now_ms()` in `dev_server.c` (non-Windows builds)
 
-## [1.0.0] — 2026-07
+## [Language 1.0] — 2026-07
+
+> This records the language-surface freeze. The CLI and LSP continue on the `0.0.x` alpha line; see [`docs/VERSIONING.md`](./docs/VERSIONING.md).
 
 ### Added
-- SPEC 1.0 language freeze (SPA subset) and CLI `1.0.0`
+- SPEC 1.0 language freeze for the documented web subset
 - IR backends: React, Svelte 5, Vue 3, Solid, HTML preview, email/PDF static, Next/SvelteKit meta
 - DX: `check`, `fmt`, `analyze`, `symbols`/`goto`, LSP, `init --template`, local `add`
 - CI: Windows + Ubuntu goldens, ASAN with leak detection, template/example smoke
