@@ -129,8 +129,9 @@ char *compile_service_file_with_passes(const char *cord_path,
                                        const char *map_out_path,
                                        const char *const *passes, int n_passes) {
   backend_register_all();
-  const BackendPort *backend = backend_find(backend_name);
-  if (!backend) {
+  int want_ir = backend_name && strcmp(backend_name, "ir") == 0;
+  const BackendPort *backend = want_ir ? NULL : backend_find(backend_name);
+  if (!want_ir && !backend) {
     fprintf(stderr, "Error: unknown backend '%s'\n", backend_name);
     return NULL;
   }
@@ -172,7 +173,9 @@ char *compile_service_file_with_passes(const char *cord_path,
   ir_pass_names_free(cfg_names, n_cfg);
 
   char *out = NULL;
-  if (ir && backend->generate_from_ir) {
+  if (want_ir) {
+    out = ir_dump(ir);
+  } else if (ir && backend->generate_from_ir) {
     out = backend->generate_from_ir(ir);
   } else if (backend->generate) {
     out = backend->generate(result.ast->root);
@@ -180,7 +183,7 @@ char *compile_service_file_with_passes(const char *cord_path,
   ir_free(ir);
   compiler_result_free(&result);
 
-  if (write_sourcemap && out) {
+  if (write_sourcemap && out && backend) {
     const char *sources[32];
     int n_sources = 0;
     collect_sources_for_map(cord_path, sources, &n_sources, 32);

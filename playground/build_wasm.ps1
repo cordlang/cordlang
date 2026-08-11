@@ -47,10 +47,10 @@ $Srcs = @(
 $Flags = @(
   "-O2", "-std=c17", "-Wall", "-Wno-unused-parameter", "-Wno-unused-function",
   "-D_DEFAULT_SOURCE", "-DCORDLANG_WASM=1", "-Isrc",
-  "-sWASM=1", "-sMODULARIZE=1", "-sEXPORT_NAME=createCordlang",
-  "-sEXPORTED_FUNCTIONS=_cordlang_compile,_cordlang_free,_cordlang_version,_malloc,_free",
+  "-sWASM=1", "-sMODULARIZE=1", "-sEXPORT_ES6=1", "-sEXPORT_NAME=createCordlang",
+  "-sEXPORTED_FUNCTIONS=_cordlang_compile,_cordlang_compile_project,_cordlang_free,_cordlang_version,_malloc,_free",
   "-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,UTF8ToString,stringToUTF8,lengthBytesUTF8,getValue,setValue",
-  "-sALLOW_MEMORY_GROWTH=1", "-sENVIRONMENT=web,worker",
+  "-sALLOW_MEMORY_GROWTH=1", "-sSTACK_SIZE=262144", "-sENVIRONMENT=web,worker",
   "-sERROR_ON_UNDEFINED_SYMBOLS=1"
 )
 
@@ -71,8 +71,11 @@ if ($emcc) {
     $drive = $mount.Substring(0, 1).ToLower()
     $mount = "/$drive" + $mount.Substring(2)
   }
+  # Link in the container filesystem: llvm-objcopy cannot reliably rewrite a
+  # WASM file on every Windows Docker bind mount. Copy finished assets back.
   docker run --rm -v "${mount}:/src" -w /src emscripten/emsdk:3.1.74 `
-    emcc @Flags @Srcs -o playground/cordlang.js
+    sh -lc 'emcc "$@" -o /tmp/cordlang.js && cp /tmp/cordlang.js /tmp/cordlang.wasm playground/' `
+    -- @Flags @Srcs
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 

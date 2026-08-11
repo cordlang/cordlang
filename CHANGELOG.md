@@ -5,6 +5,13 @@ Language surface versions follow [`docs/SPEC.md`](./docs/SPEC.md) and [`docs/VER
 
 ## [Unreleased]
 
+### Added — M11.1 WASM project API
+- **Multi-file compilation source API** — `cordlang_compile_project(entry_path, files_json, backend)` resolves `use`, routes, layouts, and config from an in-memory JSON file map; the generated bundle must be rebuilt before browser use
+- **Virtual filesystem** — project reads are isolated from host disk; module resolution remains jailed to the virtual project root
+- **Project diagnostics** — WASM result diagnostics now include optional `file` and `hint` fields for multi-file callers
+- **WASM runtime** — bundle stack is set to 256 KiB so project semantic checks do not overflow the Emscripten default
+- **Smoke coverage** — native WASM-API smoke covers nested modules, routes, project config, IR output, missing modules, project jail, map reset, and invalid manifests
+
 ### Fixed — Overlay CSS + preview logs
 - **Overlay CSS** — `/@cord/styles.css` still serves base+overlay when the project does not compile; runtime also injects critical overlay styles
 - **Preview terminal** — colored `info`/`err`/`ok` tags, banner, deduped compile errors (no spam per request)

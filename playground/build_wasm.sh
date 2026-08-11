@@ -55,10 +55,12 @@ EMCC_FLAGS=(
   -Isrc
   -sWASM=1
   -sMODULARIZE=1
+  -sEXPORT_ES6=1
   -sEXPORT_NAME=createCordlang
-  -sEXPORTED_FUNCTIONS=_cordlang_compile,_cordlang_free,_cordlang_version,_malloc,_free
+  -sEXPORTED_FUNCTIONS=_cordlang_compile,_cordlang_compile_project,_cordlang_free,_cordlang_version,_malloc,_free
   -sEXPORTED_RUNTIME_METHODS=ccall,cwrap,UTF8ToString,stringToUTF8,lengthBytesUTF8,getValue,setValue
   -sALLOW_MEMORY_GROWTH=1
+  -sSTACK_SIZE=262144
   -sENVIRONMENT=web,worker
   -sERROR_ON_UNDEFINED_SYMBOLS=1
 )
@@ -75,11 +77,14 @@ if command -v emcc >/dev/null 2>&1; then
 elif command -v docker >/dev/null 2>&1; then
   echo "emcc not on PATH — using Docker image emscripten/emsdk"
   # Mount repo and run emcc inside the container
+  # Link in the container filesystem: llvm-objcopy cannot reliably rewrite a
+  # WASM file on every Windows Docker bind mount. Copy finished assets back.
   docker run --rm \
     -v "$ROOT:/src" \
     -w /src \
     emscripten/emsdk:3.1.74 \
-    emcc "${EMCC_FLAGS[@]}" "${SRCS[@]}" -o playground/cordlang.js
+    sh -lc 'emcc "$@" -o /tmp/cordlang.js && cp /tmp/cordlang.js /tmp/cordlang.wasm playground/' \
+    -- "${EMCC_FLAGS[@]}" "${SRCS[@]}"
 else
   echo "FAIL: need emcc on PATH or Docker (emscripten/emsdk)."
   exit 1

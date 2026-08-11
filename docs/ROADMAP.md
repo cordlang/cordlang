@@ -276,7 +276,7 @@ Mapa completo: [`docs/SVELTE.md`](./SVELTE.md) (basado en [svelte.dev/docs/svelt
 | F2 | Backend **Solid** | ✅ `backends/solid/` + goldens + `docs/SOLID.md` |
 | F3 | Package registry de componentes `.cord` | ✅ MVP local: `cordlang add` → `src/vendor|lib/` + [`PACKAGES.md`](./PACKAGES.md) (sin registry remoto) |
 | F4 | AI prompts / skill “write cord not jsx” | ✅ `docs/AI.md` + `AGENTS.md` + `skills/write-cord` |
-| F5 | Playground web (WASM compile) | 🟡 MVP: `wasm_api` + `playground/` UI + Docker/`emcc` build ([PLAYGROUND.md](./PLAYGROUND.md)) |
+| F5 | Playground web (WASM compile) | 🟡 M11.1 source API ✅; faltan rebuild/verificación del bundle, árbol/tabs en UI y artefacto publicado ([PLAYGROUND.md](./PLAYGROUND.md)) |
 | F6 | CI multi-backend | ✅ goldens Win/Linux; demo `--check` = G4 |
 | F7 | Versionado del lenguaje (0.x → 1.0 freeze) | ✅ [`VERSIONING.md`](./VERSIONING.md) + `CORDLANG_VERSION` / `cordlang --version` |
 | F8 | Backend **email** HTML estático | ✅ `backends/email/` + `static_html` + `docs/EMAIL.md` |
@@ -310,7 +310,7 @@ DESPUÉS ► Registry remoto / MCP / native spikes; **Runix** = framework produc
 | 1 | Paridad SPA React ↔ Svelte (A3) | ✅ | Residual idiomático ≠ bloqueo: `$bindable`, `{#key}`, `@attach`, Kit SSR |
 | 2 | Vue → Official | ✅ | [VUE_PROMOTION.md](./VUE_PROMOTION.md) + template `--check` CI |
 | 3 | Freeze meta backends | ✅ | Claims congelados en BACKENDS / NEXT / SVELTEKIT — no ampliar superficie |
-| 4 | Playground WASM real | 🟡 MVP | API + UI + Docker build — [PLAYGROUND.md](./PLAYGROUND.md); multi-file TBD |
+| 4 | Playground WASM real | 🟡 M11.1 source ✅ | API multi-file aislada; faltan rebuild/verificación del bundle, UI de proyecto y artefacto publicado — [PLAYGROUND.md](./PLAYGROUND.md) |
 | 5 | **Runix** (framework) | ⏳ vision | Language stays Cordlang; product web framework = [RUNIX.md](./RUNIX.md) — not a new `--backend` |
 
 ### 4.0 Fase R — ESM native preview perfection
@@ -377,7 +377,7 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 | Vue / Solid | Vue = **Official**; Solid = **experimental** |
 | SvelteKit / Next | ✅ **meta** client wrap; no RSC/SSR real — claims congelados |
 | Flutter / SwiftUI / Compose | 🟡 spike [`NATIVE.md`](./NATIVE.md) |
-| Playground WASM | 🟡 **MVP** — `playground/build_wasm.*` + UI; single-buffer only |
+| Playground WASM | 🟡 **M11.1 source API multi-file** — VFS aislado; bundle rebuild, UI single-buffer y CI artifact pendientes |
 | MCP Cordlang | ⏳ post-plan |
 | **Runix** framework | ⏳ vision — [`RUNIX.md`](./RUNIX.md); not a CLI backend |
 | `@ai` en fuente | Evitar en build |
@@ -468,7 +468,7 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 | **M8 — Madurez** | Fase H (regresión, ARCHITECTURE, SPEC, bench, IR passes) | ✅ |
 | **M9 — Horizonte B / meta** | Platform → Vue Official → Solid/email/PDF/Next/Kit (frozen) → native spike | 🟡 meta frozen |
 | **M10 — ESM preview** | Fase R (R1 DX → R2 soft HMR → R3 build esm → R4 runtime → R5 error overlay) | ✅ |
-| **M11 — WASM playground** | Emscripten core + browser UI (`cordlang_compile`) | 🟡 MVP (single-file) |
+| **M11 — WASM playground** | Emscripten core + browser UI | 🟡 M11.1 source ✅; bundle rebuild/verificación, UI de proyecto y artefacto publicado pendientes |
 | **M12 — Runix** | Framework product on Cordlang (web/SEO) | ⏳ vision [`RUNIX.md`](./RUNIX.md) |
 
 Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `backend:vue`, `backend:esm`, `ir`, `dx`, `ci`, `docs`.
@@ -485,4 +485,4 @@ Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `backend:vue`, `
 
 ---
 
-*Última actualización: visión Cordlang = lenguaje / Runix = framework; playground WASM MVP (M11) — multi-file / CI artifact pendientes.*
+*Última actualización: visión Cordlang = lenguaje / Runix = framework; M11.1 implementa la API multi-file en source y deja rebuild/verificación del bundle, UI de proyecto y artefacto publicado como pendientes.*

@@ -47,6 +47,12 @@ jobs:
           powershell -ExecutionPolicy Bypass -File tests\run_tests.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Native WASM project smoke
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File playground\smoke_native.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Template react + svelte + vue --check
         shell: pwsh
         run: |
@@ -92,8 +98,11 @@ jobs:
 
       - name: Golden tests
         run: |
-          chmod +x tests/run_tests.sh tests/run_template_check.sh tests/run_smoke_examples.sh tests/run_backend_parity.sh
+          chmod +x tests/run_tests.sh tests/run_template_check.sh tests/run_smoke_examples.sh tests/run_backend_parity.sh playground/smoke_native.sh
           ./tests/run_tests.sh
+
+      - name: Native WASM project smoke
+        run: ./playground/smoke_native.sh
 
       - name: Smoke templates + examples
         run: ./tests/run_smoke_examples.sh
