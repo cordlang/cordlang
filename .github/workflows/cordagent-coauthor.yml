@@ -1,0 +1,50 @@
+name: CordAgent co-author cleanup
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Prevents two jobs running simultaneously on the same PR
+concurrency:
+  group: cordagent-coauthor-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write   # needed to force-push the rewritten PR branch
+  pull-requests: read
+
+jobs:
+  strip-ai-coauthors:
+    name: Strip AI Co-authored-by → CordAgent
+    runs-on: ubuntu-latest
+
+    # Same-repo PRs only. Fork PRs cannot be safely force-pushed with
+    # GITHUB_TOKEN from the base repo.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run CordAgent
+        id: cord
+        uses: cordlang/cordagent/action@master
+        with:
+          ours: "CordAgent <cordagent@cordlang.com>"
+          # strip-known-agents: removes Cursor/Copilot/Claude/etc, keeps human co-authors.
+          # No-op if no AI trailers are found (idempotent — won't trigger a second push loop).
+          mode: strip-known-agents
+          push: "true"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### CordAgent co-author cleanup" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Rewritten commits: \`${{ steps.cord.outputs.rewritten }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Changed: \`${{ steps.cord.outputs.changed }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Identity: \`CordAgent <cordagent@cordlang.com>\`" >> "$GITHUB_STEP_SUMMARY"
