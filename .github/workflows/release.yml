@@ -9,6 +9,7 @@
 # Triggers:
 #   - Push tag v*   (e.g. v0.0.013-alpha.1)
 #   - Actions → Release → Run workflow
+#   - pull_request touching release packaging (build only, no publish)
 #
 # Tags with alpha/beta/rc → GitHub prerelease.
 
@@ -18,6 +19,14 @@ on:
   push:
     tags:
       - "v*"
+  pull_request:
+    paths:
+      - ".github/workflows/release.yml"
+      - "scripts/package_native.sh"
+      - "scripts/package_windows.ps1"
+      - "scripts/build_release_win.ps1"
+      - "Makefile"
+      - "src/**"
   workflow_dispatch:
     inputs:
       version:
@@ -38,7 +47,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  RAW_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+  RAW_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.event_name == 'pull_request' && format('0.0.0-pr.{0}', github.event.number) || github.ref_name }}
 
 jobs:
   meta:
@@ -99,8 +108,8 @@ jobs:
             kind: unix
             arch: arm64
             family: linux
-          # ── macOS ────────────────────────────────────────
-          - os: macos-13
+          # ── macOS (macos-13 retired; Intel = macos-15-intel) ──
+          - os: macos-15-intel
             artifact: cordlang-macos-x64
             binary: cordlang
             kind: unix
@@ -297,6 +306,8 @@ jobs:
 
   release:
     name: Publish GitHub Release
+    # PRs validate packaging only — never publish from a pull_request.
+    if: github.event_name != 'pull_request'
     needs: [meta, build, build-windows-arm]
     runs-on: ubuntu-latest
     steps:
