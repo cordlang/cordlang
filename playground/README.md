@@ -1,6 +1,7 @@
 # Cordlang Playground
 
-In-browser compiler (WASM). Build artifacts with:
+In-browser compiler (WASM) for a **multi-file** virtual project (`use` / `route`
+resolve through `cordlang_compile_project`). Build artifacts with:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File playground\build_wasm.ps1

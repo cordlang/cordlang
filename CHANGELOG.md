@@ -5,8 +5,13 @@ Language surface versions follow [`docs/SPEC.md`](./docs/SPEC.md) and [`docs/VER
 
 ## [Unreleased]
 
+### Added — M11.2 playground project UI
+- **Multi-file browser editor** — `playground/index.html` keeps an in-memory file map (tree + tabs), compiles with `cordlang_compile_project`, and surfaces `file:line:col` diagnostics (click jumps to the file)
+- **Sample project** — default virtual tree matches the native smoke shape (`app.cord` + layout + `HomePage` + `Counter`) so `use` / `route` resolve in the browser
+- **UI contract in smoke** — `smoke_native.*` fails if `index.html` drops `cordlang_compile_project` or the virtual entry path
+
 ### Added — M11.1 WASM project API
-- **Multi-file compilation source API** — `cordlang_compile_project(entry_path, files_json, backend)` resolves `use`, routes, layouts, and config from an in-memory JSON file map; the generated bundle must be rebuilt before browser use
+- **Multi-file compilation source API** — `cordlang_compile_project(entry_path, files_json, backend)` resolves `use`, routes, layouts, and config from an in-memory JSON file map (browser bundle already exports the symbol)
 - **Virtual filesystem** — project reads are isolated from host disk; module resolution remains jailed to the virtual project root
 - **Project diagnostics** — WASM result diagnostics now include optional `file` and `hint` fields for multi-file callers
 - **WASM runtime** — bundle stack is set to 256 KiB so project semantic checks do not overflow the Emscripten default
@@ -27,7 +32,7 @@ Language surface versions follow [`docs/SPEC.md`](./docs/SPEC.md) and [`docs/VER
 - **macOS / networking** — Intel packaging uses the supported `macos-15-intel` runner; preview servers provide an `INADDR_LOOPBACK` fallback for Darwin builds
 
 ### Changed — Documentation
-- **README + roadmap** — clarify the Official targets (ESM, React, Svelte, Vue), the language 1.0 versus CLI alpha split, and the WASM playground scope (single-buffer UI + project API)
+- **README + roadmap** — clarify the Official targets (ESM, React, Svelte, Vue), the language 1.0 versus CLI alpha split, and the WASM playground scope (M11.2 multi-file UI + project API)
 - **Backend and AI guides** — align target commands, IR ownership, preview limits, and frozen Next/SvelteKit meta-wrapper claims
 
 ### Fixed — Overlay CSS + preview logs

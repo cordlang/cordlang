@@ -54,4 +54,15 @@ Write-Host "Building playground native smoke..."
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 & $Out
-exit $LASTEXITCODE
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# UI contract: the browser playground must call the multi-file project API.
+$html = Get-Content (Join-Path $Root "playground\index.html") -Raw
+foreach ($needle in @("cordlang_compile_project", "/playground/src/app.cord")) {
+  if ($html.IndexOf($needle) -lt 0) {
+    Write-Host "FAIL: playground/index.html missing $needle" -ForegroundColor Red
+    exit 1
+  }
+}
+Write-Host "PASS: playground UI wires project API"
+exit 0

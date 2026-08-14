@@ -1,9 +1,9 @@
 # Playground (WASM)
 
 Compile `.cord` **in the browser** — no CLI install. It uses the same IR path
-as `cordlang compile`. The visible editor is still single-buffer. M11.1 adds a
-multi-file project API in source; rebuild the WASM bundle before calling it in
-the browser.
+as `cordlang compile`. The editor is a **multi-file virtual project** (M11.2):
+tree + tabs call `cordlang_compile_project` so `use` / `route` / layouts
+resolve the same way as the native smoke.
 
 This is a **language** playground (Cordlang compiler in WASM), not the **Runix**
 framework product — see [`RUNIX.md`](./RUNIX.md).
@@ -14,10 +14,10 @@ framework product — see [`RUNIX.md`](./RUNIX.md).
 |-------|--------|
 | Núcleo C → WASM | ✅ `playground/build_wasm.ps1` / `.sh` (Docker `emscripten/emsdk` o `emcc` local) |
 | API JS (single file) | ✅ `cordlang_compile(source, backend)` → JSON |
-| API JS (project) | 🟡 source ✅ `cordlang_compile_project(entry, files_json, backend)`; bundle rebuild pendiente |
-| UI | 🟡 editor + panel codegen en [`../playground/index.html`](../playground/index.html); aún sin árbol ni tabs |
-| Multi-file `use` / routes | 🟡 disponible tras rebuild en la API de proyecto; la UI sigue single-buffer hasta M11.2 |
-| Native project smoke | ✅ Windows + Ubuntu CI compilan el mismo source set con `CORDLANG_WASM` |
+| API JS (project) | ✅ `cordlang_compile_project(entry, files_json, backend)` exported in the tracked bundle |
+| UI | ✅ tree + tabs + add/reset in [`../playground/index.html`](../playground/index.html) |
+| Multi-file `use` / routes | ✅ sample project (`app.cord` + layout + `HomePage` + `Counter`) |
+| Native project smoke | ✅ Windows + Ubuntu CI; also pins the UI contract (`compile_project` + entry path) |
 | Bundles versionados en el repositorio | ✅ `playground/cordlang.js` + `playground/cordlang.wasm` están trackeados |
 | Rebuild / verificación WASM en CI | ✅ `playground/smoke_native.*` en CI + workflow `.github/workflows/playground.yml` (rebuild Docker + drift check) |
 | Artefacto o release publicado | ✅ `cordlang-playground.zip` en CI artifacts y GitHub Releases |
@@ -44,6 +44,17 @@ npx --yes serve playground
 # open the printed URL
 ```
 
+The default sample is a virtual tree under `/playground/`:
+
+- `src/app.cord` — entry (`use` + `route / => pages/HomePage`)
+- `src/layouts/default.cord`
+- `src/pages/HomePage.cord`
+- `src/components/Counter.cord`
+- `cordlang.json`
+
+Edit any file; Compile (or the debounce) sends the whole map through
+`cordlang_compile_project`. Diagnostics include `file` — click one to jump.
+
 ## JS API
 
 ```js
@@ -58,9 +69,9 @@ free(ptr);
 
 ## Project API (M11.1)
 
-After rebuilding the WASM bundle, pass an absolute virtual entry path plus a
-JSON file map. All resolver reads are contained in that map: missing files never
-fall back to the host filesystem.
+Pass an absolute virtual entry path plus a JSON file map. All resolver reads
+are contained in that map: missing files never fall back to the host
+filesystem.
 
 ```js
 const files = {

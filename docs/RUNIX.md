@@ -30,7 +30,7 @@ AI / humans  ──write──►  .cord  (Cordlang language)
 
 ## Implications for this repo
 
-1. Prefer language / IR / DX / WASM playground work over inventing a full web framework here.
+1. Prefer language / IR / DX work over inventing a full web framework here. The WASM playground is a language surface (M11 done), not a Runix host.
 2. Do not market Cordlang as Next/Vite/router replacement — that story belongs to **Runix**.
 3. WASM multi-file + CI artifacts support the **language** playground; Runix may host or wrap that later.
 4. Meta backends stay frozen ([`BACKENDS.md`](./BACKENDS.md)); Runix is not a new CLI `--backend`.
