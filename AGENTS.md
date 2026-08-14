@@ -2,7 +2,7 @@
 
 You are working in the **Cordlang** repository: a C compiler that turns dense `.cord` UI sources into React, Svelte 5, Vue 3, or a native **ESM preview** (default `cordlang run`).
 
-**North star:** vibecode + AI with **minimal token spend** — dense sources, deterministic `check`/`analyze`, no LLM in `compile`. Prefer the AI loop over expanding meta backends. Close half-done work (WASM playground polish) before new targets. If docs disagree, [`docs/AI_CONTEXT.md`](./docs/AI_CONTEXT.md) wins for product intent.
+**North star:** vibecode + AI with **minimal token spend** — dense sources, deterministic `check`/`analyze`, no LLM in `compile`. Prefer the AI loop over expanding meta backends. Playground WASM is multi-file (M11); do not open new targets before residual DX / Horizonte B. If docs disagree, [`docs/AI_CONTEXT.md`](./docs/AI_CONTEXT.md) wins for product intent.
 
 **Cordlang = language only.** The web framework product is **Runix** (SEO/runtime/deploy on Cordlang) — see [`docs/RUNIX.md`](./docs/RUNIX.md). Do not invent a full framework inside this CLI; Official backends are compile/preview targets, not Runix.
 

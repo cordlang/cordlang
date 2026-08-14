@@ -102,7 +102,7 @@ HTML/email backends may passthrough as `data-purpose` / `data-importance`. SPA b
 | Nest 500 lines in `app.cord` | Split files |
 | Hand-edit `dist/**` as source of truth | Regenerated |
 | Put `@ai` / LLM calls in compile path | Workflow only (`cordlang ai`, skills) |
-| Claim features that are roadmap-only as done | Remote registry, full native, multi-file WASM playground |
+| Claim features that are roadmap-only as done | Remote registry, full native, live playground preview (codegen only today) |
 
 ---
 

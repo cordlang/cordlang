@@ -91,7 +91,7 @@ route /about => pages/AboutPage
 
 **Use when needed:** lazy, portal, errorBoundary, suspense, title/head, store (Svelte), await/snippet (Svelte), Phase D React hooks, **presets** (`icon`/`motion`/`chart` after `cordlang preset add`), **foreign** multi-backend widgets.
 
-**Do not claim as done:** remote package registry, WASM playground compile, Flutter/SwiftUI backends. Meta Next/Kit are client wraps only.
+**Do not claim as done:** remote package registry, Flutter/SwiftUI backends, live playground preview (WASM playground compiles codegen only). Meta Next/Kit are client wraps only.
 
 **Libraries:** Prefer capabilities + `foreign` maps — never write `import … from 'framer-motion'` in `.cord`.
 

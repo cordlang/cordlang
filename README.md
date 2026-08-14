@@ -39,7 +39,7 @@ cordlang check            # diagnostics anti-alucinación
 cordlang analyze          # score heurístico (sin LLM)
 ```
 
-The same multi-file `src/**/*.cord` feeds every CLI backend; the browser playground intentionally remains single-buffer.
+The same multi-file `src/**/*.cord` feeds every CLI backend; the browser playground compiles a virtual project with the same `use` / `route` resolution.
 
 ---
 
@@ -65,7 +65,7 @@ The same multi-file `src/**/*.cord` feeds every CLI backend; the browser playgro
 | CLI / LSP | **0.0.013 alpha**; see [`docs/VERSIONING.md`](./docs/VERSIONING.md) |
 | Official targets | ESM preview, React, Svelte and Vue |
 | Tooling | `check`, `fmt`, `analyze`, `symbols`, `goto`, `--watch`, `--check` |
-| Playground | WASM MVP for a single source buffer; multi-file and CI artifact remain pending |
+| Playground | WASM multi-file project UI (`cordlang_compile_project`); CI rebuild + release zip |
 
 - Multi-file modules (`use` / routes by path)
 - Canonical **IR** consumed by React, Svelte and Vue emitters
@@ -329,5 +329,5 @@ Free to use, modify, distribute, sublicense, and sell, including in closed-sourc
 
 ## Next
 
-**Loop IA (Horizonte A residual):** traps `check` + LSP buffer/hints + preview honest — see [docs/ROADMAP.md](./docs/ROADMAP.md).  
-**Official:** ESM preview / React / Svelte / Vue. **Experimental:** Solid, email, PDF, Next/Kit SPA wraps, legacy HTML. Tiers: [docs/BACKENDS.md](./docs/BACKENDS.md). Playground WASM MVP: [docs/PLAYGROUND.md](./docs/PLAYGROUND.md) (`playground/build_wasm.ps1`).
+**Next:** residual LSP (rename/references) or Horizonte B (remote registry) — see [docs/ROADMAP.md](./docs/ROADMAP.md). No new backends.  
+**Official:** ESM preview / React / Svelte / Vue. **Experimental:** Solid, email, PDF, Next/Kit SPA wraps, legacy HTML. Tiers: [docs/BACKENDS.md](./docs/BACKENDS.md). Playground WASM (multi-file): [docs/PLAYGROUND.md](./docs/PLAYGROUND.md) (`playground/build_wasm.ps1`).

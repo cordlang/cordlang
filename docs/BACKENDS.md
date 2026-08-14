@@ -11,9 +11,9 @@ Single source of truth for Cordlang **compile target** status. If README / ROADM
 | **Official** | `esm` / `preview`, `react`, `svelte`, `vue` | AI / language contract. React/Svelte/Vue tienen goldens y `templates/counter` `--check` en CI; ESM tiene regresiones y un smoke dedicado. |
 | **Experimental / meta** | `solid`, `html` (legacy), `email`, `pdf`, `next`, `sveltekit` | Useful, not the default AI loop. Soft / smoke only. |
 
-Native (Flutter / SwiftUI / Compose) is **experimental** and not a registered CLI backend — see [NATIVE.md](./NATIVE.md). WASM playground MVP ships under `playground/` — see [PLAYGROUND.md](./PLAYGROUND.md).
+Native (Flutter / SwiftUI / Compose) is **experimental** and not a registered CLI backend — see [NATIVE.md](./NATIVE.md). WASM playground (multi-file) ships under `playground/` — see [PLAYGROUND.md](./PLAYGROUND.md).
 
-**Freeze:** do not add new CLI backends until multi-file WASM / registry epics need them. Do not add “Runix” as a backend name here — Runix is a separate product surface. Close half-done work first.
+**Freeze:** do not add new CLI backends until a registry epic needs them. Do not add “Runix” as a backend name here — Runix is a separate product surface. Close half-done work first.
 
 ## Feature matrix (honesty, not marketing)
 

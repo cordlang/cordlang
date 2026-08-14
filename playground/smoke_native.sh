@@ -55,3 +55,13 @@ gcc -O2 -std=c17 -Wall -Wno-unused-parameter -Wno-unused-function \
   "${SRCS[@]}" -o "$OUT"
 
 "$OUT"
+
+# UI contract: the browser playground must call the multi-file project API.
+html="$ROOT/playground/index.html"
+for needle in cordlang_compile_project /playground/src/app.cord; do
+  if ! grep -F -q -- "$needle" "$html"; then
+    echo "FAIL: playground/index.html missing $needle" >&2
+    exit 1
+  fi
+done
+echo "PASS: playground UI wires project API"

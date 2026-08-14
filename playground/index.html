@@ -13,8 +13,10 @@
       --accent: #5b8def;
       --ok: #3ecf8e;
       --err: #f07178;
+      --warn: #e0b25c;
       --border: #243049;
       --code: #070b14;
+      --tree: #0e1626;
     }
     * { box-sizing: border-box; }
     body {
@@ -62,30 +64,119 @@
       font-weight: 600;
     }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.ghost {
+      padding: 0.2rem 0.45rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
     main {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0;
+      grid-template-columns: 220px 1fr 1fr;
       min-height: calc(100vh - 52px);
     }
-    @media (max-width: 900px) {
-      main { grid-template-columns: 1fr; }
+    @media (max-width: 1100px) {
+      main { grid-template-columns: 200px 1fr; }
+      .pane.out { grid-column: 1 / -1; min-height: 36vh; }
     }
+    @media (max-width: 720px) {
+      main { grid-template-columns: 1fr; }
+      .tree { max-height: 28vh; border-right: 0; border-bottom: 1px solid var(--border); }
+    }
+    .tree {
+      display: flex;
+      flex-direction: column;
+      background: var(--tree);
+      border-right: 1px solid var(--border);
+      min-height: 0;
+    }
+    .tree-head, .pane-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.4rem;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      padding: 0.45rem 0.7rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .tree-actions { display: flex; gap: 0.25rem; }
+    #files {
+      flex: 1;
+      overflow: auto;
+      padding: 0.35rem 0;
+    }
+    .file {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      width: 100%;
+      text-align: left;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      font-size: 0.78rem;
+      font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+      padding: 0.28rem 0.7rem;
+      cursor: pointer;
+    }
+    .file:hover { background: #182338; }
+    .file.active { background: #1d2d4c; color: #fff; }
+    .file.has-error { color: var(--err); }
+    .file .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file .del {
+      opacity: 0;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0 0.15rem;
+      font-size: 0.85rem;
+    }
+    .file:hover .del { opacity: 1; }
+    .file .del:hover { color: var(--err); }
     .pane {
       display: flex;
       flex-direction: column;
       border-right: 1px solid var(--border);
       min-height: 50vh;
+      min-width: 0;
     }
-    .pane:last-child { border-right: none; }
-    .pane-label {
-      font-size: 0.72rem;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--muted);
-      padding: 0.45rem 0.85rem;
+    .pane.out { border-right: none; }
+    .tabs {
+      display: flex;
+      gap: 0;
+      overflow-x: auto;
       border-bottom: 1px solid var(--border);
+      background: #0f1728;
     }
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      flex: 0 0 auto;
+      border: 0;
+      border-right: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 0.78rem;
+      font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+      padding: 0.42rem 0.55rem 0.42rem 0.75rem;
+      cursor: pointer;
+    }
+    .tab.active { background: var(--code); color: var(--text); }
+    .tab .x {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0 0.1rem;
+      font-size: 0.85rem;
+    }
+    .tab .x:hover { color: var(--text); }
     textarea, pre {
       flex: 1;
       margin: 0;
@@ -112,13 +203,27 @@
       overflow: auto;
       background: #140e12;
       border-top: 1px solid var(--border);
-      padding: 0.5rem 0.85rem;
+      padding: 0.35rem 0.55rem;
       font-family: "IBM Plex Mono", ui-monospace, monospace;
       font-size: 0.78rem;
       color: var(--err);
       display: none;
     }
     #diags.show { display: block; }
+    .diag {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      padding: 0.2rem 0.3rem;
+      cursor: pointer;
+    }
+    .diag:hover { background: #24151a; }
+    .diag.warn { color: var(--warn); }
+    .diag .hint { color: var(--muted); display: block; padding-left: 0.8rem; }
   </style>
 </head>
 <body>
@@ -140,28 +245,63 @@
     <span id="status">Booting WASM…</span>
   </header>
   <main>
+    <aside class="tree">
+      <div class="tree-head">
+        <span>project</span>
+        <span class="tree-actions">
+          <button id="add-file" class="ghost" type="button" title="Add file">+</button>
+          <button id="reset" class="ghost" type="button" title="Reset sample">reset</button>
+        </span>
+      </div>
+      <div id="files" role="tree" aria-label="Project files"></div>
+    </aside>
     <section class="pane">
-      <div class="pane-label">input · .cord</div>
-      <textarea id="src" spellcheck="false" aria-label="Cord source">def Counter
-  state count=0
-  props label: string = "Counter"
-  col gap=16 p=24 center
-    h1 "#{label}" size=2xl bold
-    span "#{count}" size=4xl bold
-    row gap=8
-      btn "-" @click=setCount(count - 1)
-      btn "+" @click=setCount(count + 1)
-</textarea>
+      <div id="tabs" class="tabs" aria-label="Open files"></div>
+      <textarea id="src" spellcheck="false" aria-label="Cord source"></textarea>
       <div id="diags"></div>
     </section>
-    <section class="pane">
+    <section class="pane out">
       <div class="pane-label">output</div>
       <pre id="out">// codegen appears here</pre>
     </section>
   </main>
 
   <script type="module">
-    const SAMPLE = document.getElementById("src").value;
+    const ROOT = "/playground";
+    const ENTRY = "/playground/src/app.cord";
+    const MAX_FILES = 128;
+
+    const SAMPLE = {
+      "/playground/cordlang.json":
+        '{\n  "name": "wasm-project",\n  "entry": "src/app.cord"\n}\n',
+      "/playground/src/app.cord":
+        "use ./layouts/default\n" +
+        "use ./components/Counter\n" +
+        "route / => pages/HomePage\n" +
+        "def App\n" +
+        "  HomePage\n",
+      "/playground/src/layouts/default.cord":
+        "layout default\n" +
+        "  col\n" +
+        "    slot\n",
+      "/playground/src/pages/HomePage.cord":
+        "use ../components/Counter\n" +
+        "def HomePage\n" +
+        "  col gap=16 p=24 center\n" +
+        "    h1 \"Home\" size=2xl bold\n" +
+        "    Counter\n",
+      "/playground/src/components/Counter.cord":
+        "def Counter\n" +
+        "  state count=0\n" +
+        "  props label: string = \"Counter\"\n" +
+        "  col gap=16\n" +
+        "    h1 \"#{label}\" size=xl bold\n" +
+        "    span \"#{count}\" size=4xl bold\n" +
+        "    row gap=8\n" +
+        "      btn \"-\" @click=setCount(count - 1)\n" +
+        "      btn \"+\" @click=setCount(count + 1)\n"
+    };
+
     const badge = document.getElementById("badge");
     const status = document.getElementById("status");
     const out = document.getElementById("out");
@@ -169,8 +309,14 @@
     const runBtn = document.getElementById("run");
     const backendSel = document.getElementById("backend");
     const srcEl = document.getElementById("src");
+    const filesEl = document.getElementById("files");
+    const tabsEl = document.getElementById("tabs");
 
-    let compileFn = null;
+    let files = { ...SAMPLE };
+    let openTabs = [ENTRY];
+    let active = ENTRY;
+    let errorFiles = new Set();
+    let compileProjectFn = null;
     let freeFn = null;
     let versionFn = null;
     let Module = null;
@@ -180,33 +326,228 @@
       badge.className = "tag" + (cls ? " " + cls : "");
     }
 
+    function rel(path) {
+      return path.startsWith(ROOT + "/") ? path.slice(ROOT.length + 1) : path;
+    }
+
+    function flushEditor() {
+      if (active && Object.prototype.hasOwnProperty.call(files, active)) {
+        files[active] = srcEl.value;
+      }
+    }
+
+    function sortedPaths() {
+      return Object.keys(files).sort();
+    }
+
+    function renderTree() {
+      filesEl.replaceChildren();
+      for (const path of sortedPaths()) {
+        const row = document.createElement("div");
+        row.className =
+          "file" +
+          (path === active ? " active" : "") +
+          (errorFiles.has(path) ? " has-error" : "");
+        row.setAttribute("role", "treeitem");
+        row.setAttribute("aria-selected", path === active ? "true" : "false");
+
+        const name = document.createElement("span");
+        name.className = "name";
+        name.textContent = rel(path);
+        name.title = path;
+        row.appendChild(name);
+        row.addEventListener("click", (e) => {
+          if (e.target.closest(".del")) return;
+          openFile(path);
+        });
+
+        if (path !== ENTRY) {
+          const del = document.createElement("button");
+          del.className = "del";
+          del.type = "button";
+          del.title = "Remove file";
+          del.setAttribute("aria-label", "Remove " + rel(path));
+          del.textContent = "×";
+          del.addEventListener("click", (e) => {
+            e.stopPropagation();
+            removeFile(path);
+          });
+          row.appendChild(del);
+        }
+        filesEl.appendChild(row);
+      }
+    }
+
+    function renderTabs() {
+      tabsEl.replaceChildren();
+      for (const path of openTabs) {
+        if (!Object.prototype.hasOwnProperty.call(files, path)) continue;
+        const tab = document.createElement("div");
+        tab.className = "tab" + (path === active ? " active" : "");
+        const label = document.createElement("span");
+        label.textContent = rel(path).split("/").pop();
+        label.title = path;
+        tab.appendChild(label);
+        tab.addEventListener("click", (e) => {
+          if (e.target.closest(".x")) return;
+          openFile(path);
+        });
+        const close = document.createElement("button");
+        close.className = "x";
+        close.type = "button";
+        close.title = "Close tab";
+        close.setAttribute("aria-label", "Close " + rel(path));
+        close.textContent = "×";
+        close.addEventListener("click", (e) => {
+          e.stopPropagation();
+          closeTab(path);
+        });
+        tab.appendChild(close);
+        tabsEl.appendChild(tab);
+      }
+    }
+
+    function renderEditor() {
+      srcEl.value = files[active] ?? "";
+      srcEl.setAttribute("aria-label", rel(active));
+    }
+
+    function renderAll() {
+      renderTree();
+      renderTabs();
+      renderEditor();
+    }
+
+    function openFile(path) {
+      if (!Object.prototype.hasOwnProperty.call(files, path)) return;
+      flushEditor();
+      active = path;
+      if (!openTabs.includes(path)) openTabs.push(path);
+      renderAll();
+    }
+
+    function closeTab(path) {
+      flushEditor();
+      openTabs = openTabs.filter((p) => p !== path);
+      if (active === path) {
+        active = openTabs[openTabs.length - 1] || sortedPaths()[0] || ENTRY;
+        if (active && !openTabs.includes(active)) openTabs.push(active);
+      }
+      renderAll();
+    }
+
+    function normalizePath(raw) {
+      let path = (raw || "").trim().replace(/\\/g, "/");
+      if (!path) return "";
+      if (!path.startsWith("/")) path = ROOT + "/" + path.replace(/^\.\//, "");
+      return path.replace(/\/{2,}/g, "/");
+    }
+
+    function addFile() {
+      const raw = window.prompt(
+        "New file path (virtual, under /playground)",
+        "src/components/Hello.cord"
+      );
+      if (raw == null) return;
+      const path = normalizePath(raw);
+      if (!path.startsWith(ROOT + "/")) {
+        status.textContent = "path must stay under /playground";
+        status.className = "error";
+        return;
+      }
+      if (Object.prototype.hasOwnProperty.call(files, path)) {
+        openFile(path);
+        return;
+      }
+      if (Object.keys(files).length >= MAX_FILES) {
+        status.textContent = "project already has 128 files";
+        status.className = "error";
+        return;
+      }
+      const base = path.split("/").pop().replace(/\.cord$/, "") || "File";
+      files[path] = path.endsWith(".cord")
+        ? "def " + base + "\n  span \"" + base + "\"\n"
+        : "";
+      openFile(path);
+      scheduleCompile();
+    }
+
+    function removeFile(path) {
+      if (path === ENTRY || !Object.prototype.hasOwnProperty.call(files, path)) return;
+      flushEditor();
+      delete files[path];
+      closeTab(path);
+      scheduleCompile();
+    }
+
+    function resetSample() {
+      files = { ...SAMPLE };
+      openTabs = [ENTRY];
+      active = ENTRY;
+      errorFiles = new Set();
+      renderAll();
+      compile();
+    }
+
     function showDiags(list) {
+      errorFiles = new Set();
       if (!list || !list.length) {
         diagsEl.classList.remove("show");
-        diagsEl.textContent = "";
+        diagsEl.replaceChildren();
+        renderTree();
         return;
       }
       diagsEl.classList.add("show");
-      diagsEl.textContent = list
-        .map((d) => `${d.line}:${d.col}: ${d.level}: ${d.message}${d.code ? " [" + d.code + "]" : ""}`)
-        .join("\n");
+      diagsEl.replaceChildren();
+      for (const d of list) {
+        if (d.file) errorFiles.add(d.file);
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "diag" + (d.level === "warning" ? " warn" : "");
+        const loc = d.file ? rel(d.file) + ":" : "";
+        btn.append(
+          loc +
+            (d.line || 1) +
+            ":" +
+            (d.col || 1) +
+            ": " +
+            (d.level || "error") +
+            ": " +
+            (d.message || "") +
+            (d.code ? " [" + d.code + "]" : "")
+        );
+        if (d.hint) {
+          const hint = document.createElement("span");
+          hint.className = "hint";
+          hint.textContent = d.hint;
+          btn.appendChild(hint);
+        }
+        btn.addEventListener("click", () => {
+          if (d.file && Object.prototype.hasOwnProperty.call(files, d.file)) {
+            openFile(d.file);
+          }
+        });
+        diagsEl.appendChild(btn);
+      }
+      renderTree();
     }
 
     function compile() {
-      if (!compileFn || !Module) return;
-      const source = srcEl.value;
+      if (!compileProjectFn || !Module) return;
+      flushEditor();
       const backend = backendSel.value;
       status.textContent = "Compiling…";
       status.className = "";
       try {
-        const ptr = compileFn(source, backend);
+        const ptr = compileProjectFn(ENTRY, JSON.stringify(files), backend);
         const json = Module.UTF8ToString(ptr);
         freeFn(ptr);
         const result = JSON.parse(json);
         showDiags(result.diagnostics || []);
         if (result.ok) {
           out.textContent = result.code || "";
-          status.textContent = `ok · ${result.backend}`;
+          status.textContent =
+            "ok · " + result.backend + " · " + Object.keys(files).length + " files";
         } else {
           out.textContent = result.code || "// compile failed — see diagnostics";
           status.textContent = "error";
@@ -218,22 +559,34 @@
       }
     }
 
+    let debounce = null;
+    function scheduleCompile() {
+      clearTimeout(debounce);
+      debounce = setTimeout(compile, 350);
+    }
+
     async function boot() {
       try {
         const { default: createCordlang } = await import("./cordlang.js");
         Module = await createCordlang();
-        compileFn = Module.cwrap("cordlang_compile", "number", ["string", "string"]);
+        compileProjectFn = Module.cwrap("cordlang_compile_project", "number", [
+          "string",
+          "string",
+          "string"
+        ]);
         freeFn = Module.cwrap("cordlang_free", null, ["number"]);
         versionFn = Module.cwrap("cordlang_version", "string", []);
         const ver = versionFn();
         setBadge("WASM · v" + ver, "ready");
-        status.textContent = "Ready — compile in the browser";
+        status.textContent = "Ready — compile a multi-file project";
         runBtn.disabled = false;
+        renderAll();
         compile();
       } catch (e) {
         setBadge("WASM missing", "err");
         status.textContent = "Build WASM first (see docs/PLAYGROUND.md)";
         status.className = "error";
+        renderAll();
         out.textContent =
           "// WASM not loaded.\n" +
           "// From repo root:\n" +
@@ -242,18 +595,19 @@
           "// Then serve this folder over HTTP (file:// cannot load ES modules):\n" +
           "//   npx --yes serve playground\n\n" +
           String(e);
-        srcEl.value = SAMPLE;
       }
     }
 
     runBtn.addEventListener("click", compile);
     backendSel.addEventListener("change", compile);
-    let t = null;
+    document.getElementById("add-file").addEventListener("click", addFile);
+    document.getElementById("reset").addEventListener("click", resetSample);
     srcEl.addEventListener("input", () => {
-      clearTimeout(t);
-      t = setTimeout(compile, 350);
+      flushEditor();
+      scheduleCompile();
     });
 
+    renderAll();
     boot();
   </script>
 </body>
