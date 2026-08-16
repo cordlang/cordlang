@@ -12,7 +12,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifndef _WIN32
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#else
 #include <unistd.h>
 #endif
 
@@ -155,7 +158,13 @@ static char *json_escape_dup(const char *s) {
 
 static void lsp_send(const char *body) {
   if (!body) return;
-  printf("Content-Length: %zu\r\n\r\n%s", strlen(body), body);
+  /* Byte-oriented write: Windows text-mode stdout would turn \n into \r\n
+   * and break LSP framing (Content-Length: …\r\n\r\n → \r\r\n\r\r\n). */
+  char header[64];
+  int hlen =
+      snprintf(header, sizeof(header), "Content-Length: %zu\r\n\r\n", strlen(body));
+  if (hlen > 0) fwrite(header, 1, (size_t)hlen, stdout);
+  fwrite(body, 1, strlen(body), stdout);
   fflush(stdout);
 }
 
@@ -1568,6 +1577,12 @@ static void handle_message(const char *msg) {
 }
 
 int lsp_service_run(void) {
+#ifdef _WIN32
+  /* LSP is a byte protocol. CRT text mode translates \n ↔ \r\n and
+   * desyncs Content-Length against what editors / test harnesses send. */
+  _setmode(_fileno(stdin), _O_BINARY);
+  _setmode(_fileno(stdout), _O_BINARY);
+#endif
   char *msg = malloc(MAX_MSG);
   if (!msg) return 1;
 

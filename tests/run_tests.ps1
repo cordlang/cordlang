@@ -30,6 +30,7 @@ if (-not (Test-Path -LiteralPath $Cordlang)) {
   Write-Host "FAIL: cordlang executable not found. Run build.bat first." -ForegroundColor Red
   exit 1
 }
+$Cordlang = (Resolve-Path -LiteralPath $Cordlang).Path
 Write-Host "  exe:  $Cordlang"
 
 $FixturesDir = Join-Path $Root "tests\fixtures"

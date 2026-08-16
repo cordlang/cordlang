@@ -33,19 +33,22 @@ function encode(obj) {
 
 function parseFrames(buf) {
   const frames = [];
-  let rest = buf;
-  while (rest.length) {
-    const headerEnd = rest.indexOf("\r\n\r\n");
-    if (headerEnd < 0) break;
-    const header = rest.slice(0, headerEnd).toString("utf8");
-    const m = header.match(/Content-Length:\s*(\d+)/i);
-    if (!m) break;
+  let i = 0;
+  while (i < buf.length) {
+    const view = buf.slice(i).toString("latin1");
+    const m = view.match(/Content-Length:\s*(\d+)/i);
+    if (!m || m.index == null) break;
     const n = parseInt(m[1], 10);
-    const start = headerEnd + 4;
-    if (rest.length < start + n) break;
-    const json = rest.slice(start, start + n).toString("utf8");
+    const after = m.index + m[0].length;
+    const rest = view.slice(after);
+    /* Standard \r\n\r\n, Unix \n\n, or CRT text-mode \r\r\n\r\r\n. */
+    const sep = rest.match(/^\r*\n\r*\n/);
+    if (!sep) break;
+    const bodyStart = i + after + sep[0].length;
+    if (buf.length < bodyStart + n) break;
+    const json = buf.slice(bodyStart, bodyStart + n).toString("utf8");
     frames.push(JSON.parse(json));
-    rest = rest.slice(start + n);
+    i = bodyStart + n;
   }
   return frames;
 }
@@ -65,6 +68,7 @@ const homeText = read("src/pages/HomePage.cord");
 const child = spawn(bin, ["lsp"], {
   stdio: ["pipe", "pipe", "pipe"],
   cwd: fixture,
+  windowsHide: true,
 });
 child.on("error", (err) => {
   fail(`spawn ${bin}: ${err.message}`);
@@ -190,8 +194,12 @@ child.on("close", (code) => {
   }
 
   const init = byId.get(1);
-  if (!init || !init.result || !init.result.capabilities)
-    fail("initialize missing capabilities");
+  if (!init || !init.result || !init.result.capabilities) {
+    const preview = stdout.toString("utf8").slice(0, 400);
+    fail(
+      `initialize missing capabilities (frames=${frames.length} exit=${code} stdout=${JSON.stringify(preview)} stderr=${JSON.stringify(stderr.toString("utf8").slice(0, 200))})`
+    );
+  }
   const caps = init.result.capabilities;
   if (caps.referencesProvider !== true)
     fail("initialize missing referencesProvider");
