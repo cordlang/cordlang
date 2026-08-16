@@ -10,7 +10,8 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
-const bin = process.argv[2] || path.join(root, "cordlang");
+const binArg = process.argv[2] || path.join(root, "cordlang");
+const bin = path.resolve(binArg);
 const fixture = path.join(root, "tests", "fixtures", "lsp_rename");
 
 function fileUri(p) {
@@ -64,6 +65,9 @@ const homeText = read("src/pages/HomePage.cord");
 const child = spawn(bin, ["lsp"], {
   stdio: ["pipe", "pipe", "pipe"],
   cwd: fixture,
+});
+child.on("error", (err) => {
+  fail(`spawn ${bin}: ${err.message}`);
 });
 
 let stdout = Buffer.alloc(0);
@@ -250,6 +254,5 @@ child.on("close", (code) => {
   if (code !== 0 && code !== null)
     fail(`lsp exit code ${code}; stderr=${stderr.toString("utf8")}`);
 
-  console.log("PASS: lsp rename/references (stdio JSON-RPC)");
   process.exit(0);
 });
