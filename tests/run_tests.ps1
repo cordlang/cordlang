@@ -487,6 +487,22 @@ if (Test-Path -LiteralPath (Join-Path $tpl "cordlang.json")) {
 }
 
 Write-Host ""
+Write-Host "LSP rename / references"
+$node = Get-Command node -ErrorAction SilentlyContinue
+if ($null -ne $node) {
+  & node (Join-Path $Root "tests\lsp_rename_refs.mjs") $Cordlang
+  if ($LASTEXITCODE -eq 0) {
+    Write-Host "PASS: lsp rename/references (stdio JSON-RPC)" -ForegroundColor Green
+    $passed = $passed + 1
+  } else {
+    Write-Host "FAIL: lsp rename/references" -ForegroundColor Red
+    $failed = $failed + 1
+  }
+} else {
+  Write-Host "SKIP: lsp rename/references (node not found)" -ForegroundColor Yellow
+}
+
+Write-Host ""
 Write-Host ("Results: " + $passed + " passed, " + $failed + " failed, " + $updated + " golden writes")
 if ($failed -gt 0) { exit 1 }
 exit 0

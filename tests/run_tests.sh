@@ -436,6 +436,26 @@ else
   echo "SKIP: templates/counter not present"
 fi
 
+# ── LSP rename / references (stdio JSON-RPC) ───────────────
+echo ""
+echo "LSP rename / references"
+
+if command -v node >/dev/null 2>&1; then
+  set +e
+  node "$ROOT/tests/lsp_rename_refs.mjs" "$CORDLANG"
+  lsp_ec=$?
+  set -e
+  if [[ "$lsp_ec" -eq 0 ]]; then
+    echo "PASS: lsp rename/references (stdio JSON-RPC)"
+    passed=$((passed + 1))
+  else
+    echo "FAIL: lsp rename/references"
+    failed=$((failed + 1))
+  fi
+else
+  echo "SKIP: lsp rename/references (node not found)"
+fi
+
 echo ""
 echo "Results: $passed passed, $failed failed, $updated golden writes"
 if [[ "$failed" -gt 0 ]]; then

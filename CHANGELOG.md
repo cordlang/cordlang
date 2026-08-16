@@ -5,6 +5,12 @@ Language surface versions follow [`docs/SPEC.md`](./docs/SPEC.md) and [`docs/VER
 
 ## [Unreleased]
 
+### Added — LSP rename / references (G8 residual)
+- `textDocument/references` — project-wide component locations (`def`, tags, `use` / `route` path last-segments); honors `context.includeDeclaration`
+- `textDocument/prepareRename` + `textDocument/rename` — WorkspaceEdit for the same symbol model as `cordlang goto`; rejects non-components and reserved names; renames `Name.cord` when the defining file stem matches
+- `initialize` advertises `referencesProvider` and `renameProvider.prepareProvider`
+- Stdio fixture: `node tests/lsp_rename_refs.mjs ./cordlang`
+
 ### Added — M11.2 playground project UI
 - **Multi-file browser editor** — `playground/index.html` keeps an in-memory file map (tree + tabs), compiles with `cordlang_compile_project`, and surfaces `file:line:col` diagnostics (click jumps to the file)
 - **Sample project** — default virtual tree matches the native smoke shape (`app.cord` + layout + `HomePage` + `Counter`) so `use` / `route` resolve in the browser

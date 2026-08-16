@@ -1,6 +1,7 @@
 #include "application/lsp_service.h"
 #include "application/check_service.h"
 #include "application/fmt_service.h"
+#include "application/symbols_service.h"
 #include "application/ports/compiler_port.h"
 #include "application/ports/fs_port.h"
 #include "domain/ast.h"
@@ -74,6 +75,24 @@ static LspDoc *doc_upsert(const char *uri, const char *text) {
   free(d->text);
   d->text = text ? strdup(text) : NULL;
   return d;
+}
+
+static void docs_free(void) {
+  for (int i = 0; i < g_ndocs; i++) {
+    free(g_docs[i].uri);
+    free(g_docs[i].path);
+    free(g_docs[i].text);
+    memset(&g_docs[i], 0, sizeof(g_docs[i]));
+  }
+  g_ndocs = 0;
+}
+
+static void doc_ensure_text(LspDoc *d) {
+  if (!d || d->text) return;
+  if (d->path && fs_exists(d->path)) {
+    size_t len = 0;
+    d->text = fs_read_file(d->path, &len);
+  }
 }
 
 /* Growable JSON string escape. *buf must be heap-allocated (or NULL). */
@@ -226,6 +245,26 @@ static int json_get_int(const char *json, const char *key, int *out) {
   return 1;
 }
 
+static int json_get_bool(const char *json, const char *key, int *out) {
+  char pat[96];
+  snprintf(pat, sizeof(pat), "\"%s\"", key);
+  const char *p = strstr(json, pat);
+  if (!p) return 0;
+  p = strchr(p + strlen(pat), ':');
+  if (!p) return 0;
+  p++;
+  while (*p && isspace((unsigned char)*p)) p++;
+  if (strncmp(p, "true", 4) == 0) {
+    *out = 1;
+    return 1;
+  }
+  if (strncmp(p, "false", 5) == 0) {
+    *out = 0;
+    return 1;
+  }
+  return 0;
+}
+
 static const char *json_method(const char *msg) {
   static char method[128];
   if (!json_get_str(msg, "method", method, sizeof(method))) return NULL;
@@ -246,6 +285,29 @@ static int json_id(const char *msg, char *out, size_t out_sz) {
   long v = strtol(p, NULL, 10);
   snprintf(out, out_sz, "%ld", v);
   return 1;
+}
+
+static void respond_err(const char *id, int code, const char *message) {
+  char *msg_esc = json_escape_dup(message ? message : "error");
+  int id_num = 1;
+  for (const char *c = id; c && *c; c++)
+    if (!isdigit((unsigned char)*c) && *c != '-') {
+      id_num = 0;
+      break;
+    }
+  char body[1536];
+  if (id_num && id)
+    snprintf(body, sizeof(body),
+             "{\"jsonrpc\":\"2.0\",\"id\":%s,\"error\":{\"code\":%d,"
+             "\"message\":\"%s\"}}",
+             id, code, msg_esc ? msg_esc : "error");
+  else
+    snprintf(body, sizeof(body),
+             "{\"jsonrpc\":\"2.0\",\"id\":\"%s\",\"error\":{\"code\":%d,"
+             "\"message\":\"%s\"}}",
+             id ? id : "0", code, msg_esc ? msg_esc : "error");
+  free(msg_esc);
+  lsp_send(body);
 }
 
 static void respond_ok(const char *id, const char *result_json) {
@@ -496,15 +558,36 @@ static void ident_at(const char *text, int line, int character, char *out,
     p++;
   }
   if (ln != line) return;
+  const char *line_start = p;
+  if (*p == '#' && p[1] != '{') return;
+  {
+    const char *s = p;
+    while (*s == ' ' || *s == '\t') s++;
+    if (s[0] == '#' && s[1] != '{') return;
+    if (s[0] == '/' && s[1] == '/') return;
+  }
   int col = 0;
-  while (*p && col < character && *p != '\n') {
-    p++;
+  int in_str = 0;
+  const char *cursor = p;
+  while (*cursor && col < character && *cursor != '\n') {
+    if (!in_str && *cursor == '"')
+      in_str = 1;
+    else if (in_str) {
+      if (*cursor == '\\' && cursor[1] && cursor[1] != '\n') {
+        cursor++;
+        col++;
+      } else if (*cursor == '"')
+        in_str = 0;
+    }
+    cursor++;
     col++;
   }
-  const char *start = p;
-  while (start > text && (isalnum((unsigned char)start[-1]) || start[-1] == '_'))
+  if (in_str) return;
+  const char *start = cursor;
+  while (start > line_start &&
+         (isalnum((unsigned char)start[-1]) || start[-1] == '_'))
     start--;
-  const char *end = p;
+  const char *end = cursor;
   while (*end && (isalnum((unsigned char)*end) || *end == '_')) end++;
   size_t n = (size_t)(end - start);
   if (n == 0 || n + 1 > out_sz) return;
@@ -576,6 +659,395 @@ static void handle_definition(const char *id, const char *msg) {
   }
   compiler_result_free(&r);
   respond_ok(id, "null");
+}
+
+static const char *lsp_overlay(const char *abs, void *ud) {
+  (void)ud;
+  if (!abs) return NULL;
+  char *na = fs_norm_path(abs);
+  for (int i = 0; i < g_ndocs; i++) {
+    if (!g_docs[i].path || !g_docs[i].text) continue;
+    char *nb = fs_norm_path(g_docs[i].path);
+    int eq = 0;
+    if (na && nb) {
+#ifdef _WIN32
+      eq = _stricmp(na, nb) == 0;
+#else
+      eq = strcmp(na, nb) == 0;
+#endif
+    }
+    free(nb);
+    if (eq) {
+      free(na);
+      return g_docs[i].text;
+    }
+  }
+  free(na);
+  return NULL;
+}
+
+static int lsp_extra_paths(const char **out, int maxn) {
+  int n = 0;
+  for (int i = 0; i < g_ndocs && n < maxn; i++) {
+    if (g_docs[i].path) out[n++] = g_docs[i].path;
+  }
+  return n;
+}
+
+static int loc_cmp(const void *a, const void *b) {
+  const SymbolLoc *x = a, *y = b;
+  const char *pa = x->path ? x->path : "";
+  const char *pb = y->path ? y->path : "";
+  int c = strcmp(pa, pb);
+  if (c) return c;
+  if (x->line != y->line) return x->line - y->line;
+  return x->col - y->col;
+}
+
+static void abs_uri(const char *path, char *out, size_t n) {
+  char *norm = path ? fs_norm_path(path) : NULL;
+  path_to_uri(norm ? norm : (path ? path : ""), out, n);
+  free(norm);
+}
+
+static int parse_pos_uri(const char *msg, char *uri, size_t uri_sz, int *line,
+                         int *character) {
+  uri[0] = '\0';
+  *line = 0;
+  *character = 0;
+  const char *td = strstr(msg, "\"textDocument\"");
+  if (td) json_get_str(td, "uri", uri, uri_sz);
+  const char *pos = strstr(msg, "\"position\"");
+  if (pos) {
+    json_get_int(pos, "line", line);
+    json_get_int(pos, "character", character);
+  }
+  return uri[0] != '\0';
+}
+
+static int ident_range(const char *text, int line, int character, char *name,
+                       size_t name_sz, int *start_ch, int *end_ch) {
+  ident_at(text, line, character, name, name_sz);
+  if (!name[0] || !text) return 0;
+  int ln = 0;
+  const char *p = text;
+  while (*p && ln < line) {
+    if (*p == '\n') ln++;
+    p++;
+  }
+  if (ln != line) return 0;
+  int col = 0;
+  while (*p && col < character && *p != '\n') {
+    p++;
+    col++;
+  }
+  const char *start = p;
+  const char *ls = p;
+  while (ls > text && ls[-1] != '\n') ls--;
+  while (start > ls && (isalnum((unsigned char)start[-1]) || start[-1] == '_'))
+    start--;
+  const char *end = p;
+  while (*end && (isalnum((unsigned char)*end) || *end == '_')) end++;
+  *start_ch = (int)(start - ls);
+  *end_ch = (int)(end - ls);
+  return *end_ch > *start_ch;
+}
+
+static int cursor_component(const char *id, const char *msg, char *name,
+                            size_t name_sz, LspDoc **out_doc, int err_if_none) {
+  char uri[1024];
+  int line = 0, character = 0;
+  parse_pos_uri(msg, uri, sizeof(uri), &line, &character);
+  LspDoc *d = doc_find(uri);
+  if (d) doc_ensure_text(d);
+  int sc = 0, ec = 0;
+  ident_range(d ? d->text : NULL, line, character, name, name_sz, &sc, &ec);
+  (void)sc;
+  (void)ec;
+  if (!name[0] || !d || !d->path ||
+      !symbols_name_is_component(d->path, name, lsp_overlay, NULL)) {
+    if (err_if_none)
+      respond_err(id, -32602, "not a renamable component");
+    return 0;
+  }
+  if (out_doc) *out_doc = d;
+  return 1;
+}
+
+static void handle_references(const char *id, const char *msg) {
+  char name[128];
+  LspDoc *d = NULL;
+  if (!cursor_component(id, msg, name, sizeof(name), &d, 0)) {
+    respond_ok(id, "[]");
+    return;
+  }
+  int include_decl = 1;
+  const char *ctx = strstr(msg, "\"context\"");
+  if (ctx) json_get_bool(ctx, "includeDeclaration", &include_decl);
+
+  const char *extra[MAX_DOCS];
+  int n_extra = lsp_extra_paths(extra, MAX_DOCS);
+  SymbolLocList locs;
+  symbols_collect_refs(d->path, name, include_decl, lsp_overlay, NULL, extra,
+                       n_extra, &locs);
+  if (locs.len > 1)
+    qsort(locs.items, locs.len, sizeof(SymbolLoc), loc_cmp);
+
+  size_t cap = 4096, len = 0;
+  char *out = malloc(cap);
+  if (!out) {
+    symbol_loc_list_free(&locs);
+    respond_ok(id, "[]");
+    return;
+  }
+  strcpy(out, "[");
+  len = 1;
+  for (size_t i = 0; i < locs.len; i++) {
+    SymbolLoc *it = &locs.items[i];
+    char file_uri[1024];
+    abs_uri(it->path, file_uri, sizeof(file_uri));
+    char *uri_esc = json_escape_dup(file_uri);
+    int sl = it->line > 0 ? it->line - 1 : 0;
+    int sc = it->col > 0 ? it->col - 1 : 0;
+    char item[1536];
+    snprintf(item, sizeof(item),
+             "%s{\"uri\":\"%s\",\"range\":{\"start\":{\"line\":%d,"
+             "\"character\":%d},\"end\":{\"line\":%d,\"character\":%d}}}",
+             i ? "," : "", uri_esc ? uri_esc : "", sl, sc, sl,
+             sc + it->length);
+    free(uri_esc);
+    size_t il = strlen(item);
+    if (len + il + 2 >= cap) {
+      while (len + il + 2 >= cap) cap *= 2;
+      char *n = realloc(out, cap);
+      if (!n) break;
+      out = n;
+    }
+    memcpy(out + len, item, il);
+    len += il;
+    out[len] = '\0';
+  }
+  out[len++] = ']';
+  out[len] = '\0';
+  respond_ok(id, out);
+  free(out);
+  symbol_loc_list_free(&locs);
+}
+
+static void handle_prepare_rename(const char *id, const char *msg) {
+  char uri[1024];
+  int line = 0, character = 0;
+  parse_pos_uri(msg, uri, sizeof(uri), &line, &character);
+  LspDoc *d = doc_find(uri);
+  if (d) doc_ensure_text(d);
+  char name[128];
+  int sc = 0, ec = 0;
+  if (!ident_range(d ? d->text : NULL, line, character, name, sizeof(name), &sc,
+                   &ec) ||
+      !d || !d->path ||
+      !symbols_name_is_component(d->path, name, lsp_overlay, NULL)) {
+    respond_err(id, -32602, "not a renamable component");
+    return;
+  }
+  char *ph = json_escape_dup(name);
+  char result[512];
+  snprintf(result, sizeof(result),
+           "{\"range\":{\"start\":{\"line\":%d,\"character\":%d},"
+           "\"end\":{\"line\":%d,\"character\":%d}},\"placeholder\":\"%s\"}",
+           line, sc, line, ec, ph ? ph : "");
+  free(ph);
+  respond_ok(id, result);
+}
+
+static char *renamed_file_path(const char *old_path, const char *new_name) {
+  if (!old_path || !new_name) return NULL;
+  char *dir = fs_dirname(old_path);
+  if (!dir) return NULL;
+  char fname[256];
+  snprintf(fname, sizeof(fname), "%s.cord", new_name);
+  char *joined = fs_join(dir, fname);
+  free(dir);
+  return joined;
+}
+
+static int basename_stem_eq(const char *path, const char *name) {
+  char *base = fs_basename(path);
+  if (!base) return 0;
+  size_t n = strlen(base);
+  if (n > 5 && strcmp(base + n - 5, ".cord") == 0) base[n - 5] = '\0';
+  int eq = name && strcmp(base, name) == 0;
+  free(base);
+  return eq;
+}
+
+static void handle_rename(const char *id, const char *msg) {
+  char name[128];
+  LspDoc *d = NULL;
+  if (!cursor_component(id, msg, name, sizeof(name), &d, 1)) return;
+
+  char new_name[128];
+  new_name[0] = '\0';
+  json_get_str(msg, "newName", new_name, sizeof(new_name));
+  char err[256];
+  int rc = symbols_rename_check(d->path, name, new_name, lsp_overlay, NULL, err,
+                                sizeof(err));
+  if (rc != 0) {
+    respond_err(id, -32602, err[0] ? err : "invalid component name");
+    return;
+  }
+
+  const char *extra[MAX_DOCS];
+  int n_extra = lsp_extra_paths(extra, MAX_DOCS);
+  SymbolLocList locs;
+  symbols_collect_refs(d->path, name, 1, lsp_overlay, NULL, extra, n_extra,
+                       &locs);
+  if (locs.len > 1)
+    qsort(locs.items, locs.len, sizeof(SymbolLoc), loc_cmp);
+
+  int rename_file = locs.decl_path && basename_stem_eq(locs.decl_path, name) &&
+                    strcmp(name, new_name) != 0;
+
+  char *new_text_esc = json_escape_dup(new_name);
+  size_t cap = 4096, len = 0;
+  char *out = malloc(cap);
+  if (!out) {
+    free(new_text_esc);
+    symbol_loc_list_free(&locs);
+    respond_err(id, -32603, "out of memory");
+    return;
+  }
+
+  if (rename_file) {
+    strcpy(out, "{\"documentChanges\":[");
+    len = strlen(out);
+  } else {
+    strcpy(out, "{\"changes\":{");
+    len = strlen(out);
+  }
+
+  /* Group consecutive locs by path. */
+  size_t i = 0;
+  int file_n = 0;
+  while (i < locs.len) {
+    const char *path = locs.items[i].path;
+    size_t j = i;
+    while (j < locs.len && locs.items[j].path &&
+           strcmp(locs.items[j].path, path) == 0)
+      j++;
+
+    char file_uri[1024];
+    abs_uri(path, file_uri, sizeof(file_uri));
+    char *uri_esc = json_escape_dup(file_uri);
+
+    size_t chunk_cap = 2048, chunk_len = 0;
+    char *chunk = malloc(chunk_cap);
+    if (!chunk) {
+      free(uri_esc);
+      break;
+    }
+    chunk[0] = '\0';
+    int edit_n = 0;
+    for (size_t k = i; k < j; k++) {
+      SymbolLoc *it = &locs.items[k];
+      if (it->is_path && !rename_file) continue;
+      int sl = it->line > 0 ? it->line - 1 : 0;
+      int sc = it->col > 0 ? it->col - 1 : 0;
+      char item[512];
+      snprintf(item, sizeof(item),
+               "%s{\"range\":{\"start\":{\"line\":%d,\"character\":%d},"
+               "\"end\":{\"line\":%d,\"character\":%d}},\"newText\":\"%s\"}",
+               edit_n ? "," : "", sl, sc, sl, sc + it->length,
+               new_text_esc ? new_text_esc : "");
+      size_t il = strlen(item);
+      if (chunk_len + il + 1 >= chunk_cap) {
+        chunk_cap = (chunk_len + il + 1) * 2;
+        char *nc = realloc(chunk, chunk_cap);
+        if (!nc) break;
+        chunk = nc;
+      }
+      memcpy(chunk + chunk_len, item, il);
+      chunk_len += il;
+      chunk[chunk_len] = '\0';
+      edit_n++;
+    }
+
+    if (edit_n > 0) {
+      char header[1536];
+      if (rename_file)
+        snprintf(header, sizeof(header),
+                 "%s{\"textDocument\":{\"uri\":\"%s\",\"version\":null},"
+                 "\"edits\":[",
+                 file_n ? "," : "", uri_esc ? uri_esc : "");
+      else
+        snprintf(header, sizeof(header), "%s\"%s\":[", file_n ? "," : "",
+                 uri_esc ? uri_esc : "");
+      size_t need = strlen(header) + chunk_len + 8;
+      if (len + need >= cap) {
+        while (len + need >= cap) cap *= 2;
+        char *nbuf = realloc(out, cap);
+        if (!nbuf) {
+          free(uri_esc);
+          free(chunk);
+          break;
+        }
+        out = nbuf;
+      }
+      memcpy(out + len, header, strlen(header));
+      len += strlen(header);
+      memcpy(out + len, chunk, chunk_len);
+      len += chunk_len;
+      out[len++] = ']';
+      if (rename_file) out[len++] = '}';
+      out[len] = '\0';
+      file_n++;
+    }
+    free(uri_esc);
+    free(chunk);
+    i = j;
+  }
+
+  if (rename_file && locs.decl_path) {
+    char old_uri[1024], new_uri[1024];
+    abs_uri(locs.decl_path, old_uri, sizeof(old_uri));
+    char *np = renamed_file_path(locs.decl_path, new_name);
+    if (np) abs_uri(np, new_uri, sizeof(new_uri));
+    else new_uri[0] = '\0';
+    free(np);
+    char *old_esc = json_escape_dup(old_uri);
+    char *new_esc = json_escape_dup(new_uri);
+    char item[2048];
+    snprintf(item, sizeof(item),
+             "%s{\"kind\":\"rename\",\"oldUri\":\"%s\",\"newUri\":\"%s\"}",
+             file_n ? "," : "", old_esc ? old_esc : "",
+             new_esc ? new_esc : "");
+    free(old_esc);
+    free(new_esc);
+    size_t il = strlen(item);
+    if (len + il + 4 >= cap) {
+      cap = len + il + 4;
+      char *nbuf = realloc(out, cap);
+      if (nbuf) out = nbuf;
+    }
+    if (len + il + 4 <= cap) {
+      memcpy(out + len, item, il);
+      len += il;
+      out[len] = '\0';
+    }
+  }
+
+  const char *tail = rename_file ? "]}" : "}}";
+  size_t tl = strlen(tail);
+  if (len + tl + 1 >= cap) {
+    cap = len + tl + 1;
+    char *nbuf = realloc(out, cap);
+    if (nbuf) out = nbuf;
+  }
+  if (len + tl + 1 <= cap) memcpy(out + len, tail, tl + 1);
+
+  respond_ok(id, out);
+  free(out);
+  free(new_text_esc);
+  symbol_loc_list_free(&locs);
 }
 
 /* Line prefix before cursor (not including character at cursor). */
@@ -1019,6 +1491,8 @@ static void handle_message(const char *msg) {
              "\"textDocumentSync\":1,"
              "\"documentSymbolProvider\":true,"
              "\"definitionProvider\":true,"
+             "\"referencesProvider\":true,"
+             "\"renameProvider\":{\"prepareProvider\":true},"
              "\"completionProvider\":{\"triggerCharacters\":[\" \",\"=\",\"@\"]},"
              "\"hoverProvider\":true,"
              "\"codeActionProvider\":true,"
@@ -1031,6 +1505,7 @@ static void handle_message(const char *msg) {
   if (strcmp(method, "initialized") == 0) return;
   if (strcmp(method, "shutdown") == 0) {
     g_shutdown = 1;
+    docs_free();
     if (has_id) respond_ok(id, "null");
     return;
   }
@@ -1059,6 +1534,18 @@ static void handle_message(const char *msg) {
   }
   if (strcmp(method, "textDocument/definition") == 0 && has_id) {
     handle_definition(id, msg);
+    return;
+  }
+  if (strcmp(method, "textDocument/references") == 0 && has_id) {
+    handle_references(id, msg);
+    return;
+  }
+  if (strcmp(method, "textDocument/prepareRename") == 0 && has_id) {
+    handle_prepare_rename(id, msg);
+    return;
+  }
+  if (strcmp(method, "textDocument/rename") == 0 && has_id) {
+    handle_rename(id, msg);
     return;
   }
   if (strcmp(method, "textDocument/completion") == 0 && has_id) {
