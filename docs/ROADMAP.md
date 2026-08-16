@@ -31,7 +31,7 @@ Documentos relacionados:
 | M11 Playground WASM | ✅ | API de proyecto + UI multi-file + CI rebuild/zip |
 | Runix | ⏳ fuera de este CLI | Framework web separado sobre Cordlang |
 
-> **Ahora:** residual DX (LSP rename/references) o Horizonte B (registry remoto). No abrir nuevos backends ni convertir Runix en un flag de `cordlang`.
+> **Ahora:** Horizonte B (registry remoto) o residual DX menor (attrs.json dinámico, más autofix). No abrir nuevos backends ni convertir Runix en un flag de `cordlang`.
 
 ---
 
@@ -316,8 +316,8 @@ Mapa completo: [`docs/SVELTE.md`](./SVELTE.md) (basado en [svelte.dev/docs/svelt
 5. **Semántica / AI-score LLM** solo cuando el núcleo sea aburridamente sólido.
 
 ```
-Hecho ──► Fases A–E MVP + IR + G/H + traps/LSP + ESM preview + Vue Official + M11 playground
-AHORA ──► Residual LSP (rename/references) — language DX; no new backends
+Hecho ──► Fases A–E MVP + IR + G/H + traps/LSP + ESM preview + Vue Official + M11 playground + LSP rename/references
+AHORA ──► Horizonte B (registry remoto) — language DX; no new backends
 DESPUÉS ► Registry remoto / MCP / native spikes; **Runix** = framework product (fuera de “otro backend CLI”)
 ```
 
@@ -365,7 +365,7 @@ Orden fijo: **R1 → R2 → R3 → R4 → R5**. No mezclar fases en el mismo PR.
 |---|------|--------|
 | G0–G6 | Repo público, theme/HTML IR, CI, my-app `--check`, docs/AI skill, LICENSE | ✅ |
 | G7 | Source maps reales | ✅ VLQ from source= markers |
-| G8 | LSP full | ✅ usable: buffer diags + hint/code, completion contextual, hover, formatting, codeAction (`jsx-attr`/`bad-interp`); rename/references abiertos |
+| G8 | LSP full | ✅ usable: buffer diags + hint/code, completion contextual, hover, formatting, codeAction (`jsx-attr`/`bad-interp`); **rename + references** (components, same model as `goto`) |
 
 ### 4.2b Fase H — Madurez del proyecto ✅ (2026-07-24)
 
@@ -503,4 +503,4 @@ Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `backend:vue`, `
 
 ---
 
-*Última actualización: lenguaje 1.0, CLI 0.0.013 alpha; Vue es Official; Cordlang = lenguaje / Runix = framework; M11.2 cierra el playground WASM (API de proyecto + UI multi-file + CI). Siguiente: residual LSP o Horizonte B — no nuevos backends.*
+*Última actualización: lenguaje 1.0, CLI 0.0.013 alpha; Vue es Official; Cordlang = lenguaje / Runix = framework; M11.2 cierra el playground WASM (API de proyecto + UI multi-file + CI). LSP rename/references (G8 residual) cerrado. Siguiente: Horizonte B — no nuevos backends.*

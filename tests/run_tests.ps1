@@ -30,6 +30,7 @@ if (-not (Test-Path -LiteralPath $Cordlang)) {
   Write-Host "FAIL: cordlang executable not found. Run build.bat first." -ForegroundColor Red
   exit 1
 }
+$Cordlang = (Resolve-Path -LiteralPath $Cordlang).Path
 Write-Host "  exe:  $Cordlang"
 
 $FixturesDir = Join-Path $Root "tests\fixtures"
@@ -484,6 +485,22 @@ if (Test-Path -LiteralPath (Join-Path $tpl "cordlang.json")) {
   }
 } else {
   Write-Host "SKIP: templates/counter not present" -ForegroundColor Yellow
+}
+
+Write-Host ""
+Write-Host "LSP rename / references"
+$node = Get-Command node -ErrorAction SilentlyContinue
+if ($null -ne $node) {
+  & node (Join-Path $Root "tests\lsp_rename_refs.mjs") $Cordlang
+  if ($LASTEXITCODE -eq 0) {
+    Write-Host "PASS: lsp rename/references (stdio JSON-RPC)" -ForegroundColor Green
+    $passed = $passed + 1
+  } else {
+    Write-Host "FAIL: lsp rename/references" -ForegroundColor Red
+    $failed = $failed + 1
+  }
+} else {
+  Write-Host "SKIP: lsp rename/references (node not found)" -ForegroundColor Yellow
 }
 
 Write-Host ""

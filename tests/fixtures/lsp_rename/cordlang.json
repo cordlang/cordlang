@@ -1,0 +1,4 @@
+{
+  "name": "lsp-rename",
+  "entry": "src/app.cord"
+}
