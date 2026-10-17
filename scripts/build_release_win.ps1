@@ -251,7 +251,7 @@ $gccArgs = @(
   "-DCORDLANG_VERSION=$verMacro",
   "-Isrc",
   "-o", "cordlang.exe"
-) + $srcs + @("-lws2_32")
+) + $srcs + @("-lws2_32", "-lshell32")
 
 Write-Host "Building cordlang.exe VERSION=$Version"
 if (Test-Path "cordlang.exe") {

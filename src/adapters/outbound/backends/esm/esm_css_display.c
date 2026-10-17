@@ -90,8 +90,6 @@ int decls_for_display(const char *cls, char *out, size_t outn) {
   return 0;
 }
 int decls_for_keywords(const char *cls, char *out, size_t outn) {
-  const char *v = NULL;
-  char val[64];
 /* bare keywords */
   if (strcmp(cls, "flex") == 0) {
     snprintf(out, outn, "display: flex");

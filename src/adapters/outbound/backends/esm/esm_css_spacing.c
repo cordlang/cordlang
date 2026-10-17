@@ -104,7 +104,6 @@ int decls_for_sizing(const char *cls, char *out, size_t outn) {
 }
 int decls_for_radius(const char *cls, char *out, size_t outn) {
   const char *v = NULL;
-  char val[64];
 /* radius: rounded-12 (px) and the keyword scale */
   if (starts(cls, "rounded-", &v)) {
     if (all_digits(v)) {

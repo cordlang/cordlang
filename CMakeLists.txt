@@ -242,7 +242,7 @@ target_compile_definitions(cordlang PRIVATE _POSIX_C_SOURCE=200809L)
 target_compile_options(cordlang PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-function -Wno-format-truncation)
 
 if(WIN32)
-  target_link_libraries(cordlang PRIVATE ws2_32)
+  target_link_libraries(cordlang PRIVATE ws2_32 shell32)
 endif()
 
 option(CORDLANG_ASAN "Build with AddressSanitizer + UBSan" OFF)

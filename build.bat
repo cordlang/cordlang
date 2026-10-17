@@ -229,7 +229,7 @@ gcc -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-function -Wno-format
   src/adapters/outbound/runtime/dev_server_assets.c ^
   src/adapters/outbound/runtime/dev_watch.c ^
   src/adapters/outbound/term/term_log.c ^
-  -lws2_32
+  -lws2_32 -lshell32
 if %ERRORLEVEL% EQU 0 (
   echo Build successful: cordlang.exe
 ) else (

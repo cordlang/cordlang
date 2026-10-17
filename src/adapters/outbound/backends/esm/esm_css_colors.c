@@ -5,7 +5,6 @@
 
 int decls_for_colors(const char *cls, char *out, size_t outn) {
   const char *v = NULL;
-  char val[64];
 /* arbitrary theme-var values: bg-[var(--color-primary)] */
   if (starts(cls, "bg-[var(--", &v)) {
     char tok[64];

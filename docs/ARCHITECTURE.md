@@ -60,11 +60,11 @@ Lexer          src/adapters/outbound/lexer/lexer.{c,h}
 Parser         src/adapters/outbound/parser/parser*.c + parser.h
     │  Node* tree
     ▼
-Compiler       src/adapters/outbound/compiler/compiler.c
+Compiler       src/adapters/outbound/compiler/compiler.c + compiler_paths.c / compiler_modules.c / compiler_project.c
                compiler_parse_source / _file / _project
     │  Ast / CompileResult
     ▼
-ir_from_ast    src/domain/ir.{c,h}   (+ expr_normalize)
+ir_from_ast    src/domain/ir.{c,h} + ir_convert*.c / ir_node.c / ir_walk.c / ir_dump.c   (+ expr_normalize)
     │  IrProgram*
     ▼
 (IR passes)    Phase H3 — opt-in transforms on IrProgram
@@ -98,25 +98,25 @@ Orchestration lives in `src/application/compile_service.c` and `run_service.c`:
 | Filesystem port | `adapters/outbound/fs/fs.c` host reads/writes, `fs_memory.c` mounted virtual files, `fs_path.c` paths, `fs_copy.c` copies, `fs_walk.c` project walk |
 | Lex | `adapters/outbound/lexer/lexer*.c` |
 | Parse | `adapters/outbound/parser/parser*.c` (statement, declarations, attrs, modules, control, React families) |
-| Multi-file project | `adapters/outbound/compiler/compiler.c` |
+| Multi-file project | `adapters/outbound/compiler/compiler.c` entry + `compiler_paths.c`, `compiler_modules.c`, `compiler_project.c` |
 | AST | `domain/ast.{c,h}` |
 | Expr | `domain/expr.c`, `expr_lexer.c`, `expr_parser.c`, `expr.h` |
 | Interpolation | `domain/interp.c` (AST splitting), `interp_js.c`, `interp_html.c` |
-| IR | `domain/ir.{c,h}` |
+| IR | `domain/ir.c` entry + `ir_convert.c`, `ir_convert_declarations.c`, `ir_node.c`, `ir_walk.c`, `ir_dump.c` |
 | Diagnostics | `domain/diag.{c,h}` |
 | Backend registry | `adapters/outbound/backends/registry.c` (static list) |
 | Presets | `adapters/outbound/backends/preset_registry.c` metadata, `preset_packages.c` dependency merge, `preset_bridges.c` generated bridge files |
-| React emit | `backends/react/react_ir.c`, `react_backend.c`, `react_scaffold.c` |
-| Svelte emit | `backends/svelte/svelte_backend.c`, `svelte_scaffold.c` |
-| Vue emit | `backends/vue/vue_ir.c`, `vue_backend.c`, `vue_scaffold.c` |
-| Solid emit | `backends/solid/solid_ir.c`, `solid_backend.c`, `solid_scaffold.c` |
-| Static HTML (email/pdf) | `backends/static_html/static_html.c` + `email/` + `pdf/` |
+| React emit | `react_ir.c` entry + `react_ir_*.c` emit modules; `react_scaffold_*.c` project wiring and templates |
+| Svelte emit | `svelte_backend.c` entry + `svelte_backend_*.c` emit modules; `svelte_scaffold_*.c` project wiring and templates |
+| Vue emit | `vue_ir.c` entry + `vue_ir_*.c` emit modules; `vue_scaffold_*.c` project wiring and templates |
+| Solid emit | `solid_ir.c` entry + `solid_ir_*.c` emit modules; `solid_scaffold_*.c` project wiring and templates |
+| Static HTML (email/pdf) | `static_html.c` entry + `static_html_{bindings,attrs,elements,render,buffer,warnings}.c` + `email/` + `pdf/` |
 | Next meta | `backends/next/next_backend.c` (wraps React emit) |
 | SvelteKit meta | `backends/sveltekit/sveltekit_backend.c` (wraps Svelte emit) |
-| ESM native preview | `backends/esm/` — `esm_ir.c`, `esm_runtime.c`, `esm_runtime_part*.c`, `esm_error.c`, `esm_css.c`, `esm_backend.h` |
+| ESM native preview | `backends/esm/` — `esm_ir*.c`, `esm_runtime.c`, `esm_runtime_part*.c`, `esm_error.c`, `esm_css*.c`, `esm_backend.h` |
 | Shared attr→class | `backends/cord_class*.c` (+ `cord_class.h`) — attr rules and class emission used by react/svelte/vue/solid/esm |
 | Dev server (ESM run) | `runtime/dev_server.c`, `dev_server_http.c`, `dev_server_sse.c`, `dev_server_assets.c`, `dev_watch.c` — HTTP, SSE, static assets and file watching; wired by `preview_service.c` |
-| HTML preview (legacy) | `backends/html/html_backend.c` + `runtime/preview_server.c` (`cordlang run html`) |
+| HTML preview (legacy) | `html_backend.c` entry + `html_backend_*.c` rendering, state, styles, assets, and scaffold + `runtime/preview_server.c` (`cordlang run html`) |
 | Theme CSS | `backends/theme_css.c` AST entry, `theme_css_ir.c` IR entry, `theme_css_shared.c` shared token emission, `theme_css_core.c` CSS validation and buffering |
 | Source maps | `backends/source_attr*.c` (VLQ from `cordlang: source=` markers; writing is isolated in `source_attr_file.c`) |
 
@@ -157,22 +157,27 @@ Backends must not retain IR or AST after returning from generate/scaffold.
 
 ## How to add a backend (React-style checklist)
 
-Add a new target by mirroring the React three-file layout under
-`src/adapters/outbound/backends/<name>/`:
+Add a new target under `src/adapters/outbound/backends/<name>/`. Keep the
+public API, IR generation, scaffolding, and private contracts in focused
+modules. Every hand-written C file stays at or below 300 physical lines:
 
 1. **`<name>_backend.h`** — declare `generate_from_ir`, `scaffold_from_ir`,
    AST wrappers, `emit_modules_from_ir`, and `<name>_backend_port()`.
-2. **`<name>_backend.c`** (or split **`<name>_ir.c`**) — pure `IrNode` walkers
-   for codegen; AST entrypoints only lower via `ir_from_ast` then call IR APIs.
-   Do **not** walk AST in `generate_from_ir`. No LLM / network in emit.
-3. **`<name>_scaffold.c`** — Vite (or equivalent) skeleton + write modules via
-   `emit_modules_from_ir`; set `BackendPort` fields including
-   `needs_node_check` (1 if `run --check` / `--watch` use npm+vite).
-4. Register in `registry.c` (`backend_register_all`); keep `MAX_BACKENDS` headroom.
-5. Wire sources in `Makefile`, `CMakeLists.txt`, and `build.bat` if present.
-6. Add goldens: `tests/fixtures` + `tests/golden/*.<name>.txt`; extend
+2. **`<name>_backend.c` / `<name>_ir*.c`** — keep entrypoints small and put
+   pure `IrNode` walks in focused emit modules; AST entrypoints only lower via
+   `ir_from_ast` then call IR APIs. Do **not** walk AST in `generate_from_ir`.
+   No LLM or network in emit.
+3. **`<name>_scaffold*.c`** — separate scaffold entrypoints and project wiring
+   from generated-file templates; use `<name>_internal.h` only for private
+   contracts shared across modules.
+4. Set `BackendPort` fields including `needs_node_check` (1 if `run --check`
+   / `--watch` use npm+vite).
+5. Register in `registry.c` (`backend_register_all`); keep `MAX_BACKENDS` headroom.
+6. Wire all source modules in `Makefile`, `CMakeLists.txt`, `build.bat`, and
+   other applicable build manifests.
+7. Add goldens: `tests/fixtures` + `tests/golden/*.<name>.txt`; extend
    `BACKENDS` in `tests/run_tests.sh` / `.ps1`.
-7. Document Cord ↔ target map in `docs/<NAME>.md`; update ROADMAP parity.
+8. Document Cord ↔ target map in `docs/<NAME>.md`; update ROADMAP parity.
 
 See [`IR.md`](./IR.md) § “Contrato para un backend nuevo”.
 

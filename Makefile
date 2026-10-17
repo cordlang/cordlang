@@ -251,9 +251,9 @@ ifeq ($(ASAN),1)
   LDFLAGS += -fsanitize=address,undefined
 endif
 
-# Windows (MinGW) needs Winsock
+# Windows (MinGW) needs Winsock and ShellExecuteA
 ifeq ($(OS),Windows_NT)
-  LDFLAGS = -lws2_32
+  LDFLAGS = -lws2_32 -lshell32
 else
   LDFLAGS =
 endif
