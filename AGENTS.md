@@ -26,10 +26,11 @@ ESM native preview: [docs/PREVIEW.md](./docs/PREVIEW.md) · Runix vision: [docs/
 
 1. Prefer changes that keep **React, Svelte, and Vue** in sync (lower to IR, then emit).
 2. Do not put I/O in `domain/`.
-3. Keep goldens green: `tests/run_tests.ps1` / `tests/run_tests.sh`.
-4. **Bug fixes:** add `tests/regression/<slug>/` with `input.cord` + expected outputs (see `tests/regression/README.md`).
-5. Template smoke: `tests/run_template_check.ps1` (needs Node; uses `templates/counter` — react/svelte/vue).
-6. Update docs when the language surface changes (`docs/REACT.md`, `SVELTE.md`, `VUE.md`, `AI.md`, `ARCHITECTURE.md`, `SPEC.md`, `PREVIEW.md`).
+3. Keep every hand-written `src/**/*.c` file at or below **300 physical lines**. Split by cohesive responsibility; do not meet the cap by compressing formatting or hiding implementation in large include files.
+4. Keep goldens green: `tests/run_tests.ps1` / `tests/run_tests.sh`.
+5. **Bug fixes:** add `tests/regression/<slug>/` with `input.cord` + expected outputs (see `tests/regression/README.md`).
+6. Template smoke: `tests/run_template_check.ps1` (needs Node; uses `templates/counter` — react/svelte/vue).
+7. Update docs when the language surface changes (`docs/REACT.md`, `SVELTE.md`, `VUE.md`, `AI.md`, `ARCHITECTURE.md`, `SPEC.md`, `PREVIEW.md`).
 
 ---
 

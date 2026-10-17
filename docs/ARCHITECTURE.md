@@ -11,7 +11,7 @@ For **design notes**, see [`LANGUAGE.md`](./LANGUAGE.md).
 ## Hexagonal layers
 
 ```
-adapters/inbound/cli.c
+adapters/inbound/cli.c + cli_{usage,compile,check,fmt,ai,build}.c
         │
         ▼
 application/*_service.c     (use cases)
@@ -35,6 +35,17 @@ application/*_service.c     (use cases)
 
 **Rule:** no filesystem, network, or process I/O inside `src/domain/`.
 
+## Micro-modules
+
+Every hand-written C translation unit under `src/` must stay at or below **300
+physical lines**. Split larger files along cohesive responsibilities or use
+cases; do not shrink them by compressing formatting or moving implementation
+into oversized include files. Keep shared contracts narrow, put cross-module
+private declarations in an internal header, and preserve the layer direction
+shown above. A module should have one reason to change, while related parsing,
+IR, rendering, and I/O work should remain grouped by the responsibility it
+serves.
+
 ---
 
 ## Compile pipeline
@@ -46,7 +57,7 @@ application/*_service.c     (use cases)
 Lexer          src/adapters/outbound/lexer/lexer.{c,h}
     │  tokens
     ▼
-Parser         src/adapters/outbound/parser/parser.{c,h}
+Parser         src/adapters/outbound/parser/parser*.c + parser.h
     │  Node* tree
     ▼
 Compiler       src/adapters/outbound/compiler/compiler.c
@@ -79,15 +90,22 @@ Orchestration lives in `src/application/compile_service.c` and `run_service.c`:
 
 | Stage | Files |
 |-------|--------|
-| CLI entry | `src/main.c` → `cli_run` in `adapters/inbound/cli.c` |
-| Lex | `adapters/outbound/lexer/lexer.c` |
-| Parse | `adapters/outbound/parser/parser.c` |
+| CLI entry | `src/main.c` → `cli_run` dispatcher in `adapters/inbound/cli.c`; command handlers in `adapters/inbound/cli_*.c` |
+| WASM bridge | `adapters/inbound/wasm_api.c` exports, `wasm_project.c` virtual project manifest, `wasm_result.c` JSON result serialization |
+| LSP | `application/lsp_service.c` protocol loop; document state, JSON-RPC, diagnostics and feature handlers live in `lsp_*.c` modules |
+| Preview service | `application/preview_service.c` lifecycle, `preview_context.c` cache/context, `preview_response.c` assets, `preview_module.c` Cord compilation, `preview_routes.c` routing, `preview_smoke.c` smoke path, `preview_build_esm.c` static export |
+| Symbols service | `application/symbols_service.c` list/goto, `symbols_text.c` identifier and path parsing, `symbols_locations.c` AST location collection, `symbols_project.c` project scan |
+| Filesystem port | `adapters/outbound/fs/fs.c` host reads/writes, `fs_memory.c` mounted virtual files, `fs_path.c` paths, `fs_copy.c` copies, `fs_walk.c` project walk |
+| Lex | `adapters/outbound/lexer/lexer*.c` |
+| Parse | `adapters/outbound/parser/parser*.c` (statement, declarations, attrs, modules, control, React families) |
 | Multi-file project | `adapters/outbound/compiler/compiler.c` |
 | AST | `domain/ast.{c,h}` |
-| Expr | `domain/expr.{c,h}` |
+| Expr | `domain/expr.c`, `expr_lexer.c`, `expr_parser.c`, `expr.h` |
+| Interpolation | `domain/interp.c` (AST splitting), `interp_js.c`, `interp_html.c` |
 | IR | `domain/ir.{c,h}` |
 | Diagnostics | `domain/diag.{c,h}` |
 | Backend registry | `adapters/outbound/backends/registry.c` (static list) |
+| Presets | `adapters/outbound/backends/preset_registry.c` metadata, `preset_packages.c` dependency merge, `preset_bridges.c` generated bridge files |
 | React emit | `backends/react/react_ir.c`, `react_backend.c`, `react_scaffold.c` |
 | Svelte emit | `backends/svelte/svelte_backend.c`, `svelte_scaffold.c` |
 | Vue emit | `backends/vue/vue_ir.c`, `vue_backend.c`, `vue_scaffold.c` |
@@ -95,12 +113,12 @@ Orchestration lives in `src/application/compile_service.c` and `run_service.c`:
 | Static HTML (email/pdf) | `backends/static_html/static_html.c` + `email/` + `pdf/` |
 | Next meta | `backends/next/next_backend.c` (wraps React emit) |
 | SvelteKit meta | `backends/sveltekit/sveltekit_backend.c` (wraps Svelte emit) |
-| ESM native preview | `backends/esm/` — `esm_ir.c`, `esm_runtime.c`, `esm_css.c`, `esm_backend.h` |
-| Shared attr→class | `backends/cord_class.c` (+ `cord_class.h`) — used by react/svelte/vue/solid/esm |
-| Dev server (ESM run) | `runtime/dev_server.c` (+ `dev_server.h`) — HTTP + SSE; wired by `preview_service.c` |
+| ESM native preview | `backends/esm/` — `esm_ir.c`, `esm_runtime.c`, `esm_runtime_part*.c`, `esm_error.c`, `esm_css.c`, `esm_backend.h` |
+| Shared attr→class | `backends/cord_class*.c` (+ `cord_class.h`) — attr rules and class emission used by react/svelte/vue/solid/esm |
+| Dev server (ESM run) | `runtime/dev_server.c`, `dev_server_http.c`, `dev_server_sse.c`, `dev_server_assets.c`, `dev_watch.c` — HTTP, SSE, static assets and file watching; wired by `preview_service.c` |
 | HTML preview (legacy) | `backends/html/html_backend.c` + `runtime/preview_server.c` (`cordlang run html`) |
-| Theme CSS | `backends/theme_css.c` |
-| Source maps | `backends/source_attr.c` (VLQ from `cordlang: source=` markers) |
+| Theme CSS | `backends/theme_css.c` AST entry, `theme_css_ir.c` IR entry, `theme_css_shared.c` shared token emission, `theme_css_core.c` CSS validation and buffering |
+| Source maps | `backends/source_attr*.c` (VLQ from `cordlang: source=` markers; writing is isolated in `source_attr_file.c`) |
 
 ---
 

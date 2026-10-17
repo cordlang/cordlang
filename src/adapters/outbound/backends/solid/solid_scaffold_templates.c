@@ -1,0 +1,277 @@
+#include "solid_scaffold_internal.h"
+
+int solid_scaffold_write_vite_skeleton(const char *project_dir, const char *out) {
+  char lang[32];
+  char title[256];
+  solid_scaffold_load_html_meta(project_dir, lang, sizeof(lang), title, sizeof(title));
+  char lang_e[64];
+  char title_e[512];
+  html_escape_to(lang_e, sizeof(lang_e), lang);
+  html_escape_to(title_e, sizeof(title_e), title);
+
+  const char *pkg =
+      "{\n"
+      "  \"name\": \"cordlang-solid-app\",\n"
+      "  \"private\": true,\n"
+      "  \"version\": \"0.1.0\",\n"
+      "  \"type\": \"module\",\n"
+      "  \"scripts\": {\n"
+      "    \"dev\": \"vite\",\n"
+      "    \"build\": \"vite build\",\n"
+      "    \"preview\": \"vite preview\"\n"
+      "  },\n"
+      "  \"dependencies\": {\n"
+      "    \"solid-js\": \"^1.9.3\",\n"
+      "    \"@solidjs/router\": \"^0.15.1\"\n"
+      "  },\n"
+      "  \"devDependencies\": {\n"
+      "    \"vite-plugin-solid\": \"^2.10.2\",\n"
+      "    \"autoprefixer\": \"^10.4.20\",\n"
+      "    \"postcss\": \"^8.4.49\",\n"
+      "    \"tailwindcss\": \"^3.4.17\",\n"
+      "    \"vite\": \"^6.0.3\"\n"
+      "  }\n"
+      "}\n";
+
+  const char *vite =
+      "import { defineConfig } from 'vite'\n"
+      "import solid from 'vite-plugin-solid'\n"
+      "\n"
+      "export default defineConfig({\n"
+      "  plugins: [solid()],\n"
+      "})\n";
+
+  char html[1024];
+  snprintf(html, sizeof(html),
+           "<!doctype html>\n"
+           "<html lang=\"%s\">\n"
+           "  <head>\n"
+           "    <meta charset=\"UTF-8\" />\n"
+           "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
+           "    <title>%s</title>\n"
+           "  </head>\n"
+           "  <body>\n"
+           "    <div id=\"root\"></div>\n"
+           "    <script type=\"module\" src=\"/src/main.jsx\"></script>\n"
+           "  </body>\n"
+           "</html>\n",
+           lang_e, title_e);
+
+  const char *main_jsx =
+      "/* @jsxImportSource solid-js */\n"
+      "import { render } from 'solid-js/web'\n"
+      "import App from './App.jsx'\n"
+      "import './index.css'\n"
+      "\n"
+      "render(() => <App />, document.getElementById('root'))\n";
+
+  const char *css =
+      "/* Theme tokens from Cord `theme` blocks (see theme.css) */\n"
+      "@import './theme.css';\n"
+      "\n"
+      "@tailwind base;\n"
+      "@tailwind components;\n"
+      "@tailwind utilities;\n"
+      "\n"
+      "@layer components {\n"
+      "  .btn {\n"
+      "    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 font-medium transition;\n"
+      "    border-radius: var(--radius, 0.5rem);\n"
+      "  }\n"
+      "  .btn-primary {\n"
+      "    @apply text-white;\n"
+      "    background-color: var(--color-primary, #2563eb);\n"
+      "  }\n"
+      "  .btn-primary:hover {\n"
+      "    filter: brightness(0.92);\n"
+      "  }\n"
+      "  .btn-outline {\n"
+      "    @apply border border-gray-300 bg-white text-gray-900 hover:bg-gray-50;\n"
+      "  }\n"
+      "  .btn-ghost {\n"
+      "    @apply text-gray-700 hover:bg-gray-100;\n"
+      "  }\n"
+      "  .btn-secondary {\n"
+      "    @apply bg-gray-800 text-white hover:bg-gray-900;\n"
+      "  }\n"
+      "  .card {\n"
+      "    @apply bg-white shadow-md overflow-hidden;\n"
+      "    border-radius: var(--radius, 0.75rem);\n"
+      "  }\n"
+      "}\n"
+      "\n"
+      "body {\n"
+      "  @apply m-0 min-h-screen antialiased;\n"
+      "  background-color: var(--color-bg, #fafaf9);\n"
+      "  color: var(--color-text, #1c1917);\n"
+      "  line-height: 1.6;\n"
+      "  --ui-container: 80rem;\n"
+      "  --ui-header-height: 4rem;\n"
+      "}\n"
+      "\n"
+      ".text-muted {\n"
+      "  color: var(--color-muted, #57534e);\n"
+      "}\n"
+      "\n"
+      "/* Links: content uses primary; chrome stays quiet */\n"
+      "a {\n"
+      "  color: var(--color-primary, #0f766e);\n"
+      "  text-decoration: none;\n"
+      "}\n"
+      "a:hover {\n"
+      "  color: var(--color-accent, #0d9488);\n"
+      "  text-decoration: underline;\n"
+      "}\n"
+      "header a,\n"
+      "aside a,\n"
+      "footer a {\n"
+      "  color: var(--color-text, #1c1917);\n"
+      "}\n"
+      "header a:hover,\n"
+      "aside a:hover,\n"
+      "footer a:hover {\n"
+      "  color: var(--color-primary, #0f766e);\n"
+      "}\n"
+      "aside a {\n"
+      "  display: block;\n"
+      "  padding: 0.35rem 0.5rem;\n"
+      "  margin: 0 -0.5rem;\n"
+      "  border-radius: 6px;\n"
+      "  font-size: 0.925rem;\n"
+      "  line-height: 1.35;\n"
+      "}\n"
+      "aside a:hover {\n"
+      "  background-color: color-mix(in srgb, var(--color-primary, #0f766e) 10%, transparent);\n"
+      "  text-decoration: none;\n"
+      "}\n"
+      "header.sticky {\n"
+      "  min-height: var(--ui-header-height);\n"
+      "  backdrop-filter: blur(8px);\n"
+      "  background-color: color-mix(in srgb, var(--color-surface, #fff) 92%, transparent);\n"
+      "  border-bottom: 1px solid var(--color-border, #e7e5e4);\n"
+      "}\n"
+      "header .max-w-1280,\n"
+      "footer .max-w-1280,\n"
+      ".max-w-1280 {\n"
+      "  width: 100%;\n"
+      "  max-width: var(--ui-container);\n"
+      "  margin-left: auto;\n"
+      "  margin-right: auto;\n"
+      "}\n"
+      "main {\n"
+      "  min-width: 0;\n"
+      "}\n"
+      "main h1 {\n"
+      "  line-height: 1.2;\n"
+      "  letter-spacing: -0.02em;\n"
+      "}\n"
+      "main h2 {\n"
+      "  line-height: 1.3;\n"
+      "  margin-top: 0.25rem;\n"
+      "}\n"
+      "aside.sticky {\n"
+      "  top: var(--ui-header-height);\n"
+      "  align-self: flex-start;\n"
+      "  max-height: calc(100vh - var(--ui-header-height));\n"
+      "  overflow-y: auto;\n"
+      "  border-right: 1px solid var(--color-border, #e7e5e4);\n"
+      "}\n"
+      ".bg-codebg,\n"
+      ".bg-stone-900 {\n"
+      "  color: var(--color-codefg, #e7e5e4);\n"
+      "  background-color: var(--color-codebg, #1c1917);\n"
+      "  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);\n"
+      "}\n"
+      ".bg-codebg .text-muted,\n"
+      ".bg-stone-900 .text-muted {\n"
+      "  color: #a8a29e;\n"
+      "}\n"
+      "footer {\n"
+      "  border-top: 1px solid var(--color-border, #e7e5e4);\n"
+      "}\n"
+      "\n"
+      "/* Stack sidebar shells on narrow viewports */\n"
+      "@media (max-width: 768px) {\n"
+      "  body .flex.flex-row:has(> aside) {\n"
+      "    flex-direction: column;\n"
+      "  }\n"
+      "  body aside.w-240 {\n"
+      "    width: 100%;\n"
+      "    position: relative;\n"
+      "    top: auto;\n"
+      "    max-height: none;\n"
+      "    min-height: 0;\n"
+      "    border-right: none;\n"
+      "    border-bottom: 1px solid var(--color-border, #e7e5e4);\n"
+      "  }\n"
+      "  body header.sticky {\n"
+      "    z-index: 40;\n"
+      "  }\n"
+      "}\n";
+
+  /* Cord attrs like p=16 / gap=16 / max-w=640 map to class names p-16, etc.
+   * Stock Tailwind treats p-16 as 4rem; Cord's HTML preview uses ~1rem.
+   * Align Solid Tailwind with that Cord scale so demos aren't huge/broken. */
+  const char *tailwind =
+      "/** @type {import('tailwindcss').Config} */\n"
+      "export default {\n"
+      "  content: ['./index.html', './src/**/*.{js,jsx}'],\n"
+      "  theme: {\n"
+      "    extend: {\n"
+      "      spacing: {\n"
+      "        8: '0.5rem',\n"
+      "        12: '0.75rem',\n"
+      "        16: '1rem',\n"
+      "        24: '1.5rem',\n"
+      "        32: '2rem',\n"
+      "        40: '2.5rem',\n"
+      "        48: '3rem',\n"
+      "        64: '4rem',\n"
+      "        240: '15rem',\n"
+      "      },\n"
+      "      width: {\n"
+      "        240: '15rem',\n"
+      "      },\n"
+      "      maxWidth: {\n"
+      "        640: '40rem',\n"
+      "        720: '45rem',\n"
+      "        1280: '80rem',\n"
+      "      },\n"
+      "      borderRadius: {\n"
+      "        8: '8px',\n"
+      "        12: '12px',\n"
+      "      },\n"
+      "    },\n"
+      "  },\n"
+      "  plugins: [],\n"
+      "}\n";
+
+  const char *postcss =
+      "export default {\n"
+      "  plugins: {\n"
+      "    tailwindcss: {},\n"
+      "    autoprefixer: {},\n"
+      "  },\n"
+      "}\n";
+
+  const char *gitignore =
+      "node_modules\n"
+      "dist\n"
+      ".DS_Store\n"
+      "*.local\n";
+
+  int rc = 0;
+  rc |= solid_scaffold_write_path(out, "package.json", pkg);
+  rc |= solid_scaffold_write_path(out, "vite.config.js", vite);
+  rc |= solid_scaffold_write_path(out, "index.html", html);
+  rc |= solid_scaffold_write_path(out, "tailwind.config.js", tailwind);
+  rc |= solid_scaffold_write_path(out, "postcss.config.js", postcss);
+  rc |= solid_scaffold_write_path(out, ".gitignore", gitignore);
+  rc |= solid_scaffold_write_path(out, "src/main.jsx", main_jsx);
+  rc |= solid_scaffold_write_path(out, "src/index.css", css);
+  /* Stub until scaffold_from_ast overwrites with real theme tokens */
+  rc |= solid_scaffold_write_path(out, "src/theme.css",
+                   "/* No theme declared. */\n:root {}\n");
+
+  return rc;
+}
