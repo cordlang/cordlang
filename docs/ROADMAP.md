@@ -29,7 +29,7 @@ Documentos relacionados:
 | Targets Official | ✅ | ESM preview, React, Svelte y Vue |
 | Calidad | ✅ base CI | Goldens, regresiones, ASAN y `templates/counter` `--check` |
 | M11 Playground WASM | ✅ | API de proyecto + UI multi-file + CI rebuild/zip |
-| Runix | ⏳ fuera de este CLI | Framework web separado sobre Cordlang |
+| Runix | 🟡 fuera de este CLI | Repo sibling `../runix` + npm `@cordlang/runix` (Fase 1). No es un `--backend` aquí |
 
 > **Ahora:** Horizonte B (registry remoto) o residual DX menor (attrs.json dinámico, más autofix). No abrir nuevos backends ni convertir Runix en un flag de `cordlang`.
 
@@ -487,7 +487,7 @@ Objetivo: pasar de “interesante” a **serio para contribuidores** (confianza 
 | **M9 — Horizonte B / meta** | Platform → Vue Official → Solid/email/PDF/Next/Kit (frozen) → native spike | 🟡 meta frozen |
 | **M10 — ESM preview** | Fase R (R1 DX → R2 soft HMR → R3 build esm → R4 runtime → R5 error overlay) | ✅ |
 | **M11 — WASM playground** | Emscripten core + browser UI | ✅ M11.2 project API + multi-file UI + CI rebuild/release zip |
-| **M12 — Runix** | Framework product on Cordlang (web/SEO) | ⏳ vision [`RUNIX.md`](./RUNIX.md) |
+| **M12 — Runix** | Framework product on Cordlang (web/SEO) | 🟡 repo sibling `../runix` + npm `@cordlang/runix` (Fase 1); SSG+ still open — [`RUNIX.md`](./RUNIX.md) |
 
 Labels útiles: `lang:core`, `backend:react`, `backend:svelte`, `backend:vue`, `backend:esm`, `ir`, `dx`, `ci`, `docs`.
 

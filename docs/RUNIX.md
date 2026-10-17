@@ -9,7 +9,7 @@
 |---|----------|--------|
 | What | Intermediate UI language + compiler | Opinionated web framework |
 | Who | Vibecode / AI agents write `.cord` | Apps ship on Runix |
-| Repo (today) | **This repo** (`cordlang/cordlang`) | Separate product (planned) |
+| Repo (today) | **This repo** (`cordlang/cordlang`) | Sibling **`../runix`** (npm package `runix`) |
 | Owns | Syntax, IR, `check`/`analyze`, Official emit (ESM / React / Svelte / Vue), playground WASM | Routing/SSR/SEO/runtime/hosting opinions optimized for the web |
 
 Cordlang **does not** become “the framework.” Existing CLI targets (`cordlang run`, `run react|svelte|vue`, meta Next/Kit) remain **compile/preview backends**, not the Runix product.
@@ -37,6 +37,6 @@ AI / humans  ──write──►  .cord  (Cordlang language)
 
 ## Status
 
-**Vision documented.** Implementation of Runix lives outside Cordlang’s language north star until a dedicated Runix track exists. Until then: write `.cord`, use Official backends for preview/interop.
+**Product repo:** sibling [`../runix`](../../runix) (npm **`@cordlang/runix`**). Fase 1 CLI (`npx @cordlang/runix init|check|dev|build`) lives there. This repo stays language + emit. Until Runix SSG (Fase 2): write `.cord`, use Official backends for preview/interop.
 
 See also: [`AI_CONTEXT.md`](./AI_CONTEXT.md) · [`ROADMAP.md`](./ROADMAP.md) · [`LANGUAGE.md`](./LANGUAGE.md).
