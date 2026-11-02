@@ -1,6 +1,6 @@
 #include "application/check_internal.h"
 
-static void load_presets_for_entry(const char *entry_path, CheckCtx *ctx) {
+void load_presets_for_entry(const char *entry_path, CheckCtx *ctx) {
   if (!entry_path || !ctx) return;
   char dir[512];
   strncpy(dir, entry_path, sizeof(dir) - 1);
@@ -61,7 +61,7 @@ int ctx_has_context(const CheckCtx *c, const char *name) {
   return 0;
 }
 
-static void ctx_add_context(CheckCtx *c, const char *name) {
+void ctx_add_context(CheckCtx *c, const char *name) {
   if (!c || !name || !*name || c->n_contexts >= MAX_CONTEXTS) return;
   if (ctx_has_context(c, name)) return;
   strncpy(c->contexts[c->n_contexts], name, NAME_LEN - 1);

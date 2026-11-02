@@ -22,11 +22,11 @@ void lexer_destroy(Lexer *lexer) {
     free(lexer);
   }
 }
-static char lexer_peek_char(Lexer *lexer) {
+char lexer_peek_char(Lexer *lexer) {
   if (lexer->pos >= lexer->source_len) return '\0';
   return lexer->source[lexer->pos];
 }
-static char lexer_advance_char(Lexer *lexer) {
+char lexer_advance_char(Lexer *lexer) {
   char c = lexer->source[lexer->pos++];
   lexer->col++;
   if (c == '\n') {

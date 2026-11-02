@@ -53,7 +53,7 @@ static void sb_put_json_str(char **buf, size_t *len, size_t *cap, const char *s)
   }
   sb_putc(buf, len, cap, '"');
 }
-static char *wasm_build_result_json(int ok, const char *backend, const char *code,
+char *wasm_build_result_json(int ok, const char *backend, const char *code,
                                const DiagList *diags, const char *parse_error,
                                int parse_line, int parse_col) {
   char *buf = NULL;

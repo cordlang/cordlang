@@ -401,15 +401,15 @@ WASM_SRC = \
   src/adapters/outbound/backends/html/html_backend_ir_render.c \
   src/adapters/outbound/backends/html/html_backend_scaffold.c \
   src/adapters/outbound/backends/html/html_backend_runtime.c \
-  src/adapters/outbound/backends/esm/esm_ir.c
-  src/adapters/outbound/backends/esm/esm_ir_support.c
-  src/adapters/outbound/backends/esm/esm_ir_imports.c
-  src/adapters/outbound/backends/esm/esm_ir_project.c
-  src/adapters/outbound/backends/esm/esm_ir_props.c
-  src/adapters/outbound/backends/esm/esm_ir_element.c
-  src/adapters/outbound/backends/esm/esm_ir_nodes.c
-  src/adapters/outbound/backends/esm/esm_ir_component.c
-  src/adapters/outbound/backends/esm/esm_ir_routes.c
+  src/adapters/outbound/backends/esm/esm_ir.c \
+  src/adapters/outbound/backends/esm/esm_ir_support.c \
+  src/adapters/outbound/backends/esm/esm_ir_imports.c \
+  src/adapters/outbound/backends/esm/esm_ir_project.c \
+  src/adapters/outbound/backends/esm/esm_ir_props.c \
+  src/adapters/outbound/backends/esm/esm_ir_element.c \
+  src/adapters/outbound/backends/esm/esm_ir_nodes.c \
+  src/adapters/outbound/backends/esm/esm_ir_component.c \
+  src/adapters/outbound/backends/esm/esm_ir_routes.c \
   src/adapters/outbound/backends/esm/esm_ir_generate.c
 
 wasm:

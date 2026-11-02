@@ -45,7 +45,7 @@ static void emit_utilities(Sb *sb, Node *theme) {
   }
 }
 
-static ThemeCssOpts theme_css_defaults(const ThemeCssOpts *opts) {
+ThemeCssOpts theme_css_defaults(const ThemeCssOpts *opts) {
   ThemeCssOpts o;
   o.font_url_prefix = "/fonts";
   o.resolve_fonts = 1;
